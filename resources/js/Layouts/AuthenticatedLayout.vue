@@ -7,9 +7,8 @@
         <div class="d-flex align-items-center justify-content-between">
             <Link class="logo d-flex align-items-center" :href="route('dashboard')">
             <img src="/dashboard-assets/img/app_logo.jpg" alt="">
-            <span class="d-none d-lg-block">StarterKit</span>
+            <span class="d-none d-lg-block">POS</span>
             </Link>
-            <i class="bi bi-list toggle-sidebar-btn" @click="toggleBodyClass"></i>
         </div>
         <!-- End Logo -->
    

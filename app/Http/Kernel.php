@@ -76,4 +76,8 @@ class Kernel extends HttpKernel
     // 'readonly' => \App\Http\Middleware\ReadOnlyMiddleware::class,
 
     ];
+
+    protected $routeMiddleware = [
+        'active.session' => \App\Http\Middleware\VerifyActiveSession::class,
+    ];
 }

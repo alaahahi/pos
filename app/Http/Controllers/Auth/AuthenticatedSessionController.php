@@ -31,16 +31,27 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-          $user = User::where('email', $request->email)->first();
-          // Check if the user is inactive
-          if ($user && !$user->is_active) {
-              return back()->withErrors([
-                  'is_active' => 'Your account is inactive. Please contact support.',
-              ]);
-          }
-
+        $user = User::where('email', $request->email)->first();
+    
+        // Check if the user is inactive
+        if ($user && !$user->is_active) {
+            return back()->withErrors([
+                'is_active' => 'Your account is inactive. Please contact support.',
+            ]);
+        }
+    
+        // Log out the previous session if it exists
+        if ($user && $user->session_id) {
+            \Session::getHandler()->destroy($user->session_id);
+        }
+    
+        // Authenticate the user
         $request->authenticate();
-
+        // Update the session ID for the current session
+        $user->session_id = session()->getId();
+        $user->save();
+    
+        // Regenerate the session to prevent session fixation
         $request->session()->regenerate();
 
         return redirect()->intended(RouteServiceProvider::HOME);
@@ -51,6 +62,10 @@ class AuthenticatedSessionController extends Controller
      */
     public function destroy(Request $request): RedirectResponse
     {
+        $user = Auth::user();
+        $user->session_id = null;
+        $user->save();
+        
         Auth::guard('web')->logout();
 
         $request->session()->invalidate();
