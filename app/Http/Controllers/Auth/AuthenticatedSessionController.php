@@ -48,11 +48,13 @@ class AuthenticatedSessionController extends Controller
         // Authenticate the user
         $request->authenticate();
         // Update the session ID for the current session
+        // Regenerate the session to prevent session fixation
+        $request->session()->regenerate();
+
         $user->session_id = session()->getId();
         $user->save();
     
-        // Regenerate the session to prevent session fixation
-        $request->session()->regenerate();
+
 
         return redirect()->intended(RouteServiceProvider::HOME);
     }

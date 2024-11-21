@@ -12,8 +12,11 @@ class VerifyActiveSession
         $user = Auth::user();
         if ($user && $user->session_id !== session()->getId()) {
             Auth::logout();
-            return response()->json(['message' => 'Session expired, please log in again.'], 401);
+            return back()->withErrors([
+                'is_active' => 'Your account is inactive. Please contact support.',
+            ]);
         }
+       
 
         return $next($request);
     }
