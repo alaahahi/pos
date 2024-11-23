@@ -70,5 +70,19 @@ return [
 'logs_by_module'=>'سجـل العمليات حسب الوحدة',
 'logs_by_action'=>'سجـل العمليات حسب العملية',
 'logs_by_user'=>'سجـل العمليات حسب المستخدم',
+'products'=>'المنتجات',
+'product'=>'منتج',
+'model'=>'الموديل',
+'quantity'=>'عدد',
+'price'=>'السعر',
+'oe_number'=>'سيريال',
+'situation'=>'الحالة',
+'price_cost'=>'سعر الكلفة',
+'price_with_transport'=>'سعر التوصيل',
+'selling_price'=>'سعر البيغ',
+'note'=>'ملاحظة',
+'date'=>'تاريخ',
+
+ 
 
 ];

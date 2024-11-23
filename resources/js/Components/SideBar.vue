@@ -16,6 +16,12 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read product')">
+    <Link  class="nav-link "  :href="route('products.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/products') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.products  }}</span>
+               </Link>
+    </li>
 
     <li class="nav-item" >
         <a class="nav-link " data-bs-target="#components-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/roles') && !$page.url.startsWith('/permissions') }" >

@@ -3,6 +3,8 @@
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UsersController;
+use App\Http\Controllers\ProductController;
+
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -10,6 +12,8 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ExportController;
+use Illuminate\Support\Facades\Artisan;
+
 
 /*
 |--------------------------------------------------------------------------
@@ -22,7 +26,10 @@ use App\Http\Controllers\ExportController;
 |
 */
 
-
+Route::get('link', function () {
+  Artisan::call('storage:link');
+  return "yes link";
+});
 Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
@@ -32,6 +39,10 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::resource('users', UsersController::class);
   Route::post('users/{user}/activate', [UsersController::class, 'activate'])->name('activate');
   Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update'); //  inertia does not support send files using put request
+
+  Route::resource('products', ProductController::class);
+  Route::post('products/{user}/activate', [ProductController::class, 'activate'])->name('activate');
+  Route::post('products/{user}', [ProductController::class, 'update'])->name('product.update'); 
 
   Route::resource('permissions', App\Http\Controllers\PermissionController::class);
   Route::get('permissions/{permissionId}/delete', [App\Http\Controllers\PermissionController::class, 'destroy']);
