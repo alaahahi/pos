@@ -54,8 +54,9 @@
                   <th scope="col">{{ translations.name }}</th>
                   <th scope="col">{{ translations.model }}</th>
                   <th scope="col">{{ translations.quantity }}</th>
-                  <th scope="col">{{ translations.price }}</th>
+                  <th scope="col">{{ translations.selling_price }}</th>
                   <th scope="col">{{ translations.created_at }}</th>
+                  <th scope="col"> {{ translations.status }}</th>
                   <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
                   <th scope="col" v-if="hasPermission('delete products')">{{ translations.delete }}</th>
                 </tr>
@@ -66,8 +67,19 @@
                   <td>{{ product.name }}</td>
                   <td>{{ product.model }}</td>
                   <td>{{ product.quantity }}</td>
-                  <td>{{ product.price }}</td>
-                  <td>{{ product.created_at }}</td>
+                  <td>{{ product.selling_price }}</td>
+                  <td>{{ product.created }}</td>
+                  <td>
+                  <div>
+                    <label class="inline-flex items-center me-5 cursor-pointer">
+                      <input type="checkbox" class="sr-only peer" :checked="product.is_active == 1"
+                        @change="Activate(product.id)">
+                      <div
+                        class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600">
+                      </div>
+                    </label>
+                  </div>
+                  </td>
                   <td v-if="hasPermission('update products')">
                     <a class="btn btn-primary" :href="route('products.edit', { product: product.id })">
                       <i class="bi bi-pencil-square"></i>
@@ -120,7 +132,36 @@ const Filter = () => {
 const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 };
-
+const Activate = (id) => {
+  Swal.fire({
+    title: props.translations.are_your_sure,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#7066e0',
+    confirmButtonText: props.translations.yes,
+    cancelButtonText: props.translations.cancel,
+  }).then((result) => {
+    if (result.isConfirmed) {
+      router.post(`/products/${id}/activate`, {
+        onSuccess: () => {
+          Swal.fire(
+            'Updated !',
+            'product stuaus item has been updated.',
+            'success'
+          );
+        },
+        onError: () => {
+          Swal.fire(
+            'Error!',
+            'There was an issue updating product status.',
+            'error'
+          );
+        }
+      });
+    }
+  });
+}
 const Delete = (id) => {
   Swal.fire({
     title: props.translations.are_you_sure,

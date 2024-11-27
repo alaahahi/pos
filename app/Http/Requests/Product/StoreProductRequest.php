@@ -23,9 +23,17 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            // 'email' => 'required|email|unique:users,email',
-            // 'password' => 'required|string|min:8',
-            // 'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Optional avatar upload validation
+            'model' => 'required|string|max:255',
+            'oe_number' => 'nullable|string|max:50',
+            'situation' => 'nullable|string|max:50',
+            'price_cost' => 'required|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
+            'price_with_transport' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'balen' => 'nullable|string|max:100',
+            'note' => 'nullable|string|max:1000',
+            'created' => 'nullable|date',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ];
     }
 

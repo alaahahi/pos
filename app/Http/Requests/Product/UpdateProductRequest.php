@@ -11,6 +11,7 @@ class UpdateProductRequest extends FormRequest
      */
     public function authorize(): bool
     {
+        // هنا يمكنك وضع شرط لتحديد إذا ما كان المستخدم مسموح له بتعديل المنتج أم لا
         return true;
     }
 
@@ -23,25 +24,34 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            // 'email' => 'required|email|unique:users,email,' . $this->user->id, // Exclude current user's email
-            // 'password' => 'nullable|string|min:8',
+            'model' => 'required|string|max:255',
+            'oe_number' => 'nullable|string|max:50',
+            'situation' => 'nullable|string|max:50',
+            'price_cost' => 'required|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
+            'price_with_transport' => 'nullable|numeric|min:0',
+            'selling_price' => 'nullable|numeric|min:0',
+            'balen' => 'nullable|string|max:100',
+            'note' => 'nullable|string|max:1000',
+            'created' => 'nullable|date',
+            'image' => 'nullable|image|mimes:jpg,jpeg,png|max:2048',
         ];
     }
 
-    public function messages()
+    /**
+     * Custom error messages for validation rules.
+     */
+    public function messages(): array
     {
         return [
             'name.required' => __('rules.Name_is_required'),
-            // 'email.required' => __('rules.Email_is_required'),
-            // 'email.email' => __('rules.Email_must_be_a_valid_email_address'),
-            // 'email.unique' => __('rules.This_email_has_already_been_taken'),
-            // 'password.required' => __('rules.Password_is_required'),
-            // 'password.min' => __('rules.Password_must_be_at_least_8_characters'),
-            // 'avatar.image' => __('rules.The_avatar_must_be_an_image_file'),
-            // 'avatar.mimes' => __('rules.The_avatar_must_be_a_file_of_type_jpeg_png_jpg_gif'),
-            // 'avatar.max' => __('rules.The_avatar_must_not_exceed_2MB'),
+            'model.required' => __('rules.Model_is_required'),
+            'price_cost.required' => __('rules.Price_cost_is_required'),
+            'quantity.required' => __('rules.Quantity_is_required'),
+            'quantity.integer' => __('rules.Quantity_must_be_an_integer'),
+            'image.image' => __('rules.The_image_must_be_an_image_file'),
+            'image.mimes' => __('rules.The_image_must_be_a_file_of_type_jpg_jpeg_png'),
+            'image.max' => __('rules.The_image_must_not_exceed_2MB'),
         ];
-        
     }
-
 }

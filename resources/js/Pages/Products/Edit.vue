@@ -29,57 +29,158 @@
               <!-- General Form Elements -->
 
               <form @submit.prevent="update" class="row g-3" method="POST">
-
-                <div class="row mb-3">
-                  <label for="inputText" class="col-sm-2 col-form-label">{{ translations.name }}</label>
+  <!-- Product Name -->
+  <div class="row mb-3">
+                  <label for="inputName" class="col-sm-2 col-form-label">{{ translations.name }}</label>
                   <div class="col-sm-10">
-                    <input type="text" class="form-control" placeholder="user name" v-model="form.name">
+                    <input
+                      id="inputName"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.name"
+                      v-model="form.name"
+                    />
                     <InputError :message="form.errors.name" />
-
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <label for="inputEmail" class="col-sm-2 col-form-label">{{ translations.email }}</label>
-                  <div class="col-sm-10">
-                    <input type="email" class="form-control" v-model="form.email" placeholder="user Email">
-                    <InputError :message="form.errors.email" />
-
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <label for="inputPassword" class="col-sm-2 col-form-label">{{ translations.password }}</label>
-                  <div class="col-sm-10">
-                    <input type="password" class="form-control" v-model="form.password" placeholder="Password">
-                    <InputError :message="form.errors.password" />
-
                   </div>
                 </div>
 
-
+                <!-- Model -->
                 <div class="row mb-3">
-                  <label for="inputDate" class="col-sm-2 col-form-label"> {{ translations.role }}</label>
+                  <label for="inputModel" class="col-sm-2 col-form-label">{{ translations.model }}</label>
                   <div class="col-sm-10">
-                    <select class="form-control" multiple v-model="form.selectedRoles">
-                      <option value="" disabled>{{ translations.role }}</option>
-                      <option v-for="role in roles" :key="role" :value="role">
-                        {{ role }}
-                      </option>
-                    </select>
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <label for="inputDate" class="col-sm-2 col-form-label"> {{ translations.created_at }}</label>
-                  <div class="col-sm-10">
-                    <input type="date" class="form-control" v-model="form.created_at" disabled>
+                    <input
+                      id="inputModel"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.model"
+                      v-model="form.model"
+                    />
+                    <InputError :message="form.errors.model" />
                   </div>
                 </div>
 
+                <!-- OE Number -->
+                <div class="row mb-3">
+                  <label for="inputOENumber" class="col-sm-2 col-form-label">{{ translations.oe_number }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputOENumber"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.oe_number"
+                      v-model="form.oe_number"
+                    />
+                    <InputError :message="form.errors.oe_number" />
+                  </div>
+                </div>
+
+                <!-- Situation -->
+                <div class="row mb-3">
+                  <label for="inputSituation" class="col-sm-2 col-form-label">{{ translations.situation }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputSituation"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.situation"
+                      v-model="form.situation"
+                    />
+                    <InputError :message="form.errors.situation" />
+                  </div>
+                </div>
+
+                <!-- price_cost -->
+                <div class="row mb-3">
+                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price_cost }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputPrice"
+                      type="number"
+                      class="form-control"
+                      :placeholder="translations.price_cost"
+                      v-model="form.price_cost"
+                    />
+                    <InputError :message="form.errors.price_cost" />
+                  </div>
+                </div>
+    
+
+                 <!-- price_cost -->
+                 <div class="row mb-3">
+                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price_with_transport }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputPrice"
+                      type="number"
+                      class="form-control"
+                      :placeholder="translations.price_with_transport"
+                      v-model="form.price_with_transport"
+                    />
+                    <InputError :message="form.errors.price_with_transport" />
+                  </div>
+                </div>
+
+                <!-- price_cost -->
+
+                 <div class="row mb-3">
+                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.selling_price }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputPrice"
+                      type="number"
+                      class="form-control"
+                      :placeholder="translations.selling_price"
+                      v-model="form.selling_price"
+                    />
+                    <InputError :message="form.errors.selling_price" />
+                  </div>
+                </div>
+                <!-- Quantity -->
+                <div class="row mb-3">
+                  <label for="inputQuantity" class="col-sm-2 col-form-label">{{ translations.quantity }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputQuantity"
+                      type="number"
+                      class="form-control"
+                      :placeholder="translations.quantity"
+                      v-model="form.quantity"
+                    />
+                    <InputError :message="form.errors.quantity" />
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <label for="inputNote" class="col-sm-2 col-form-label">{{ translations.note }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputNote"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.note"
+                      v-model="form.note"
+                    />
+                    <InputError :message="form.errors.note" />
+                  </div>
+                </div>
+                <div class="row mb-3">
+                  <label for="inputdate" class="col-sm-2 col-form-label">{{ translations.date }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputdate"
+                      type="date"
+                      class="form-control"
+                      :placeholder="translations.date"
+                      v-model="form.created"
+                    />
+                    <InputError :message="form.errors.created" />
+                  </div>
+                </div>
 
                 <div class="row mb-3">
-                  <label for="inputNumber" class="col-sm-2 col-form-label">{{ translations.avatar }}</label>
+                  <label for="inputNumber" class="col-sm-2 col-form-label">{{ translations.image }}</label>
                   <div class="col-sm-10">
-                    <input type="file" @input="form.avatar = $event.target.files[0]" />
-                    <img v-if="props.user.avatar" :src="props.user.avatar" alt="Current Avatar" class="img-thumbnail"  width="80" />
+                    <input type="file" @input="form.image = $event.target.files[0]" />
+                    <img v-if="props.user?.image" :src="props.user.image" alt="Current Avatar" class="img-thumbnail"  width="80" />
                     <progress v-if="form.progress" :value="form.progress.percentage" max="100">
                       {{ form.progress.percentage }}%
                     </progress>
@@ -118,7 +219,7 @@ import InputError from '@/Components/InputError.vue';
 
 
 const props = defineProps({
-  user: Object,
+  product: Object,
   userRoles: Array,
   roles: Object,
   translations:Array
@@ -127,11 +228,17 @@ const props = defineProps({
 const show_loader = ref(false);
 
 const form = useForm({
-  avatar: null,
-  name: props.user.name,
-  email: props.user.email,
-  password: props.user.password,
-  created_at: props.user.created_at,
+  name : props.product.name,
+  model:props.product.model,
+  name:props.product.name,
+  note:props.product.note,
+  oe_number:props.product.oe_number,
+  price_cost:props.product.price_cost,
+  price_with_transport:props.product.price_with_transport,
+  quantity:props.product.quantity,
+  selling_price:props.product.selling_price,
+  situation:props.product.situation,
+  created: props.product.created,
   selectedRoles: props.userRoles,
 
 })
@@ -139,7 +246,7 @@ const form = useForm({
 
 const update = () => {
   show_loader.value = true; 
-  form.post(route('users.update', { user: props.user.id }), {
+  form.post(route('products.update', { product: props.product.id }), {
     onSuccess: () => {
       show_loader.value = false; 
     },

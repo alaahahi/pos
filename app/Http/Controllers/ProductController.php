@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
+use Carbon\Carbon;
 
 class ProductController extends Controller
 {
@@ -31,7 +32,7 @@ class ProductController extends Controller
         // Define the filters
         $filters = [
             'name' => $request->name,
-            'email' => $request->email,
+            'model' => $request->model,
             'is_active' => $request->is_active,
         ];
         // Start the Product query
@@ -42,8 +43,8 @@ class ProductController extends Controller
             return $query->where('name', 'LIKE', "%{$name}%");
         });
 
-        $ProductQuery->when($filters['email'], function ($query, $email) {
-            return $query->where('email', 'LIKE', "%{$email}%");
+        $ProductQuery->when($filters['model'], function ($query, $model) {
+            return $query->where('model', 'LIKE', "%{$model}%");
         });
 
 
@@ -78,15 +79,23 @@ class ProductController extends Controller
         // Create product instance and assign validated data
         $product = new Product([
             'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),  // Hash the password
-            'avatar' => $request->avatar ? $request->avatar : 'avatars/default_avatar.png',
+            'model'=>$request->model,
+            'name'=>$request->name,
+            'note'=>$request->note,
+            'oe_number'=>$request->oe_number,
+            'price_cost'=>$request->price_cost,
+            'price_with_transport'=>$request->price_with_transport,
+            'quantity'=>$request->quantity,
+            'selling_price'=>$request->selling_price,
+            'situation'=>$request->situation,
+            'created' =>Carbon::now()->format('Y-m-d'),
+            'image' => $request->image ? $request->image : 'products/default_product.png',
         ]);
     
-        // Handle avatar upload if a file is provided
-        if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $product->avatar = $path;
+        // Handle product upload if a file is provided
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('products', 'public');
+            $product->image = $path;
         }
     
         // Save the product
@@ -98,7 +107,7 @@ class ProductController extends Controller
         }
     
         // Redirect with success message
-        return redirect()->route('product.index')
+        return redirect()->route('products.index')
             ->with('success', __('messages.data_saved_successfully'));
     }
     
@@ -132,20 +141,19 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         // The request is automatically validated using the UpdateProductRequest rules
-    
         // Check if an avatar file is uploaded and store it
-        if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $product->avatar = $path; // Update the product's avatar path
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('products', 'public');
+            $product->image = $path; // Update the product's avatar path
         }
     
         // Update product information, including avatar and other fields, in a single save operation
         $product->update($request->validated());
     
         // Sync roles if any
-        $product->syncRoles($request->selectedRoles);
+        //$product->syncRoles($request->selectedRoles);
     
-        return redirect()->route('product.index')
+        return redirect()->route('products.index')
             ->with('success', __('messages.data_updated_successfully'));
     }
     
@@ -157,7 +165,7 @@ class ProductController extends Controller
                 'is_active' => ($product->is_active) ? 0 : 1
             ]
         );
-        return redirect()->route('product.index')
+        return redirect()->route('products.index')
             ->with('success', 'product Status Updated successfully!');
     }
     /**
@@ -165,8 +173,29 @@ class ProductController extends Controller
      */
     public function destroy(Product $product)
     {
+        // تحقق ما إذا كان المنتج محذوفًا بالفعل
+        if ($product->trashed()) {
+            return redirect()->route('products.index')
+                ->with('error', __('messages.product_already_deleted'));
+        }
+    
+        // حذف المنتج حذفًا ناعمًا
         $product->delete();
-        return redirect()->route('product.index')
-        ->with('success',  __('messages.data_deleted_successfully'));
+    
+        return redirect()->route('products.index')
+            ->with('success', __('messages.data_deleted_successfully'));
+    }
+    public function trashed()
+    {
+        $trashedProducts = Product::onlyTrashed()->get();
+        return view('products.trashed', compact('trashedProducts'));
+    }
+    public function restore($id)
+    {
+        $product = Product::onlyTrashed()->findOrFail($id);
+        $product->restore();
+
+        return redirect()->route('products.index')
+            ->with('success', __('messages.product_restored_successfully'));
     }
 }
