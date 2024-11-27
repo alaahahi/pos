@@ -82,5 +82,6 @@ return [
     'selling_price'=>'Selling price',
     'note'=>'Note',
     'date'=>'Date',
-
+    'orders'=>'Orders',
+    'order'=>'Order',
 ];

@@ -4,6 +4,7 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\OrderController;
 
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
@@ -46,6 +47,11 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::get('products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
   Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
 
+  Route::resource('orders', OrderController::class);
+  Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('activate');
+  Route::post('orders/{order}', [OrderController::class, 'update'])->name('orders.update'); 
+  Route::get('orders/trashed', [OrderController::class, 'trashed'])->name('orders.trashed');
+  Route::post('orders/{id}/restore', [OrderController::class, 'restore'])->name('orders.restore');
 
   Route::resource('permissions', App\Http\Controllers\PermissionController::class);
   Route::get('permissions/{permissionId}/delete', [App\Http\Controllers\PermissionController::class, 'destroy']);
