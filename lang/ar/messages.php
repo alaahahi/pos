@@ -36,8 +36,10 @@ return [
     'details' => 'التفاصيـل ',
     'affected_record' => 'السجل المتأثر ',
 'add_new_user'=>'اضـافة مستخدم جـديد',
+'add_new_customer'=>'اضـافة زبون جـديد',
 'add_new_permission'=>'اضـافة صـلاحية جـديد',
 'edit_user_info'=>'تعديل بيانات المستخدم',
+'edit_customer_info' => 'تعديل بيانات الزبون',
 'edit_permission'=>'تعديل صـلاحيـة ',
 'save'=>'حـفظ',
 'update'=>'تحـديث',
@@ -84,5 +86,10 @@ return [
 'date'=>'تاريخ',
 'orders'=>'فواتير',
 'order'=>'فاتورة',
-
+'customers'=>'الزبائن',
+'client'=>'زبون',
+'phone'=>'رقم الهاتف',
+'notes'=>'ملاحظة',
+'address'=>'العنوان',
+'image'=>'صورة',
 ];

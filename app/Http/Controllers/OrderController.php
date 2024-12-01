@@ -2,12 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Product;
+use App\Models\Order;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
-use App\Http\Requests\Product\StoreProductRequest;
-use App\Http\Requests\Product\UpdateProductRequest;
+use App\Http\Requests\Order\StoreOrderRequest;
+use App\Http\Requests\Order\UpdateOrderRequest;
 use Carbon\Carbon;
 
 class OrderController extends Controller
@@ -15,10 +15,10 @@ class OrderController extends Controller
 
     public function __construct()
     {
-        $this->middleware('permission:read product', ['only' => ['index']]);
-        $this->middleware('permission:create product', ['only' => ['create']]);
-        $this->middleware('permission:update product', ['only' => ['update','edit']]);
-        $this->middleware('permission:delete product', ['only' => ['destroy']]);
+        $this->middleware('permission:read order', ['only' => ['index']]);
+        $this->middleware('permission:create order', ['only' => ['create']]);
+        $this->middleware('permission:update order', ['only' => ['update','edit']]);
+        $this->middleware('permission:delete order', ['only' => ['destroy']]);
     }
 
 
@@ -35,29 +35,29 @@ class OrderController extends Controller
             'model' => $request->model,
             'is_active' => $request->is_active,
         ];
-        // Start the Product query
-        $ProductQuery = Product::with('roles')->latest();
+        // Start the Order query
+        $OrderQuery = Order::with('roles')->latest();
 
         // Apply the filters if they exist
-        $ProductQuery->when($filters['name'], function ($query, $name) {
+        $OrderQuery->when($filters['name'], function ($query, $name) {
             return $query->where('name', 'LIKE', "%{$name}%");
         });
 
-        $ProductQuery->when($filters['model'], function ($query, $model) {
+        $OrderQuery->when($filters['model'], function ($query, $model) {
             return $query->where('model', 'LIKE', "%{$model}%");
         });
 
 
         if (isset($filters['is_active'])) {
-            $ProductQuery->where('is_active', $filters['is_active']);
+            $OrderQuery->where('is_active', $filters['is_active']);
         }
-        // Paginate the filtered product
-        $product = $ProductQuery->paginate(10);
+        // Paginate the filtered order
+        $order = $OrderQuery->paginate(10);
 
-        return Inertia('Products/index', [
+        return Inertia('Orders/index', [
             'translations' => __('messages'),
             'filters' => $filters,
-            'products' => $product,
+            'orders' => $order,
         ]);
 
     }
@@ -68,16 +68,16 @@ class OrderController extends Controller
     public function create()
     {
         $roles = Role::pluck('name', 'name')->all();
-        return Inertia('Products/Create', [ 'translations' => __('messages'),'roles' => $roles]);
+        return Inertia('Orders/Create', [ 'translations' => __('messages'),'roles' => $roles]);
     }
 
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreProductRequest $request)
+    public function store(StoreOrderRequest $request)
     {
-        // Create product instance and assign validated data
-        $product = new Product([
+        // Create order instance and assign validated data
+        $order = new Order([
             'name' => $request->name,
             'model'=>$request->model,
             'name'=>$request->name,
@@ -89,25 +89,25 @@ class OrderController extends Controller
             'selling_price'=>$request->selling_price,
             'situation'=>$request->situation,
             'created' =>Carbon::now()->format('Y-m-d'),
-            'image' => $request->image ? $request->image : 'products/default_product.png',
+            'image' => $request->image ? $request->image : 'orders/default_order.png',
         ]);
     
-        // Handle product upload if a file is provided
+        // Handle order upload if a file is provided
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
-            $product->image = $path;
+            $path = $request->file('image')->store('orders', 'public');
+            $order->image = $path;
         }
     
-        // Save the product
-        $product->save();
+        // Save the order
+        $order->save();
     
         // Sync roles if any selected
         if ($request->has('selectedRoles')) {
-            $product->syncRoles($request->selectedRoles);
+            $order->syncRoles($request->selectedRoles);
         }
     
         // Redirect with success message
-        return redirect()->route('products.index')
+        return redirect()->route('orders.index')
             ->with('success', __('messages.data_saved_successfully'));
     }
     
@@ -115,7 +115,7 @@ class OrderController extends Controller
     /**
      * Display the specified resource.
      */
-    public function show(Product $product)
+    public function show(Order $order)
     {
         //
     }
@@ -123,79 +123,79 @@ class OrderController extends Controller
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Product $product)
+    public function edit(Order $order)
     {
         $roles = Role::pluck('name', 'name')->all();
-        $productRoles = $product->roles->pluck('name')->all();
-        return Inertia('Products/Edit', [
+        $orderRoles = $order->roles->pluck('name')->all();
+        return Inertia('Orders/Edit', [
             'translations' => __('messages'),
-            'product' => $product,
+            'order' => $order,
             'roles' => $roles,
-            'productRoles' => $productRoles
+            'orderRoles' => $orderRoles
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateProductRequest $request, Product $product)
+    public function update(UpdateOrderRequest $request, Order $order)
     {
-        // The request is automatically validated using the UpdateProductRequest rules
+        // The request is automatically validated using the UpdateOrderRequest rules
         // Check if an avatar file is uploaded and store it
         if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
-            $product->image = $path; // Update the product's avatar path
+            $path = $request->file('image')->store('orders', 'public');
+            $order->image = $path; // Update the order's avatar path
         }
     
-        // Update product information, including avatar and other fields, in a single save operation
-        $product->update($request->validated());
+        // Update order information, including avatar and other fields, in a single save operation
+        $order->update($request->validated());
     
         // Sync roles if any
-        //$product->syncRoles($request->selectedRoles);
+        //$order->syncRoles($request->selectedRoles);
     
-        return redirect()->route('products.index')
+        return redirect()->route('orders.index')
             ->with('success', __('messages.data_updated_successfully'));
     }
     
 
-    public function activate(Product $product)
+    public function activate(Order $order)
     {
-        $product->update(
+        $order->update(
             [
-                'is_active' => ($product->is_active) ? 0 : 1
+                'is_active' => ($order->is_active) ? 0 : 1
             ]
         );
-        return redirect()->route('products.index')
-            ->with('success', 'product Status Updated successfully!');
+        return redirect()->route('orders.index')
+            ->with('success', 'order Status Updated successfully!');
     }
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Product $product)
+    public function destroy(Order $order)
     {
         // تحقق ما إذا كان المنتج محذوفًا بالفعل
-        if ($product->trashed()) {
-            return redirect()->route('products.index')
-                ->with('error', __('messages.product_already_deleted'));
+        if ($order->trashed()) {
+            return redirect()->route('orders.index')
+                ->with('error', __('messages.order_already_deleted'));
         }
     
         // حذف المنتج حذفًا ناعمًا
-        $product->delete();
+        $order->delete();
     
-        return redirect()->route('products.index')
+        return redirect()->route('orders.index')
             ->with('success', __('messages.data_deleted_successfully'));
     }
     public function trashed()
     {
-        $trashedProducts = Product::onlyTrashed()->get();
-        return view('products.trashed', compact('trashedProducts'));
+        $trashedOrders = Order::onlyTrashed()->get();
+        return view('orders.trashed', compact('trashedOrders'));
     }
     public function restore($id)
     {
-        $product = Product::onlyTrashed()->findOrFail($id);
-        $product->restore();
+        $order = Order::onlyTrashed()->findOrFail($id);
+        $order->restore();
 
-        return redirect()->route('products.index')
-            ->with('success', __('messages.product_restored_successfully'));
+        return redirect()->route('orders.index')
+            ->with('success', __('messages.order_restored_successfully'));
     }
 }

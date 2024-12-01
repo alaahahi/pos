@@ -36,8 +36,10 @@ return [
     'details' => 'Details',
     'affected_record' => 'Affected record',
     'add_new_user' => 'Add new user',
+    'add_new_customer'=>'Add new client',
     'add_new_permission' => 'Add new permission',
     'edit_user_info' => 'Edit user info',
+    'edit_customer_info' => 'Edit client info',
     'edit_permission' => 'Edit permission',
     'save' => 'Save',
     'update' => 'Update',
@@ -84,4 +86,13 @@ return [
     'date'=>'Date',
     'orders'=>'Orders',
     'order'=>'Order',
+    'customers'=>'Clients',
+    'client'=>'Client',
+    'phone'=>'Phone',
+    'notes'=>'Note',
+    'address'=>'Address',
+    'image'=>'Image',
+
+
+
 ];

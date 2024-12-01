@@ -37,4 +37,11 @@ public function product(): BelongsTo
         'by_user_id'
     );
 }
+public function customer(): BelongsTo
+{
+    return $this->belongsTo(
+        \App\Models\Customer::class,
+        'by_user_id'
+    );
+}
 }

@@ -16,6 +16,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read customers')">
+    <Link  class="nav-link "  :href="route('customers.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/customers') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.customers  }}</span>
+               </Link>
+    </li>
+    
     <li class="nav-item" v-if="hasPermission('read product')">
     <Link  class="nav-link "  :href="route('products.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/products') }" >
             <i class="bi bi-people"></i>

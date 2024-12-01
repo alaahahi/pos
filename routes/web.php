@@ -5,7 +5,7 @@ use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
-
+use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -40,6 +40,10 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::resource('users', UsersController::class);
   Route::post('users/{user}/activate', [UsersController::class, 'activate'])->name('activate');
   Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update'); //  inertia does not support send files using put request
+
+  Route::resource('customers', CustomersController::class);
+  Route::post('customers/{client}/activate', [CustomersController::class, 'activate'])->name('activate');
+  Route::post('customers/{client}', [CustomersController::class, 'update'])->name('customers.update'); //  inertia does not support send files using put request
 
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
@@ -81,5 +85,6 @@ Route::middleware(['auth', 'active.session'])->group(function () {
 });
 
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
+Route::get('/export-users', [ExportController::class, 'export'])->name('export.customers');
 
 require __DIR__ . '/auth.php';

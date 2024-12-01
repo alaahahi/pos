@@ -2,7 +2,7 @@
   <AuthenticatedLayout :translations="translations">
     <!-- breadcrumb-->
     <div class="pagetitle">
-      <h1>{{ translations.products }}</h1>
+      <h1>{{ translations.orders }}</h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
@@ -10,7 +10,7 @@
               {{ translations.home }}
             </Link>
           </li>
-          <li class="breadcrumb-item active">{{ translations.products }}</li>
+          <li class="breadcrumb-item active">{{ translations.orders }}</li>
         </ol>
       </nav>
     </div>
@@ -39,7 +39,7 @@
                 </button>
               </div>
               <div class="col-md-3">
-                <Link v-if="hasPermission('create products')" class="btn btn-primary" :href="route('products.create')">
+                <Link v-if="hasPermission('create orders')" class="btn btn-primary" :href="route('orders.create')">
                   {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
@@ -57,36 +57,36 @@
                   <th scope="col">{{ translations.selling_price }}</th>
                   <th scope="col">{{ translations.created_at }}</th>
                   <th scope="col"> {{ translations.status }}</th>
-                  <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
-                  <th scope="col" v-if="hasPermission('delete products')">{{ translations.delete }}</th>
+                  <th scope="col" v-if="hasPermission('update orders')">{{ translations.edit }}</th>
+                  <th scope="col" v-if="hasPermission('delete orders')">{{ translations.delete }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(product, index) in products?.data" :key="product.id">
+                <tr v-for="(order, index) in orders?.data" :key="order.id">
                   <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ product.name }}</td>
-                  <td>{{ product.model }}</td>
-                  <td>{{ product.quantity }}</td>
-                  <td>{{ product.selling_price }}</td>
-                  <td>{{ product.created }}</td>
+                  <td>{{ order.name }}</td>
+                  <td>{{ order.model }}</td>
+                  <td>{{ order.quantity }}</td>
+                  <td>{{ order.selling_price }}</td>
+                  <td>{{ order.created }}</td>
                   <td>
                   <div>
                     <label class="inline-flex items-center me-5 cursor-pointer">
-                      <input type="checkbox" class="sr-only peer" :checked="product.is_active == 1"
-                        @change="Activate(product.id)">
+                      <input type="checkbox" class="sr-only peer" :checked="order.is_active == 1"
+                        @change="Activate(order.id)">
                       <div
                         class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600">
                       </div>
                     </label>
                   </div>
                   </td>
-                  <td v-if="hasPermission('update products')">
-                    <a class="btn btn-primary" :href="route('products.edit', { product: product.id })">
+                  <td v-if="hasPermission('update orders')">
+                    <a class="btn btn-primary" :href="route('orders.edit', { order: order.id })">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
-                  <td v-if="hasPermission('delete products')">
-                    <button type="button" class="btn btn-danger" @click="Delete(product.id)">
+                  <td v-if="hasPermission('delete orders')">
+                    <button type="button" class="btn btn-danger" @click="Delete(order.id)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
@@ -96,7 +96,7 @@
           </div>
         </div>
       </div>
-      <Pagination :links="products?.links" />
+      <Pagination :links="orders?.links" />
     </section>
   </AuthenticatedLayout>
 </template>
@@ -110,7 +110,7 @@ import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 
 const props = defineProps({
-  products: Object, 
+  orders: Object, 
   translations: Array 
 });
 
@@ -123,7 +123,7 @@ const filterForm = reactive({
 
 const Filter = () => {
   router.get(
-    route('products.index'),
+    route('orders.index'),
     filterForm,
     { preserveState: true, preserveScroll: true },
   );
@@ -143,18 +143,18 @@ const Activate = (id) => {
     cancelButtonText: props.translations.cancel,
   }).then((result) => {
     if (result.isConfirmed) {
-      router.post(`/products/${id}/activate`, {
+      router.post(`/orders/${id}/activate`, {
         onSuccess: () => {
           Swal.fire(
             'Updated !',
-            'product stuaus item has been updated.',
+            'order stuaus item has been updated.',
             'success'
           );
         },
         onError: () => {
           Swal.fire(
             'Error!',
-            'There was an issue updating product status.',
+            'There was an issue updating order status.',
             'error'
           );
         }
@@ -174,7 +174,7 @@ const Delete = (id) => {
     cancelButtonText: props.translations.cancel,
   }).then((result) => {
     if (result.isConfirmed) {
-      router.delete('products/' + id, {
+      router.delete('orders/' + id, {
         onSuccess: () => {
           Swal.fire({
             title: props.translations.data_deleted_successfully,
@@ -184,7 +184,7 @@ const Delete = (id) => {
         onError: () => {
           Swal.fire(
             'Error!',
-            'There was an issue deleting the product.',
+            'There was an issue deleting the order.',
             'error'
           );
         }
