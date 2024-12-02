@@ -92,7 +92,13 @@ return [
     'notes'=>'Note',
     'address'=>'Address',
     'image'=>'Image',
-
+    'invoice'=>'Invoice',
+    'create_invoice'=>'Create invoice',
+    'select_customer'=>'Select customer',
+    'add_customer'=>'Add customer',
+    'select_product'=>'Select product',
+    'add_product'=>'Add product',
+    'total'=>'Total',
 
 
 ];

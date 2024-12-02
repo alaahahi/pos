@@ -1,223 +1,140 @@
 <template>
   <AuthenticatedLayout :translations="translations">
-    <!-- Breadcrumb -->
+
+    <!-- breadcrumb-->
     <div class="pagetitle">
-      <h1>{{ translations.products }}</h1>
+      <h1> {{ translations.invoice }} </h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
             <Link class="nav-link" :href="route('dashboard')">
-              {{ translations.home }}
+              {{ translations.Home }}
             </Link>
           </li>
-          <li class="breadcrumb-item active">{{ translations.products }}</li>
-          <li class="breadcrumb-item active">{{ translations.create }}</li>
+          <li class="breadcrumb-item active"> {{ translations.invoice }} </li>
         </ol>
       </nav>
     </div>
-    <!-- End Breadcrumb -->
+    <!-- End breadcrumb-->
 
     <section class="section dashboard">
+
       <div class="row">
         <div class="col-lg-12">
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title">{{ translations.add_new_product }}</h5>
+              <h5 class="card-title"> {{ translations.create_invoice }} </h5>
 
-              <!-- General Form -->
-              <form @submit.prevent="store" class="row g-3">
-                <!-- Product Name -->
+              <!-- Invoice Form -->
+              <form @submit.prevent="saveInvoice" class="row g-3">
+                <!-- Customer Selection or Add New Customer -->
                 <div class="row mb-3">
-                  <label for="inputName" class="col-sm-2 col-form-label">{{ translations.name }}</label>
+                  <label for="customerSelect" class="col-sm-2 col-form-label"> {{ translations.client }} </label>
                   <div class="col-sm-10">
-                    <input
-                      id="inputName"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.name"
-                      v-model="form.name"
+                    <!-- Search Input for customers -->
+                 
+                    <!-- Vue Select Dropdown with filtered customers -->
+                    <vue-select
+                      v-model="selectedCustomer"
+                      :options="filteredCustomers"
+                      label="name"
+                      track-by="id"
+                      :reduce="customer => ({ id: customer.id, name: customer.name })"
+                      @mouseleave="selectCustomer(selectedCustomer)"
+                      :clearable="true"
+                      :placeholder="translations.select_customer"
                     />
-                    <InputError :message="form.errors.name" />
-                  </div>
-                </div>
-
-                <!-- Model -->
-                <div class="row mb-3">
-                  <label for="inputModel" class="col-sm-2 col-form-label">{{ translations.model }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputModel"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.model"
-                      v-model="form.model"
-                    />
-                    <InputError :message="form.errors.model" />
+                    
+                    <!-- Button to add new customer 
+                    <button type="button" class="btn btn-success mt-2" @click="addNewCustomer">{{ translations.add_customer }}</button>
+                    -->
+                    <!-- Input Error Message -->
+                    <InputError :message="form.errors.customer" />
                   </div>
                 </div>
 
-                <!-- OE Number -->
+                <!-- Products Table -->
+                <div class="row mb-3" v-if="selectedCustomer">
+                  <label for="productTable" class="col-sm-2 col-form-label"> {{ translations.products }} </label>
+                  <div class="col-sm-10">
+                    <table class="table">
+                      <thead>
+                        <tr>
+                          <th>{{ translations.product }}</th>
+                          <th>{{ translations.quantity }}</th>
+                          <th>{{ translations.price }}</th>
+                          <th>{{ translations.total }}</th>
+                          <th>{{ translations.actions }}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        <tr v-for="(item, index) in invoiceItems" :key="index">
+                          <vue-select
+                            v-model="item.product_id"
+                            :options="products"
+                            label="name"
+                            :reduce="product => product.id"
+                            :placeholder="translations.select_product"
+                            class="form-control"
+                            style="min-width: 200px;"
+                            @mouseleave="updatePrice(item)" 
+                          />
+                          <td>
+                            <input type="number" v-model="item.quantity" min="1" class="form-control" placeholder="Quantity">
+                          </td>
+                          <td>
+                            <input type="number" v-model="item.price" min="0" class="form-control" placeholder="Price">
+                          </td>
+                          <td>
+                            <input type="number" :value="item.quantity * item.price" class="form-control"  disabled>
+                          </td>
+                          <td>
+                            <button type="button" class="btn btn-danger" @click="removeItem(index)">
+                              <i class="bi bi-trash"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                    <button type="button" class="btn btn-primary" @click="addProduct">{{ translations.add_product }}</button>
+                  </div>
+                </div>
+                <!-- Total Row -->
+                <div class="row">
+                  <div class="col-md-6">
+                    <strong>{{ props.translations.total }}:</strong>
+                  </div>
+                  <div class="col-md-6">
+                    <input type="number" v-model="totalAmount" class="form-control" readonly />
+                  </div>
+                </div>
+                <!-- Log Section 
                 <div class="row mb-3">
-                  <label for="inputOENumber" class="col-sm-2 col-form-label">{{ translations.oe_number }}</label>
+                  <label for="logSection" class="col-sm-2 col-form-label"> {{ translations.logs }} </label>
                   <div class="col-sm-10">
-                    <input
-                      id="inputOENumber"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.oe_number"
-                      v-model="form.oe_number"
-                    />
-                    <InputError :message="form.errors.oe_number" />
+                    <div v-for="(log, index) in invoiceLogs" :key="index">
+                      <p>{{ log.timestamp }}: {{ log.message }}</p>
+                    </div>
                   </div>
                 </div>
-
-                <!-- Situation -->
-                <div class="row mb-3">
-                  <label for="inputSituation" class="col-sm-2 col-form-label">{{ translations.situation }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputSituation"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.situation"
-                      v-model="form.situation"
-                    />
-                    <InputError :message="form.errors.situation" />
-                  </div>
-                </div>
-
-                <!-- price_cost -->
-                <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price_cost }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputPrice"
-                      type="number"
-                      class="form-control"
-                      :placeholder="translations.price_cost"
-                      v-model="form.price_cost"
-                    />
-                    <InputError :message="form.errors.price_cost" />
-                  </div>
-                </div>
-    
-
-                 <!-- price_cost -->
-                 <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price_with_transport }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputPrice"
-                      type="number"
-                      class="form-control"
-                      :placeholder="translations.price_with_transport"
-                      v-model="form.price_with_transport"
-                    />
-                    <InputError :message="form.errors.price_with_transport" />
-                  </div>
-                </div>
-
-                <!-- price_cost -->
-
-                 <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.selling_price }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputPrice"
-                      type="number"
-                      class="form-control"
-                      :placeholder="translations.selling_price"
-                      v-model="form.selling_price"
-                    />
-                    <InputError :message="form.errors.selling_price" />
-                  </div>
-                </div>
-                <!-- Quantity -->
-                <div class="row mb-3">
-                  <label for="inputQuantity" class="col-sm-2 col-form-label">{{ translations.quantity }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputQuantity"
-                      type="number"
-                      class="form-control"
-                      :placeholder="translations.quantity"
-                      v-model="form.quantity"
-                    />
-                    <InputError :message="form.errors.quantity" />
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <label for="inputNote" class="col-sm-2 col-form-label">{{ translations.note }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputNote"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.note"
-                      v-model="form.note"
-                    />
-                    <InputError :message="form.errors.note" />
-                  </div>
-                </div>
-                <div class="row mb-3">
-                  <label for="inputdate" class="col-sm-2 col-form-label">{{ translations.date }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputdate"
-                      type="date"
-                      class="form-control"
-                      :placeholder="translations.date"
-                      v-model="form.date"
-                    />
-                    <InputError :message="form.errors.date" />
-                  </div>
-                </div>
-                <!-- Image -->
-                <div class="row mb-3">
-                  <label for="inputImage" class="col-sm-2 col-form-label">{{ translations.image }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputImage"
-                      type="file"
-                      @input="form.image = $event.target.files[0]"
-                    />
-                    <progress
-                      v-if="form.progress"
-                      :value="form.progress.percentage"
-                      max="100"
-                    >
-                      {{ form.progress.percentage }}%
-                    </progress>
-                  </div>
-                </div>
-
-                <!-- Submit Button -->
+                  -->
+                <!-- Submit -->
                 <div class="text-center">
-                  <button
-                    type="submit"
-                    class="btn btn-primary"
-                    :disabled="show_loader"
-                  >
-                    {{ translations.save }}
-                    <i
-                      class="bi bi-save"
-                      v-if="!show_loader"
-                    ></i>
-                    <span
-                      class="spinner-border spinner-border-sm"
-                      role="status"
-                      aria-hidden="true"
-                      v-if="show_loader"
-                    ></span>
+                  <button type="submit" class="btn btn-primary" :disabled="show_loader">
+                    {{ translations.save }} &nbsp; 
+                    <i class="bi bi-save" v-if="!show_loader"></i>
+                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" v-if="show_loader"></span>
                   </button>
                 </div>
               </form>
-              <!-- End General Form -->
+              <!-- End Invoice Form -->
             </div>
           </div>
         </div>
       </div>
+
     </section>
+
   </AuthenticatedLayout>
 </template>
 
@@ -225,37 +142,108 @@
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
-import { ref } from 'vue';
+import { ref, reactive, computed,watch  } from 'vue';
+import VueSelect from 'vue-select'; // Import vue-select component
+import 'vue-select/dist/vue-select.css'; // Import vue-select styles
 
+const searchQuery = ref('');
 const show_loader = ref(false);
+const selectedCustomer = ref(null);
 
 const props = defineProps({
+  products: Array,
+  customers: Array,
   translations: Object,
 });
 
 const form = useForm({
-  name: '',
-  model: '',
-  oe_number: '',
-  situation: '',
-  price_cost: null,
-  price_with_transport: null,
-  selling_price: null,
-  quantity: null,
-  note:'',
-  image: null,
+  customer_id: "",
+  items: [],
+  log: [],
+  total_amount: 0 // Add the total_amount field to form data
 });
 
-const store = () => {
+const invoiceItems = reactive([]);
+const invoiceLogs = reactive([]);
+
+// Computed property to filter customers based on search query
+const filteredCustomers = computed(() => {
+  if (!searchQuery.value) {
+    return props.customers; // Show all customers if there's no search query
+  }
+  return props.customers.filter(customer => {
+    const query = searchQuery.value.toLowerCase();
+    return (
+      customer.name.toLowerCase().includes(query) ||
+      customer.phone.includes(query)
+    );
+  });
+});
+
+// Function to update the price when a product is selected
+const updatePrice = (item) => {
+  const selectedProduct = props.products.find(product => product.id === item.product_id);
+  if (selectedProduct) {
+    item.price = selectedProduct.price;  
+  }
+};
+
+// Add a computed property for the total amount
+const totalAmount = computed(() => {
+  return invoiceItems.reduce((total, item) => {
+    return total + (item.quantity * item.price);
+  }, 0);
+});
+
+// Watch the computed totalAmount and update form.total_amount
+watch(totalAmount, (newTotal) => {
+  form.total_amount = newTotal;
+});
+
+const addProduct = () => {
+  invoiceItems.push({
+    product_id: '',
+    quantity: 1,
+    price: 0,
+  });
+  logAction('product_added');
+};
+
+const removeItem = (index) => {
+  invoiceItems.splice(index, 1);
+  logAction('product_removed');
+};
+
+const addNewCustomer = () => {
+  // Show form for adding new customer
+  logAction('addNewCustomer');
+};
+
+const selectCustomer = (value) => {
+  console.log(value);
+  selectedCustomer.value = value;
+  form.customer_id = value ? value.id : null;
+  logAction(`customer_selected ${value ? value.name : ''}`);
+};
+
+const logAction = (message) => {
+  const timestamp = new Date().toLocaleString();
+  invoiceLogs.push({ message, timestamp });
+};
+
+const saveInvoice = () => {
   show_loader.value = true;
-  form.post(route('products.store'), {
+  form.items = invoiceItems;
+
+  form.post(route('orders.store'), {
     onSuccess: () => {
       show_loader.value = false;
+      logAction('invoice_saved');
     },
     onError: () => {
       show_loader.value = false;
+      logAction('invoice_save_failed');
     },
   });
 };
 </script>
-  

@@ -92,4 +92,12 @@ return [
 'notes'=>'ملاحظة',
 'address'=>'العنوان',
 'image'=>'صورة',
+'invoice'=>'فاتورة',
+'create_invoice'=>'انشاء فاتورة',
+'select_customer'=>'اختيار زبون',
+'add_customer'=>'اضافة زبون',
+'select_product'=>'اختيار منتج',
+'add_product'=>'اضافة منتج',
+'total'=>'المجموع',
+
 ];

@@ -20,6 +20,7 @@
       <div class="card">
         <div class="card-header">
           <div class="d-flex">
+            <!-- هنا يمكن إضافة أي أدوات تصفية أو بحث إضافية-->
           </div>
         </div>
         <div class="card-body">
@@ -39,7 +40,7 @@
                 </button>
               </div>
               <div class="col-md-3">
-                <Link v-if="hasPermission('create orders')" class="btn btn-primary" :href="route('orders.create')">
+                <Link v-if="hasPermission('create order')" class="btn btn-primary" :href="route('orders.create')">
                   {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
@@ -51,41 +52,27 @@
               <thead>
                 <tr>
                   <th scope="col">#</th>
-                  <th scope="col">{{ translations.name }}</th>
-                  <th scope="col">{{ translations.model }}</th>
-                  <th scope="col">{{ translations.quantity }}</th>
-                  <th scope="col">{{ translations.selling_price }}</th>
-                  <th scope="col">{{ translations.created_at }}</th>
-                  <th scope="col"> {{ translations.status }}</th>
-                  <th scope="col" v-if="hasPermission('update orders')">{{ translations.edit }}</th>
-                  <th scope="col" v-if="hasPermission('delete orders')">{{ translations.delete }}</th>
+                  <th scope="col">{{ translations.name }}</th> <!-- اسم العميل -->
+                  <th scope="col">{{ translations.total }}</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.status }}</th> <!-- الحالة -->
+                  <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
+                  <th scope="col" v-if="hasPermission('update order')">{{ translations.edit }}</th>
+                  <th scope="col" v-if="hasPermission('delete order')">{{ translations.delete }}</th>
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(order, index) in orders?.data" :key="order.id">
                   <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ order.name }}</td>
-                  <td>{{ order.model }}</td>
-                  <td>{{ order.quantity }}</td>
-                  <td>{{ order.selling_price }}</td>
-                  <td>{{ order.created }}</td>
-                  <td>
-                  <div>
-                    <label class="inline-flex items-center me-5 cursor-pointer">
-                      <input type="checkbox" class="sr-only peer" :checked="order.is_active == 1"
-                        @change="Activate(order.id)">
-                      <div
-                        class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600">
-                      </div>
-                    </label>
-                  </div>
-                  </td>
-                  <td v-if="hasPermission('update orders')">
+                  <td>{{ order.customer?.name }}</td> <!-- اسم العميل -->
+                  <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.status }}</td> <!-- الحالة -->
+                  <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
+                  <td v-if="hasPermission('update order')">
                     <a class="btn btn-primary" :href="route('orders.edit', { order: order.id })">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
-                  <td v-if="hasPermission('delete orders')">
+                  <td v-if="hasPermission('delete order')">
                     <button type="button" class="btn btn-danger" @click="Delete(order.id)">
                       <i class="bi bi-trash"></i>
                     </button>
@@ -132,6 +119,7 @@ const Filter = () => {
 const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 };
+
 const Activate = (id) => {
   Swal.fire({
     title: props.translations.are_your_sure,
@@ -147,14 +135,14 @@ const Activate = (id) => {
         onSuccess: () => {
           Swal.fire(
             'Updated !',
-            'order stuaus item has been updated.',
+            'Order status has been updated.',
             'success'
           );
         },
         onError: () => {
           Swal.fire(
             'Error!',
-            'There was an issue updating order status.',
+            'There was an issue updating the order status.',
             'error'
           );
         }
@@ -162,6 +150,7 @@ const Activate = (id) => {
     }
   });
 }
+
 const Delete = (id) => {
   Swal.fire({
     title: props.translations.are_you_sure,
@@ -191,5 +180,11 @@ const Delete = (id) => {
       });
     }
   });
+};
+
+// دالة لتنسيق التاريخ بشكل مناسب
+const formatDate = (date) => {
+  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  return new Date(date).toLocaleDateString('en-US', options);
 };
 </script>

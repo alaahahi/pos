@@ -42,8 +42,8 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update'); //  inertia does not support send files using put request
 
   Route::resource('customers', CustomersController::class);
-  Route::post('customers/{client}/activate', [CustomersController::class, 'activate'])->name('activate');
-  Route::post('customers/{client}', [CustomersController::class, 'update'])->name('customers.update'); //  inertia does not support send files using put request
+  Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('activate');
+  Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update'); //  inertia does not support send files using put request
 
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
@@ -52,10 +52,11 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
 
   Route::resource('orders', OrderController::class);
-  Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('activate');
-  Route::post('orders/{order}', [OrderController::class, 'update'])->name('orders.update'); 
+  Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('orders.activate');
+  Route::post('orders/{order}', [OrderController::class, 'update'])->name('orders.update');
   Route::get('orders/trashed', [OrderController::class, 'trashed'])->name('orders.trashed');
   Route::post('orders/{id}/restore', [OrderController::class, 'restore'])->name('orders.restore');
+  
 
   Route::resource('permissions', App\Http\Controllers\PermissionController::class);
   Route::get('permissions/{permissionId}/delete', [App\Http\Controllers\PermissionController::class, 'destroy']);

@@ -5,14 +5,14 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Order;
-// use App\Http\Requests\Order\StoreOrderRequest;
-// use App\Http\Requests\Order\UpdateOrderRequest;
+use App\Http\Requests\Order\StoreOrderRequest;
+use App\Http\Requests\Order\UpdateOrderRequest;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 
-class OrderController extends Controller
+class InvoiceController extends Controller
 {
     public function __construct()
     {
@@ -52,7 +52,7 @@ class OrderController extends Controller
 
         $orders = $orderQuery->paginate(10);
 
-        return Inertia::render('Orders/index', [
+        return Inertia::render('Orders/Index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'orders' => $orders,
@@ -65,20 +65,8 @@ class OrderController extends Controller
     public function create()
     {
         // Get customers and products to populate dropdowns
-        $customers = Customer::select('id', 'name','phone')->get()->map(function ($customer) {
-            return [
-                'id' => $customer->id,
-                'name' => $customer->name,
-                'phone' => $customer->phone,
-            ];
-        });
-        $products = Product::select('id', 'name','selling_price')->get()->map(function ($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'price' => $product->selling_price,
-            ];
-        });
+        $customers = Customer::pluck('name', 'id')->all();
+        $products = Product::pluck('name', 'id')->all();
 
         return Inertia::render('Orders/Create', [
             'translations' => __('messages'),
@@ -90,19 +78,18 @@ class OrderController extends Controller
     /**
      * Store a newly created order in storage.
      */
-    public function store(Request $request)
+    public function store(StoreOrderRequest $request)
     {
         $order = Order::create([
             'customer_id' => $request->customer_id,
             'order_date' => Carbon::now()->format('Y-m-d'),
-            'payment_method'=>'cash',
             'status' => 'pending', // Default status, can be changed later
             'total_amount' => $request->total_amount,
         ]);
 
         // Attach products with quantities to the order
-        foreach ($request->items as $productData) {
-            $order->products()->attach($productData['product_id'], [
+        foreach ($request->products as $productId => $productData) {
+            $order->products()->attach($productId, [
                 'quantity' => $productData['quantity'],
                 'price' => $productData['price'],
             ]);
@@ -120,21 +107,9 @@ class OrderController extends Controller
      */
     public function edit(Order $order)
     {
-       // Get customers and products to populate dropdowns
-       $customers = Customer::select('id', 'name','phone')->get()->map(function ($customer) {
-        return [
-            'id' => $customer->id,
-            'name' => $customer->name,
-            'phone' => $customer->phone,
-        ];
-    });
-    $products = Product::select('id', 'name','selling_price')->get()->map(function ($product) {
-        return [
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->selling_price,
-        ];
-    });
+        // Get customers and products to populate dropdowns
+        $customers = Customer::pluck('name', 'id')->all();
+        $products = Product::pluck('name', 'id')->all();
         
         return Inertia::render('Orders/Edit', [
             'translations' => __('messages'),
@@ -147,7 +122,7 @@ class OrderController extends Controller
     /**
      * Update the specified order in storage.
      */
-    public function update(Request $request, Order $order)
+    public function update(UpdateOrderRequest $request, Order $order)
     {
         // Update the order details
         $order->update($request->validated());

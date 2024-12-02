@@ -4,9 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Log;
 
-class Order extends Model
+class Invoice extends Model
 {
     use HasFactory;
 
@@ -52,7 +51,7 @@ class Order extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class)
-                    ->withPivot('quantity', 'price') // إضافة الأعمدة الإضافية
+                    ->withPivot('quantity', 'selling_price') // إضافة الأعمدة الإضافية
                     ->withTimestamps();
     }
 }

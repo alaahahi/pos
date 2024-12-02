@@ -83,8 +83,9 @@
                   <th scope="col">{{ translations.name }}</th>
                   <th scope="col">{{ translations.phone }}</th>
                   <th scope="col">{{ translations.status }}</th>
-                  <th scope="col">{{ translations.last_purchase_date }}</th>
                   <th scope="col">{{ translations.is_active }}</th>
+                  <th scope="col">{{ translations.last_purchase_date }}</th>
+
                   <th scope="col" v-if="hasPermission('update customer')">
                     {{ translations.edit }}
                   </th>
@@ -94,20 +95,21 @@
                 </tr>
               </thead>
               <tbody class="text-center">
-                <tr v-for="(client, index) in customers.data" :key="client.id">
+                <tr v-for="(customer, index) in customers.data" :key="customer.id">
                   <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ client.name }}</td>
-                  <td>{{ client.phone }}</td>
-                  <td>{{ client.is_active == 1 ? translations.active : translations.not_active }}</td>
-                  <td>{{ client.last_purchase_date }}</td>
+                  <td>{{ customer.name }}</td>
+                  <td>{{ customer.phone }}</td>
+                  <td>{{ customer.last_purchase_date }}</td>
+                  <td>{{ customer.is_active == 1 ? translations.active : translations.not_active }}</td>
+
                   <td>
                     <div>
                       <label class="inline-flex items-center me-5 cursor-pointer">
                         <input
                           type="checkbox"
                           class="sr-only peer"
-                          :checked="client.is_active == 1"
-                          @change="Activate(client.id)"
+                          :checked="customer.is_active == 1"
+                          @change="Activate(customer.id)"
                         />
                         <div
                           class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"
@@ -116,12 +118,12 @@
                     </div>
                   </td>
                   <td v-if="hasPermission('update customer')">
-                    <a class="btn btn-primary" :href="route('customers.edit', { user: client.id })">
+                    <a class="btn btn-primary" :href="route('customers.edit', { customer: customer.id })">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
                   <td v-if="hasPermission('delete customer')">
-                    <button type="button" class="btn btn-danger" @click="Delete(client.id)">
+                    <button type="button" class="btn btn-danger" @click="Delete(customer.id)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
@@ -181,7 +183,7 @@ const Activate = (id) => {
           Swal.fire('Updated!', 'Client status has been updated.', 'success');
         },
         onError: () => {
-          Swal.fire('Error!', 'There was an issue updating client status.', 'error');
+          Swal.fire('Error!', 'There was an issue updating customer status.', 'error');
         },
       });
     }
@@ -208,7 +210,7 @@ const Delete = (id) => {
           });
         },
         onError: () => {
-          Swal.fire('Error!', 'There was an issue deleting the client.', 'error');
+          Swal.fire('Error!', 'There was an issue deleting the customer.', 'error');
         },
       });
     }
