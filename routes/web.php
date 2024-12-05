@@ -89,6 +89,6 @@ Route::middleware(['auth', 'active.session'])->group(function () {
 });
 
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
-Route::get('/export-users', [ExportController::class, 'export'])->name('export.customers');
+Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
 
 require __DIR__ . '/auth.php';
