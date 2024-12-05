@@ -36,7 +36,12 @@
             <span>{{translations.orders  }}</span>
                </Link>
     </li>
-
+    <li class="nav-item" v-if="hasPermission('read box')">
+    <Link  class="nav-link "  :href="route('box.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/box') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.box  }}</span>
+               </Link>
+    </li>
     <li class="nav-item" >
         <a class="nav-link " data-bs-target="#components-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/roles') && !$page.url.startsWith('/permissions') }" >
             <i class="bi bi-lock"></i><span>{{translations.roles_control  }}</span><i class="bi bi-chevron-down ms-auto"></i>

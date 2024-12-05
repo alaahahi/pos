@@ -10,11 +10,7 @@
               {{ translations.Home }}
             </Link>
           </li>
-          <li class="breadcrumb-item">
-            <Link class="nav-link" :href="route('orders.index')">
-              {{ translations.orders }}
-            </Link>
-          </li>
+        
           <li class="breadcrumb-item active"> {{ translations.edit_order }} </li>
         </ol>
       </nav>
@@ -36,7 +32,7 @@
                   <div class="col-sm-10">
                     <vue-select
                       v-model="selectedCustomer"
-                      :options="filteredCustomers"
+                      :options="customers"
                       label="name"
                       track-by="id"
                       :reduce="customer => ({ id: customer.id, name: customer.name })"
@@ -68,6 +64,7 @@
                             v-model="item.product_id"
                             :options="products"
                             label="name"
+                            :disabled="item.canadd != 'true'"
                             :reduce="product => product.id"
                             :placeholder="translations.select_product"
                             class="form-control"
@@ -75,7 +72,7 @@
                             @mouseleave="updatePrice(item)" 
                           />
                           <td>
-                            <input type="number" v-model="item.quantity" min="1" class="form-control" placeholder="Quantity">
+                            <input type="number" @input="updateMax(item)"  v-model="item.quantity" min="1" :max="item.max_quantity" class="form-control" placeholder="Quantity">
                           </td>
                           <td>
                             <input type="number" v-model="item.price" min="0" class="form-control" placeholder="Price">
@@ -91,7 +88,7 @@
                         </tr>
                       </tbody>
                     </table>
-                    <button type="button" class="btn btn-primary" @click="addProduct">{{ translations.add_product }}</button>
+                    <button type="button" class="btn btn-primary" v-if="products?.length" @click="addProduct">{{ translations.add_product }}</button>
                   </div>
                 </div>
 
@@ -132,7 +129,6 @@ import VueSelect from 'vue-select'; // Import vue-select component
 import 'vue-select/dist/vue-select.css'; // Import vue-select styles
 
 const show_loader = ref(false);
-const selectedCustomer = ref(null);
 
 const props = defineProps({
   order: Object,  // existing order data
@@ -140,7 +136,9 @@ const props = defineProps({
   customers: Array,
   translations: Object,
 });
-
+const selectedCustomer = ref(
+  props.customers.find((customer) => customer.id === props.order.customer_id) || null
+);
 const form = useForm({
   id: props.order.id,
   customer_id: props.order.customer_id,
@@ -151,11 +149,7 @@ const form = useForm({
 const orderItems = reactive(form.items);
 const orderLogs = reactive([]);
 
-const filteredCustomers = computed(() => {
-  return props.customers.filter(customer => 
-    customer.name.toLowerCase().includes(selectedCustomer.value?.name.toLowerCase())
-  );
-});
+
 
 const updatePrice = (item) => {
   const selectedProduct = props.products.find(product => product.id === item.product_id);
@@ -163,7 +157,14 @@ const updatePrice = (item) => {
     item.price = selectedProduct.price;
   }
 };
-
+const updateMax = (item) => {
+  const selectedProduct = props.products.find(product => product.id === item.product_id);
+  if (selectedProduct) {
+    if(item.quantity > selectedProduct.max_quantity ){
+      item.quantity = selectedProduct.max_quantity
+    }   
+  }
+};
 const totalAmount = computed(() => {
   return orderItems.reduce((total, item) => {
     return total + (item.quantity * item.price);
@@ -179,6 +180,7 @@ const addProduct = () => {
     product_id: '',
     quantity: 1,
     price: 0,
+    canadd:'true',
   });
 };
 
@@ -194,7 +196,6 @@ const selectCustomer = (value) => {
 const updateInvoice = () => {
   show_loader.value = true;
   form.items = orderItems;
-
   form.put(route('orders.update', form.id), {
     onSuccess: () => {
       show_loader.value = false;

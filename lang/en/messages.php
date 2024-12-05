@@ -99,6 +99,9 @@ return [
     'select_product'=>'Select product',
     'add_product'=>'Add product',
     'total'=>'Total',
+    'pay'=>'Pay',
+    'edit_order'=>'Edit order',
+    'box'=>'Box',
 
 
 ];

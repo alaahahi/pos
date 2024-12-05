@@ -72,11 +72,12 @@ class OrderController extends Controller
                 'phone' => $customer->phone,
             ];
         });
-        $products = Product::select('id', 'name','selling_price')->get()->map(function ($product) {
+        $products = Product::select('id', 'name','selling_price','quantity')->get()->map(function ($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
                 'price' => $product->selling_price,
+                'max_quantity'=> $product->quantity,
             ];
         });
 
@@ -99,7 +100,6 @@ class OrderController extends Controller
             'status' => 'pending', // Default status, can be changed later
             'total_amount' => $request->total_amount,
         ]);
-
         // Attach products with quantities to the order
         foreach ($request->items as $productData) {
             $order->products()->attach($productData['product_id'], [
@@ -120,54 +120,94 @@ class OrderController extends Controller
      */
     public function edit(Order $order)
     {
-       // Get customers and products to populate dropdowns
-       $customers = Customer::select('id', 'name','phone')->get()->map(function ($customer) {
-        return [
-            'id' => $customer->id,
-            'name' => $customer->name,
-            'phone' => $customer->phone,
-        ];
-    });
-    $products = Product::select('id', 'name','selling_price')->get()->map(function ($product) {
-        return [
-            'id' => $product->id,
-            'name' => $product->name,
-            'price' => $product->selling_price,
-        ];
-    });
+        $order->load('products'); // Load the products relationship
+        //dd($order->products->toArray());
+        $orderItems = $order->products->map(function ($product) {
+            return [
+                'id' => $product->pivot->id ?? null, // Optional: ID of the pivot table row if needed
+                'product_id' => $product->id,
+                'product_name' => $product->name,
+                'quantity' => $product->pivot->quantity,
+                'price' => $product->pivot->price,
+            ];
+        });
+    
+        $customers = Customer::select('id', 'name', 'phone')->get()->map(function ($customer) {
+            return [
+                'id' => $customer->id,
+                'name' => $customer->name,
+                'phone' => $customer->phone,
+            ];
+        });
+    
+        $orderedProductIds = $order->products->pluck('id')->toArray();
+
+        // Fetch products that are not in the order
+        $products = Product::select('id', 'name', 'selling_price', 'quantity')
+            ->whereNotIn('id', $orderedProductIds)
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->selling_price,
+                    'max_quantity' => $product->quantity,
+                ];
+            });
         
         return Inertia::render('Orders/Edit', [
             'translations' => __('messages'),
-            'order' => $order,
+            'order' => [
+                'id' => $order->id,
+                'customer_id' => $order->customer_id,
+                'total_amount' => $order->total_amount,
+                'items' => $orderItems,
+            ],
             'customers' => $customers,
             'products' => $products,
         ]);
     }
+    
 
     /**
      * Update the specified order in storage.
      */
     public function update(Request $request, Order $order)
     {
+        // Validate the request data
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'total_amount' => 'required|numeric|min:0',
+            'items' => 'required|array',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
+        ]);
+    
         // Update the order details
-        $order->update($request->validated());
-
-        // Update the products in the pivot table
+        $order->update([
+            'customer_id' => $validated['customer_id'],
+            'total_amount' => $validated['total_amount'],
+        ]);
+    
+        // Sync the products in the pivot table
         $order->products()->sync(
-            collect($request->products)->mapWithKeys(function ($productData, $productId) {
-                return [$productId => [
-                    'quantity' => $productData['quantity'],
-                    'price' => $productData['price'],
+            collect($validated['items'])->mapWithKeys(function ($item) {
+                return [$item['product_id'] => [
+                    'quantity' => $item['quantity'],
+                    'price' => $item['price'],
                 ]];
-            })
+            })->toArray()
         );
-
-        // Log order update
+    
+        // Log the order update
         Log::info('Order updated', ['order_id' => $order->id]);
-
+    
         return redirect()->route('orders.index')
             ->with('success', __('messages.data_updated_successfully'));
     }
+    
+    
 
     /**
      * Remove the specified order from storage.

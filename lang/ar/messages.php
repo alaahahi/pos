@@ -81,7 +81,7 @@ return [
 'situation'=>'الحالة',
 'price_cost'=>'سعر الكلفة',
 'price_with_transport'=>'سعر التوصيل',
-'selling_price'=>'سعر البيغ',
+'selling_price'=>'سعر البيع',
 'note'=>'ملاحظة',
 'date'=>'تاريخ',
 'orders'=>'فواتير',
@@ -99,5 +99,8 @@ return [
 'select_product'=>'اختيار منتج',
 'add_product'=>'اضافة منتج',
 'total'=>'المجموع',
+'pay'=>'دفع',
+'edit_order'=>'تعديل فاتورة',
+'box'=>'الصندوق',
 
 ];

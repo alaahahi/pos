@@ -6,6 +6,7 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\BoxController;
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -81,7 +82,9 @@ Route::middleware(['auth', 'active.session'])->group(function () {
     ->middleware('auth')
     ->only(['index']);
 
-
+    Route::resource('box', BoxController::class);
+    Route::post('box/{customer}/activate', [BoxController::class, 'activate'])->name('activate');
+    Route::post('box/{customer}', [BoxController::class, 'update'])->name('box.update'); 
 
 });
 

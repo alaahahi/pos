@@ -56,6 +56,7 @@
                   <th scope="col">{{ translations.total }}</th> <!-- إجمالي المبلغ -->
                   <th scope="col">{{ translations.status }}</th> <!-- الحالة -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
+                  <th scope="col" v-if="hasPermission('update order')">{{ translations.pay }}</th>
                   <th scope="col" v-if="hasPermission('update order')">{{ translations.edit }}</th>
                   <th scope="col" v-if="hasPermission('delete order')">{{ translations.delete }}</th>
                 </tr>
@@ -67,6 +68,11 @@
                   <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.status }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
+                  <td v-if="hasPermission('update order')&& order.status=='pending'">
+                    <a class="btn btn-success" :href="route('orders.edit', { order: order.id })">
+                      <i class="bi bi-currency-dollar"></i>
+                    </a>
+                  </td>
                   <td v-if="hasPermission('update order')">
                     <a class="btn btn-primary" :href="route('orders.edit', { order: order.id })">
                       <i class="bi bi-pencil-square"></i>

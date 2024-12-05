@@ -80,7 +80,7 @@
                             @mouseleave="updatePrice(item)" 
                           />
                           <td>
-                            <input type="number" v-model="item.quantity" min="1" class="form-control" placeholder="Quantity">
+                            <input type="number" @input="updateMax(item)"  v-model="item.quantity" min="1" :max="item.max_quantity" class="form-control" placeholder="Quantity">
                           </td>
                           <td>
                             <input type="number" v-model="item.price" min="0" class="form-control" placeholder="Price">
@@ -96,7 +96,7 @@
                         </tr>
                       </tbody>
                     </table>
-                    <button type="button" class="btn btn-primary" @click="addProduct">{{ translations.add_product }}</button>
+                    <button type="button" class="btn btn-primary" @click="addProduct" v-if="products?.length">{{ translations.add_product }}</button>
                   </div>
                 </div>
                 <!-- Total Row -->
@@ -180,13 +180,24 @@ const filteredCustomers = computed(() => {
   });
 });
 
-// Function to update the price when a product is selected
+// Function to update the price and enforce a maximum quantity when a product is selected
 const updatePrice = (item) => {
   const selectedProduct = props.products.find(product => product.id === item.product_id);
   if (selectedProduct) {
-    item.price = selectedProduct.price;  
+    item.price = selectedProduct.price;
+    item.max_quantity = selectedProduct.max_quantity
+
   }
 };
+const updateMax = (item) => {
+  const selectedProduct = props.products.find(product => product.id === item.product_id);
+  if (selectedProduct) {
+    if(item.quantity > selectedProduct.max_quantity ){
+      item.quantity = selectedProduct.max_quantity
+    }   
+  }
+};
+
 
 // Add a computed property for the total amount
 const totalAmount = computed(() => {
