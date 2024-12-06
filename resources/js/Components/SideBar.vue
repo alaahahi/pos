@@ -36,8 +36,8 @@
             <span>{{translations.orders  }}</span>
                </Link>
     </li>
-    <li class="nav-item" v-if="hasPermission('read box')">
-    <Link  class="nav-link "  :href="route('box.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/box') }" >
+    <li class="nav-item" v-if="hasPermission('read boxes')">
+    <Link  class="nav-link "  :href="route('boxes.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/boxes') }" >
             <i class="bi bi-people"></i>
             <span>{{translations.box  }}</span>
                </Link>

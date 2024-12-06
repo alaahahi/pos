@@ -9,11 +9,11 @@ use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreBoxRequest;
 use App\Http\Requests\UpdateBoxRequest;
 
-class BoxController extends Controller
+class BoxesController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:read box', ['only' => ['index']]);
+        $this->middleware('permission:read boxes', ['only' => ['index']]);
         $this->middleware('permission:create box', ['only' => ['create']]);
         $this->middleware('permission:update box', ['only' => ['update', 'edit']]);
         $this->middleware('permission:delete box', ['only' => ['destroy']]);
@@ -32,28 +32,28 @@ class BoxController extends Controller
         ];
 
         // Start the Box query
-        $boxsQuery = Box::latest();
+        $boxesQuery = Box::latest();
 
         // Apply the filters if they exist
-        $boxsQuery->when($filters['name'], function ($query, $name) {
+        $boxesQuery->when($filters['name'], function ($query, $name) {
             return $query->where('name', 'LIKE', "%{$name}%");
         });
 
-        $boxsQuery->when($filters['phone'], function ($query, $phone) {
+        $boxesQuery->when($filters['phone'], function ($query, $phone) {
             return $query->where('phone', 'LIKE', "%{$phone}%");
         });
 
         if (isset($filters['is_active'])) {
-            $boxsQuery->where('is_active', $filters['is_active']);
+            $boxesQuery->where('is_active', $filters['is_active']);
         }
 
-        // Paginate the filtered boxs
-        $boxs = $boxsQuery->paginate(10);
+        // Paginate the filtered boxes
+        $boxes = $boxesQuery->paginate(10);
 
-        return Inertia('Client/index', [
+        return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
-            'boxs' => $boxs,
+            'boxes' => $boxes,
         ]);
     }
 
@@ -62,7 +62,7 @@ class BoxController extends Controller
      */
     public function create()
     {
-        return Inertia('Client/Create', [
+        return Inertia('Boxes/Create', [
             'translations' => __('messages'),
         ]);
     }
@@ -84,7 +84,7 @@ class BoxController extends Controller
         // Save the box
         $box->save();
 
-        return redirect()->route('boxs.index')
+        return redirect()->route('boxes.index')
             ->with('success', __('messages.data_saved_successfully'));
     }
 
@@ -93,7 +93,7 @@ class BoxController extends Controller
      */
     public function edit(Box $box)
     {
-        return Inertia('Client/Edit', [
+        return Inertia('Boxes/Edit', [
             'translations' => __('messages'),
             'box' => $box,
         ]);
@@ -113,7 +113,7 @@ class BoxController extends Controller
         // Update box information
         $box->update($request->validated());
 
-        return redirect()->route('boxs.index')
+        return redirect()->route('boxes.index')
             ->with('success', __('messages.data_updated_successfully'));
     }
 
@@ -126,7 +126,7 @@ class BoxController extends Controller
             'is_active' => !$box->is_active,
         ]);
 
-        return redirect()->route('boxs.index')
+        return redirect()->route('boxes.index')
             ->with('success', __('messages.status_updated_successfully'));
     }
 
@@ -137,7 +137,7 @@ class BoxController extends Controller
     {
         $box->delete();
 
-        return redirect()->route('boxs.index')
+        return redirect()->route('boxes.index')
             ->with('success', __('messages.data_deleted_successfully'));
     }
 }
