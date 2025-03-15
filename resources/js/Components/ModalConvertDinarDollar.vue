@@ -54,61 +54,74 @@ function calculateAmountDollarDinar (){
               <slot name="header"></slot>
             </div>
             <div class="modal-body">
-                        <div>
-                        <div className="my-4 mx-5">
-                        <label for="amountDinar" >سعر الصرف 100$</label>
-                        <input
-                          id="amountDinar"
-                          type="number"
-                          @input="calculateAmountDollarDinar()"
-                          class="mt-1 block w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
-                          v-model="form.exchangeRate" />
-                          <div v-if="exchangeRateError" class="text-red-500">
-                          مطلوب رقم من 6 خانة فقط
-                          </div>
-                        </div>
-                        
-                        <div className="my-4 mx-5">
-                        <label for="amountDinar" >المبلغ بالدينار العراقي
-                          (المبلغ المسحوب من الصندوق بالدينار العراقي)
-                        </label>
-                        <input
-                          id="amountDinar"
-                          type="number"
-                          @input="calculateAmountDollarDinar()"
-                          class="mt-1 block w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
-                          v-model="form.amountDinar" />
-                        </div>
-                  
-                        <div className="mb-y mx-5">
-                        <label for="amountDinar" >المبلغ  بالدولار
-                          (المبلغ المضاف للصندوق بالدولار)
-                        </label>
-                        <input
-                          id="amountDinar"
-                          type="number"
-                          class="mt-1 block w-full border-gray-300 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50 rounded-md shadow-sm"
-                          v-model="form.amountResultDollar" />
-                        </div>
-               
-                        </div>
-        
+        <div>
+          <!-- Exchange Rate -->
+          <div class="my-4 mx-5">
+            <label for="amountDinar" class="form-label  float-end">سعر الصرف 100$</label>
+            <input
+              id="amountDinar"
+              type="number"
+              class="form-control"
+              @input="calculateAmountDollarDinar()"
+              v-model="form.exchangeRate"
+            />
+            <div v-if="exchangeRateError" class="text-danger">
+              مطلوب رقم من 6 خانة فقط
             </div>
-  
-            <div class="modal-footer my-2">
-              <div class="flex flex-row">
-                <div class="basis-1/2 px-4"> 
-                  <button class="modal-default-button py-3  bg-gray-500 rounded"
-                    @click="$emit('close');">تراجع</button>
-                  </div>
-              <div class="basis-1/2 px-4">
-                <button class="modal-default-button py-3  bg-rose-500 rounded col-6"  @click="$emit('a',form);restform();"  >نعم</button>
-                </div>
+          </div>
 
-            </div>
-  
-     
-            </div>
+          <!-- Amount in Dinar -->
+          <div class="my-4 mx-5">
+            <label for="amountDinar" class="form-label  float-end">
+              المبلغ بالدينار العراقي (المبلغ المسحوب من الصندوق بالدينار العراقي)
+            </label>
+            <input
+              id="amountDinar"
+              type="number"
+              class="form-control"
+              @input="calculateAmountDollarDinar()"
+              v-model="form.amountDinar"
+            />
+          </div>
+
+          <!-- Amount in Dollar -->
+          <div class="my-4 mx-5">
+            <label for="amountDollar" class="form-label  float-end">
+              المبلغ بالدولار (المبلغ المضاف للصندوق بالدولار)
+            </label>
+            <input
+              id="amountDollar"
+              type="number"
+              class="form-control"
+              v-model="form.amountResultDollar"
+            />
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer my-2">
+        <div class="row w-100">
+          <!-- Cancel Button -->
+          <div class="col-6 px-4">
+            <button
+              class="btn btn-secondary w-100 py-2 text-center"
+              @click="$emit('close');"
+            >
+              تراجع
+            </button>
+    </div>
+    <!-- Confirm Button -->
+    <div class="col-6 px-4">
+      <button
+        class="btn btn-danger w-100 py-2  text-center"
+        @click="$emit('a', form); restform();"
+      >
+        نعم
+      </button>
+    </div>
+  </div>
+</div>
+
           </div>
         </div>
       </div>

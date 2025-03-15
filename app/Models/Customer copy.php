@@ -22,6 +22,7 @@ class Customer extends Model
         'phone',
         'address',
         'is_active',
+        'is_supplier',
         'last_purchase_date', 
         'notes',
         'avatar',

@@ -2,7 +2,7 @@
   <AuthenticatedLayout :translations="translations">
     <!-- breadcrumb-->
     <div class="pagetitle">
-      <h1>{{ translations.customers }}</h1>
+      <h1>{{ translations.suppliers }}</h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
@@ -10,7 +10,7 @@
               {{ translations.Home }}
             </Link>
           </li>
-          <li class="breadcrumb-item active">{{ translations.customers }}</li>
+          <li class="breadcrumb-item active">{{ translations.suppliers }}</li>
         </ol>
       </nav>
     </div>
@@ -56,18 +56,18 @@
               </div>
               <div class="col-md-2">
                 <Link
-                  v-if="hasPermission('read customers')"
+                  v-if="hasPermission('read suppliers')"
                   class="btn btn-success"
-                  :href="route('export.customers')"
+                  :href="route('export.suppliers')"
                 >
                   {{ translations.export }} &nbsp; <i class="bi bi-filetype-xls"></i>
                 </Link>
               </div>
               <div class="col-md-2">
                 <Link
-                  v-if="hasPermission('create customer')"
+                  v-if="hasPermission('create supplier')"
                   class="btn btn-primary"
-                  :href="route('customers.create')"
+                  :href="route('suppliers.create')"
                 >
                   {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
@@ -87,23 +87,23 @@
                   <th scope="col">{{ translations.last_purchase_date }}</th>
                   <th scope="col">{{ translations.status }}</th>
                   <th scope="col">{{ translations.status }}</th>
-                  <th scope="col" v-if="hasPermission('update customer')">
+                  <th scope="col" v-if="hasPermission('update supplier')">
                     {{ translations.edit }}
                   </th>
-                  <th scope="col" v-if="hasPermission('delete customer')">
+                  <th scope="col" v-if="hasPermission('delete supplier')">
                     {{ translations.delete }}
                   </th>
                 </tr>
               </thead>
               <tbody class="text-center">
-                <tr v-for="(customer, index) in customers.data" :key="customer.id">
+                <tr v-for="(supplier, index) in suppliers.data" :key="supplier.id">
                   <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ customer.name }}</td>
-                  <td>{{ customer.phone }}</td>
-                  <td>{{ customer.balance?.balance_dollar }}</td>
-                  <td>{{ customer.balance?.balance_dinar }}</td>
-                  <td>{{ customer.balance?.last_transaction_date }}</td>
-                  <td>{{ customer.is_active == 1 ? translations.active : translations.not_active }}</td>
+                  <td>{{ supplier.name }}</td>
+                  <td>{{ supplier.phone }}</td>
+                  <td>{{ supplier.balance?.balance_dollar }}</td>
+                  <td>{{ supplier.balance?.balance_dinar }}</td>
+                  <td>{{ supplier.balance?.last_transaction_date }}</td>
+                  <td>{{ supplier.is_active == 1 ? translations.active : translations.not_active }}</td>
 
                   <td>
                     <div>
@@ -111,8 +111,8 @@
                         <input
                           type="checkbox"
                           class="sr-only peer"
-                          :checked="customer.is_active == 1"
-                          @change="Activate(customer.id)"
+                          :checked="supplier.is_active == 1"
+                          @change="Activate(supplier.id)"
                         />
                         <div
                           class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600"
@@ -120,13 +120,13 @@
                       </label>
                     </div>
                   </td>
-                  <td v-if="hasPermission('update customer')">
-                    <a class="btn btn-primary" :href="route('customers.edit', { customer: customer.id })">
+                  <td v-if="hasPermission('update supplier')">
+                    <a class="btn btn-primary" :href="route('suppliers.edit', { supplier: supplier.id })">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
-                  <td v-if="hasPermission('delete customer')">
-                    <button type="button" class="btn btn-danger" @click="Delete(customer.id)">
+                  <td v-if="hasPermission('delete supplier')">
+                    <button type="button" class="btn btn-danger" @click="Delete(supplier.id)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
@@ -136,7 +136,7 @@
           </div>
         </div>
       </div>
-      <Pagination :links="customers.links" />
+      <Pagination :links="suppliers.links" />
     </section>
   </AuthenticatedLayout>
 </template>
@@ -149,7 +149,7 @@ import Swal from 'sweetalert2';
 import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 
-const props = defineProps({ customers: Object, translations: Array });
+const props = defineProps({ suppliers: Object, translations: Array });
 const page = usePage();
 
 const filterForm = reactive({
@@ -160,7 +160,7 @@ const filterForm = reactive({
 
 const Filter = () => {
   router.get(
-    route('customers.index'),
+    route('suppliers.index'),
     filterForm,
     { preserveState: true, preserveScroll: true }
   );
@@ -181,12 +181,12 @@ const Activate = (id) => {
     cancelButtonText: props.translations.cancel,
   }).then((result) => {
     if (result.isConfirmed) {
-      router.post(`/customers/${id}/activate`, {
+      router.post(`/suppliers/${id}/activate`, {
         onSuccess: () => {
           Swal.fire('Updated!', 'Client status has been updated.', 'success');
         },
         onError: () => {
-          Swal.fire('Error!', 'There was an issue updating customer status.', 'error');
+          Swal.fire('Error!', 'There was an issue updating supplier status.', 'error');
         },
       });
     }
@@ -205,7 +205,7 @@ const Delete = (id) => {
     cancelButtonText: props.translations.cancel,
   }).then((result) => {
     if (result.isConfirmed) {
-      router.delete('customers/' + id, {
+      router.delete('suppliers/' + id, {
         onSuccess: () => {
           Swal.fire({
             title: props.translations.data_deleted_successfully,
@@ -213,7 +213,7 @@ const Delete = (id) => {
           });
         },
         onError: () => {
-          Swal.fire('Error!', 'There was an issue deleting the customer.', 'error');
+          Swal.fire('Error!', 'There was an issue deleting the supplier.', 'error');
         },
       });
     }
@@ -221,10 +221,10 @@ const Delete = (id) => {
 };
 
 const exportUsers = () => {
-  const url = route('export.customers');
+  const url = route('export.suppliers');
   const link = document.createElement('a');
   link.href = url;
-  link.setAttribute('download', 'customers.csv');
+  link.setAttribute('download', 'suppliers.csv');
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);

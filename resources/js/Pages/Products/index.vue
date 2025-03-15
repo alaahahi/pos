@@ -56,7 +56,7 @@
                   <th scope="col">{{ translations.quantity }}</th>
                   <th scope="col">{{ translations.selling_price }}</th>
                   <th scope="col">{{ translations.created_at }}</th>
-                  <th scope="col"> {{ translations.status }}</th>
+                  <th scope="col"> {{ translations.statusProdact }}</th>
                   <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
                   <th scope="col" v-if="hasPermission('delete products')">{{ translations.delete }}</th>
                 </tr>

@@ -41,7 +41,7 @@
               </div>
               <div class="col-md-3">
                 <Link v-if="hasPermission('create order')" class="btn btn-primary" :href="route('orders.create')">
-                  {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
+                  {{ translations.create_invoice }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
             </div>
@@ -52,9 +52,13 @@
               <thead>
                 <tr>
                   <th scope="col">#</th>
-                  <th scope="col">{{ translations.name }}</th> <!-- اسم العميل -->
-                  <th scope="col">{{ translations.total }}</th> <!-- إجمالي المبلغ -->
-                  <th scope="col">{{ translations.status }}</th> <!-- الحالة -->
+                  <th scope="col">{{ translations.client }}</th> <!-- اسم العميل -->
+                  <th scope="col">{{ translations.paid_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.due_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.paid_order }} {{ translations.dinar }}</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.due_order }} {{ translations.dinar }}</th> <!-- إجمالي المبلغ -->
+
+                  <th scope="col">{{ translations.statusOrder }}</th> <!-- الحالة -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
                   <th scope="col" v-if="hasPermission('update order')">{{ translations.pay }}</th>
                   <th scope="col" v-if="hasPermission('update order')">{{ translations.edit }}</th>
@@ -65,7 +69,10 @@
                 <tr v-for="(order, index) in orders?.data" :key="order.id">
                   <th scope="row">{{ index + 1 }}</th>
                   <td>{{ order.customer?.name }}</td> <!-- اسم العميل -->
-                  <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.total_paid }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.total_amount - order.total_paid }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.total_paid_dinar }}</td>
+                  <td>{{ order.total_amount_dinar	 - order.total_paid_dinar }}</td>
                   <td>{{ order.status }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
                   <td v-if="hasPermission('update order')&& order.status=='pending'">

@@ -2,21 +2,21 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Customer;
+use App\Models\Supplier;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
-use App\Http\Requests\StoreCustomerRequest;
-use App\Http\Requests\UpdateCustomerRequest;
+use App\Http\Requests\StoreSupplierRequest;
+use App\Http\Requests\UpdateSupplierRequest;
 
-class CustomersController extends Controller
+class SuppliersController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:read customers', ['only' => ['index']]);
-        $this->middleware('permission:create customer', ['only' => ['create']]);
-        $this->middleware('permission:update customer', ['only' => ['update', 'edit']]);
-        $this->middleware('permission:delete customer', ['only' => ['destroy']]);
+        $this->middleware('permission:read suppliers', ['only' => ['index']]);
+        $this->middleware('permission:create supplier', ['only' => ['create']]);
+        $this->middleware('permission:update supplier', ['only' => ['update', 'edit']]);
+        $this->middleware('permission:delete supplier', ['only' => ['destroy']]);
     }
 
     /**
@@ -31,29 +31,29 @@ class CustomersController extends Controller
             'is_active' => $request->is_active,
         ];
 
-        // Start the Customer query
-        $customersQuery = Customer::with('balance')->latest();
+        // Start the Supplier query
+        $suppliersQuery = Supplier::with('balance')->latest();
 
         // Apply the filters if they exist
-        $customersQuery->when($filters['name'], function ($query, $name) {
+        $suppliersQuery->when($filters['name'], function ($query, $name) {
             return $query->where('name', 'LIKE', "%{$name}%");
         });
 
-        $customersQuery->when($filters['phone'], function ($query, $phone) {
+        $suppliersQuery->when($filters['phone'], function ($query, $phone) {
             return $query->where('phone', 'LIKE', "%{$phone}%");
         });
 
         if (isset($filters['is_active'])) {
-            $customersQuery->where('is_active', $filters['is_active']);
+            $suppliersQuery->where('is_active', $filters['is_active']);
         }
 
-        // Paginate the filtered customers
-        $customers = $customersQuery->paginate(10);
+        // Paginate the filtered suppliers
+        $suppliers = $suppliersQuery->paginate(10);
 
         return Inertia('Client/index', [
             'translations' => __('messages'),
             'filters' => $filters,
-            'customers' => $customers,
+            'suppliers' => $suppliers,
         ]);
     }
 
@@ -70,82 +70,82 @@ class CustomersController extends Controller
     /**
      * Store a newly created resource in storage.
      */
-    public function store(StoreCustomerRequest $request)
+    public function store(StoreSupplierRequest $request)
     {
-        // Create customer instance and assign validated data
-        $customer = new Customer($request->validated());
+        // Create supplier instance and assign validated data
+        $supplier = new Supplier($request->validated());
     
         // Handle avatar upload if a file is provided
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
-            $customer->avatar = $path;
+            $supplier->avatar = $path;
         }
     
-        // Save the customer
-        $customer->save();
+        // Save the supplier
+        $supplier->save();
     
-        // Create a balance record for the customer
-        $customer->balance()->create([
+        // Create a balance record for the supplier
+        $supplier->balance()->create([
             'balance_dollar' => 0, // Initial balance in dollars
             'balance_dinar' => 0,  // Initial balance in dinars
             'currency_preference' => 'dinar', // Default preference
             'last_transaction_date' => now(), // Current date
         ]);
     
-        return redirect()->route('customers.index')
+        return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_saved_successfully'));
     }
 
     /**
      * Show the form for editing the specified resource.
      */
-    public function edit(Customer $customer)
+    public function edit(Supplier $supplier)
     {
         return Inertia('Client/Edit', [
             'translations' => __('messages'),
-            'customer' => $customer,
+            'supplier' => $supplier,
         ]);
     }
 
     /**
      * Update the specified resource in storage.
      */
-    public function update(UpdateCustomerRequest $request, Customer $customer)
+    public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
         // Check if an avatar file is uploaded and store it
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
-            $customer->avatar = $path;
+            $supplier->avatar = $path;
         }
 
-        // Update customer information
-        $customer->update($request->validated());
+        // Update supplier information
+        $supplier->update($request->validated());
 
-        return redirect()->route('customers.index')
+        return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_updated_successfully'));
     }
 
     /**
      * Activate or deactivate the specified resource.
      */
-    public function activate(Customer $customer)
+    public function activate(Supplier $supplier)
     {
-        $customer->update([
-            'is_active' => !$customer->is_active,
+        $supplier->update([
+            'is_active' => !$supplier->is_active,
         ]);
 
-        return redirect()->route('customers.index')
+        return redirect()->route('suppliers.index')
             ->with('success', __('messages.status_updated_successfully'));
     }
 
     /**
      * Remove the specified resource from storage.
      */
-    public function destroy(Customer $customer)
+    public function destroy(Supplier $supplier)
     {
-        $customer->delete();
+        $supplier->delete();
 
-        return redirect()->route('customers.index')
+        return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_deleted_successfully'));
     }
 }

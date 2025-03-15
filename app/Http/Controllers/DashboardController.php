@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\User;
+use App\Models\Order;
 use App\Models\Log;
 use Spatie\Permission\Models\Role;
 
@@ -31,6 +32,9 @@ class DashboardController extends Controller
         'usersChartData' => $usersChartData,
         'statusChartData' => $statusChartData, 
         'userCount' => User::count(),
+        'orderCount'=> Order::count(),
+        'orderDueCount'=> Order::count(),
+        'orderCompletCount'=> Order::count(),
         'rolesCount' => Role::count(),
     ]);
 }

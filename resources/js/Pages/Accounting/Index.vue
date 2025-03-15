@@ -3,9 +3,9 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Modal from "@/Components/Modal.vue";
 import { Head, Link, useForm } from "@inertiajs/inertia-vue3";
 import { ref } from "vue";
-import ModalAddSales from "@/Components/ModalAddSales.vue";
+import ModalAddSales from "@/Components/ModalAddToBox.vue";
 import ModalAddDebt from "@/Components/ModalAddDebt.vue";
-import ModalAddExpenses from "@/Components/ModalAddExpenses.vue";
+import ModalAddExpenses from "@/Components/ModalDropFromBox.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
 import ModalAddGenExpenses from "@/Components/ModalAddGenExpenses.vue";
@@ -419,7 +419,7 @@ function updateResults(input) {
         <template #header>
           </template>
     </ModalExpensesFromOtherBransh>
-    <ModalAddSales
+      <ModalAddSales
             :show="showModalAddSales ? true : false"
             :data="users"
             :accounts="accounts"

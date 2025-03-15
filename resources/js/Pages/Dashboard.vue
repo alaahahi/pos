@@ -28,7 +28,7 @@
               <div class="card info-card customers-card">
                 <div class="card-body">
                   <h5 class="card-title">
-                    {{ translations.users }}
+                    {{ translations.orders }}
                     <!-- <span>| This Year</span> -->
                   </h5>
 
@@ -37,15 +37,55 @@
                       <i class="bi bi-people"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>{{ userCount }}</h6>
-                      <!-- <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> -->
+                      <h6>{{ orderCount }}</h6>
+                        <!-- <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> -->
                     </div>
                   </div>
                 </div>
               </div>
             </div>
             <!-- End Customers Card -->
+          
+            <div class="col-xxl-4 col-md-4">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    {{ translations.due_order }}
+                    <!-- <span>| This Year</span> -->
+                  </h5>
 
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ orderDueCount }}</h6>
+                     <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> 
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            <div class="col-xxl-4 col-md-4">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    {{ translations.paid_order }}
+                    <!-- <span>| This Year</span> -->
+                  </h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ orderCompletCount }}</h6>
+                      <!-- <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> -->
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <!-- Products Card -->
             <div class="col-xxl-4 col-md-4">
               <div class="card info-card sales-card">
@@ -156,6 +196,9 @@ import Chart from '@/Components/Chart.vue';
 
 defineProps({
   userCount: Number,
+  orderCount:Number,
+  orderDueCount:Number,
+  orderCompletCount:Number,
   rolesCount: Number,
   translations: Array,
   UserPerRolechartData: Object,

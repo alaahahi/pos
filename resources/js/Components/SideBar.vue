@@ -9,20 +9,13 @@
                </Link>
     </li>
 
-    <li class="nav-item" v-if="hasPermission('read users')">
-    <Link  class="nav-link "  :href="route('users.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/users') }" >
+    <li class="nav-item" v-if="hasPermission('read order')">
+    <Link  class="nav-link "  :href="route('orders.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/orders') }" >
             <i class="bi bi-people"></i>
-            <span>{{translations.users  }}</span>
+            <span>{{translations.orders  }}</span>
                </Link>
     </li>
 
-    <li class="nav-item" v-if="hasPermission('read customers')">
-    <Link  class="nav-link "  :href="route('customers.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/customers') }" >
-            <i class="bi bi-people"></i>
-            <span>{{translations.customers  }}</span>
-               </Link>
-    </li>
-    
     <li class="nav-item" v-if="hasPermission('read product')">
     <Link  class="nav-link "  :href="route('products.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/products') }" >
             <i class="bi bi-people"></i>
@@ -30,18 +23,36 @@
                </Link>
     </li>
 
-    <li class="nav-item" v-if="hasPermission('read order')">
-    <Link  class="nav-link "  :href="route('orders.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/orders') }" >
-            <i class="bi bi-people"></i>
-            <span>{{translations.orders  }}</span>
-               </Link>
-    </li>
     <li class="nav-item" v-if="hasPermission('read boxes')">
     <Link  class="nav-link "  :href="route('boxes.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/boxes') }" >
             <i class="bi bi-people"></i>
-            <span>{{translations.box  }}</span>
+            <span>{{translations.boxes  }}</span>
                </Link>
     </li>
+    
+    <li class="nav-item" v-if="hasPermission('read supplier')">
+    <Link  class="nav-link "  :href="route('customers.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/customers') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.customers  }}</span>
+               </Link>
+    </li>
+
+    <li class="nav-item" v-if="hasPermission('read supplier')">
+    <Link  class="nav-link "  :href="route('suppliers.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/suppliers') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.suppliers  }}</span>
+               </Link>
+    </li>
+    
+    <li class="nav-item" v-if="hasPermission('read users')">
+    <Link  class="nav-link "  :href="route('users.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/users') }" >
+            <i class="bi bi-people"></i>
+            <span>{{translations.users  }}</span>
+               </Link>
+    </li>
+
+
+
     <li class="nav-item" >
         <a class="nav-link " data-bs-target="#components-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/roles') && !$page.url.startsWith('/permissions') }" >
             <i class="bi bi-lock"></i><span>{{translations.roles_control  }}</span><i class="bi bi-chevron-down ms-auto"></i>

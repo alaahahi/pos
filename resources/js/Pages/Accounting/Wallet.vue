@@ -2,7 +2,7 @@
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import { Head, Link, useForm } from "@inertiajs/inertia-vue3";
 import { ref } from "vue";
-import ModalAddSales from "@/Components/ModalAddSales.vue";
+import ModalAddSales from "@/Components/ModalAddToBox.vue";
  import ModalAddExpensesWallet from "@/Components/ModalAddExpensesWallet.vue";
 import InputLabel from "@/Components/InputLabel.vue";
 import TextInput from "@/Components/TextInput.vue";
