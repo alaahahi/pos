@@ -59,10 +59,12 @@ Route::middleware(['auth', 'active.session'])->group(function () {
 
   Route::resource('orders', OrderController::class);
   Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('orders.activate');
-  Route::post('orders/{order}', [OrderController::class, 'update'])->name('orders.update');
+  Route::put('ordersEdit/{order}', [OrderController::class, 'update'])->name('orders.update');
   Route::get('orders/trashed', [OrderController::class, 'trashed'])->name('orders.trashed');
   Route::post('orders/{id}/restore', [OrderController::class, 'restore'])->name('orders.restore');
-  
+  Route::get('order/print/{id}', [OrderController::class, 'print'])->name('order.print');
+
+
 
   Route::resource('permissions', App\Http\Controllers\PermissionController::class);
   Route::get('permissions/{permissionId}/delete', [App\Http\Controllers\PermissionController::class, 'destroy']);

@@ -62,7 +62,7 @@ class Customer extends Model
      */
     public function getAvatarUrlAttribute()
     {
-        return asset("storage/{$this->attributes['avatar']}");
+        return '';//asset("storage/{$this->attributes['avatar']}")
     }
 
     /**

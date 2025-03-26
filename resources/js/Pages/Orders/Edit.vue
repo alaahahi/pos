@@ -10,7 +10,6 @@
               {{ translations.Home }}
             </Link>
           </li>
-        
           <li class="breadcrumb-item active"> {{ translations.edit_order }} </li>
         </ol>
       </nav>
@@ -101,7 +100,7 @@
                     <input type="number" v-model="totalAmount" class="form-control" readonly />
                   </div>
                 </div>
-
+{{ totalAmount }}
                 <!-- Submit -->
                 <div class="text-center">
                   <button type="submit" class="btn btn-primary" :disabled="show_loader">
@@ -117,6 +116,14 @@
         </div>
       </div>
     </section>
+
+    <!-- Modal for Payment Confirmation -->
+    <ModalConfirmOrderAndPay
+      :show="ShowModalConfirmOrderAndPay"
+      :total="totalAmount"
+      @close="ShowModalConfirmOrderAndPay = false"
+      @confirm="saveInvoice($event)"
+    />
   </AuthenticatedLayout>
 </template>
 
@@ -127,8 +134,11 @@ import InputError from '@/Components/InputError.vue';
 import { ref, reactive, computed, watch } from 'vue';
 import VueSelect from 'vue-select'; // Import vue-select component
 import 'vue-select/dist/vue-select.css'; // Import vue-select styles
+import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue'; // Import the modal
+import axios from "axios";
 
 const show_loader = ref(false);
+const ShowModalConfirmOrderAndPay = ref(false); // Modal visibility flag
 
 const props = defineProps({
   order: Object,  // existing order data
@@ -136,6 +146,7 @@ const props = defineProps({
   customers: Array,
   translations: Object,
 });
+
 const selectedCustomer = ref(
   props.customers.find((customer) => customer.id === props.order.customer_id) || null
 );
@@ -149,22 +160,7 @@ const form = useForm({
 const orderItems = reactive(form.items);
 const orderLogs = reactive([]);
 
-
-
-const updatePrice = (item) => {
-  const selectedProduct = props.products.find(product => product.id === item.product_id);
-  if (selectedProduct) {
-    item.price = selectedProduct.price;
-  }
-};
-const updateMax = (item) => {
-  const selectedProduct = props.products.find(product => product.id === item.product_id);
-  if (selectedProduct) {
-    if(item.quantity > selectedProduct.max_quantity ){
-      item.quantity = selectedProduct.max_quantity
-    }   
-  }
-};
+// Compute total amount
 const totalAmount = computed(() => {
   return orderItems.reduce((total, item) => {
     return total + (item.quantity * item.price);
@@ -175,34 +171,92 @@ watch(totalAmount, (newTotal) => {
   form.total_amount = newTotal;
 });
 
+// Add product to the order
 const addProduct = () => {
   orderItems.push({
     product_id: '',
     quantity: 1,
     price: 0,
-    canadd:'true',
+    canadd: 'true',
   });
 };
 
+// Remove product from the order
 const removeItem = (index) => {
   orderItems.splice(index, 1);
 };
 
+// Update product price when selected
+const updatePrice = (item) => {
+  const selectedProduct = props.products.find(product => product.id === item.product_id);
+  if (selectedProduct) {
+    item.price = selectedProduct.price;
+  }
+};
+
+// Enforce max quantity for each product
+const updateMax = (item) => {
+  const selectedProduct = props.products.find(product => product.id === item.product_id);
+  if (selectedProduct) {
+    if (item.quantity > selectedProduct.max_quantity) {
+      item.quantity = selectedProduct.max_quantity;
+    }   
+  }
+};
+
+// Select a customer
 const selectCustomer = (value) => {
   selectedCustomer.value = value;
   form.customer_id = value ? value.id : null;
 };
 
+// Update the invoice and submit it
 const updateInvoice = () => {
-  show_loader.value = true;
-  form.items = orderItems;
-  form.put(route('orders.update', form.id), {
-    onSuccess: () => {
-      show_loader.value = false;
-    },
-    onError: () => {
-      show_loader.value = false;
-    },
-  });
+  ShowModalConfirmOrderAndPay.value = true; // Open modal on form submission
 };
+const invoiceLogs = reactive([]);
+
+const logAction = (message) => {
+  const timestamp = new Date().toLocaleString();
+  invoiceLogs.push({ message, timestamp });
+};
+
+const saveInvoice = async (event) => {
+  show_loader.value = true;
+  // إنشاء كائن يحتوي على بيانات الفاتورة والعناصر المباعة
+  const invoiceData = {
+    total_amount: form.total_amount, // المجموع
+    total_paid: event.amountDollar, // المبلغ المدفوع
+    customer_id:form.customer_id,
+    date: event.date, // التاريخ
+    notes: event.notes, // الملاحظات
+    items: orderItems.reduce((acc, item) => {
+      let existingItem = acc.find(i => i.product_id === item.product_id);
+      if (existingItem) {
+        existingItem.quantity += item.quantity; // تحديث الكمية بدلاً من إضافة منتج مكرر
+      } else {
+        acc.push(item);
+      }
+      return acc;
+    }, [])
+  };
+
+  try {
+    // إرسال الطلب إلى API باستخدام Axios
+    const response = await axios.put(route('orders.update', form.id), invoiceData);
+
+    if (response.status === 200 || response.status === 201) {
+      logAction('invoice_saved');
+      window.location.href = '/orders';
+    } else {
+      logAction('invoice_save_failed');
+    }
+  } catch (error) {
+    console.error('خطأ أثناء حفظ الفاتورة:', error);
+    logAction('invoice_save_failed');
+  } finally {
+    show_loader.value = false;
+  }
+};
+
 </script>

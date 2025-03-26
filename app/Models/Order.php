@@ -13,9 +13,11 @@ class Order extends Model
     protected $fillable = [
         'customer_id',
         'total_amount',
+        'total_paid',
         'status',
         'payment_method',
         'notes',
+        'date',
     ];
 
     protected static function booted()

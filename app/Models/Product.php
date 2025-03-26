@@ -28,7 +28,8 @@ class Product extends Model
         'note',
         'image',
         'created',
-        'is_active',
+        'barcode',
+        'is_active'
     ];
 
     /**
@@ -38,7 +39,8 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->attributes['image'] 
+        return ''; 
+        $this->attributes['image'] 
             ? asset("storage/{$this->attributes['image']}") 
             : null;
     }

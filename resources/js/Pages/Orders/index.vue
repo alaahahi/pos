@@ -41,7 +41,7 @@
               </div>
               <div class="col-md-3">
                 <Link v-if="hasPermission('create order')" class="btn btn-primary" :href="route('orders.create')">
-                  {{ translations.create_invoice }} &nbsp; <i class="bi bi-plus-circle"></i>
+                  {{ translations.create_invoice }}  {{ translations.dollar }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
             </div>
@@ -53,6 +53,8 @@
                 <tr>
                   <th scope="col">#</th>
                   <th scope="col">{{ translations.client }}</th> <!-- اسم العميل -->
+                  <th scope="col">{{ translations.total }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
+
                   <th scope="col">{{ translations.paid_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
                   <th scope="col">{{ translations.due_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
                   <th scope="col">{{ translations.paid_order }} {{ translations.dinar }}</th> <!-- إجمالي المبلغ -->
@@ -60,26 +62,25 @@
 
                   <th scope="col">{{ translations.statusOrder }}</th> <!-- الحالة -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
-                  <th scope="col" v-if="hasPermission('update order')">{{ translations.pay }}</th>
-                  <th scope="col" v-if="hasPermission('update order')">{{ translations.edit }}</th>
-                  <th scope="col" v-if="hasPermission('delete order')">{{ translations.delete }}</th>
+                  <th scope="col" v-if="hasPermission('update order')"></th>
+                  <th scope="col" v-if="hasPermission('delete order')"></th>
+                  <th scope="col" v-if="hasPermission('delete order')"></th>
+                  <th scope="col" v-if="hasPermission('update order')"></th>
+
                 </tr>
               </thead>
               <tbody>
                 <tr v-for="(order, index) in orders?.data" :key="order.id">
                   <th scope="row">{{ index + 1 }}</th>
                   <td>{{ order.customer?.name }}</td> <!-- اسم العميل -->
+                  <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.total_paid }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.total_amount - order.total_paid }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.total_paid_dinar }}</td>
                   <td>{{ order.total_amount_dinar	 - order.total_paid_dinar }}</td>
                   <td>{{ order.status }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
-                  <td v-if="hasPermission('update order')&& order.status=='pending'">
-                    <a class="btn btn-success" :href="route('orders.edit', { order: order.id })">
-                      <i class="bi bi-currency-dollar"></i>
-                    </a>
-                  </td>
+                
                   <td v-if="hasPermission('update order')">
                     <a class="btn btn-primary" :href="route('orders.edit', { order: order.id })">
                       <i class="bi bi-pencil-square"></i>
@@ -89,6 +90,17 @@
                     <button type="button" class="btn btn-danger" @click="Delete(order.id)">
                       <i class="bi bi-trash"></i>
                     </button>
+                  </td>
+
+                  <td>
+                    <a class="btn btn-secondary" :href="route('order.print', { id: order.id })">
+                      <i class="bi bi-printer text-white"></i>
+                    </a>
+                  </td>
+                  <td v-if="hasPermission('update order')&& order.status=='pending'">
+                    <a class="btn btn-success" :href="route('orders.edit', { order: order.id })">
+                      <i class="bi bi-currency-dollar"></i>
+                    </a>
                   </td>
                 </tr>
               </tbody>

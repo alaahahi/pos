@@ -25,8 +25,8 @@
             <div class="card-body">
               <h5 class="card-title"> {{ translations.create_invoice }} </h5>
 
-              <!-- Invoice Form -->
-              <form @submit.prevent="saveInvoice" class="row g-3">
+              <!-- Invoice Form  -->
+              <form @submit.prevent="ShowModalConfirmOrderAndPay=true" class="row g-3">
                 <!-- Customer Selection or Add New Customer -->
                 <div class="row mb-3">
                   <label for="customerSelect" class="col-sm-2 col-form-label"> {{ translations.client }} </label>
@@ -40,7 +40,7 @@
                       label="name"
                       track-by="id"
                       :reduce="customer => ({ id: customer.id, name: customer.name })"
-                      @mouseleave="selectCustomer(selectedCustomer)"
+                      @blur="mouseleave(selectedCustomer)"
                       :clearable="true"
                       :placeholder="translations.select_customer"
                     />
@@ -53,6 +53,22 @@
                   </div>
                 </div>
 
+                <div class="row mb-3">
+                  <label for="inputBarcode" class="col-sm-2 col-form-label">barcode</label>
+                  <div class="col-sm-10">
+                    <input
+                     autofocus
+                      id="inputBarcode"
+                      type="text"
+                      class="form-control"
+                      placeholder="barcode"
+                      @keyup="findBarcode()"
+                      v-model="barcode"
+                    />
+                    <InputError :message="form.errors.name" />
+                  </div>
+                </div>
+
                 <!-- Products Table -->
                 <div class="row mb-3" v-if="selectedCustomer">
                   <label for="productTable" class="col-sm-2 col-form-label"> {{ translations.products }} </label>
@@ -62,8 +78,8 @@
                         <tr>
                           <th>{{ translations.product }}</th>
                           <th>{{ translations.quantity }}</th>
-                          <th>{{ translations.price }}</th>
-                          <th>{{ translations.total }}</th>
+                          <th>{{ translations.price }} {{ translations.dollar }}</th>
+                          <th>{{ translations.total }} {{ translations.dollar }}</th>
                           <th>{{ translations.actions }}</th>
                         </tr>
                       </thead>
@@ -102,7 +118,7 @@
                 <!-- Total Row -->
                 <div class="row">
                   <div class="col-md-6">
-                    <strong>{{ props.translations.total }}:</strong>
+                    <strong>{{ props.translations.total }}  {{ translations.dollar }}:</strong>
                   </div>
                   <div class="col-md-6">
                     <input type="number" v-model="totalAmount" class="form-control" readonly />
@@ -132,7 +148,9 @@
           </div>
         </div>
       </div>
-
+    <ModalConfirmOrderAndPay :show="ShowModalConfirmOrderAndPay" :total="totalAmount" @close="ShowModalConfirmOrderAndPay = false" @confirm="saveInvoice($event)" >
+    
+    </ModalConfirmOrderAndPay>
     </section>
 
   </AuthenticatedLayout>
@@ -145,19 +163,23 @@ import InputError from '@/Components/InputError.vue';
 import { ref, reactive, computed,watch  } from 'vue';
 import VueSelect from 'vue-select'; // Import vue-select component
 import 'vue-select/dist/vue-select.css'; // Import vue-select styles
-
-const searchQuery = ref('');
-const show_loader = ref(false);
-const selectedCustomer = ref(null);
+import axios from "axios";
+import Swal from 'sweetalert2';
+import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue';
+let searchQuery = ref('');
+let show_loader = ref(false);
+let barcode = ref("");
+let ShowModalConfirmOrderAndPay = ref(false);
 
 const props = defineProps({
   products: Array,
   customers: Array,
+  defaultCustomer: Object,
   translations: Object,
 });
-
+const selectedCustomer = ref(props.defaultCustomer.name);
 const form = useForm({
-  customer_id: "",
+  customer_id:props.defaultCustomer.id,
   items: [],
   log: [],
   total_amount: 0 // Add the total_amount field to form data
@@ -210,7 +232,10 @@ const totalAmount = computed(() => {
 watch(totalAmount, (newTotal) => {
   form.total_amount = newTotal;
 });
-
+const logAction = (message) => {
+  const timestamp = new Date().toLocaleString();
+  invoiceLogs.push({ message, timestamp });
+};
 const addProduct = () => {
   invoiceItems.push({
     product_id: '',
@@ -219,7 +244,6 @@ const addProduct = () => {
   });
   logAction('product_added');
 };
-
 const removeItem = (index) => {
   invoiceItems.splice(index, 1);
   logAction('product_removed');
@@ -231,30 +255,70 @@ const addNewCustomer = () => {
 };
 
 const selectCustomer = (value) => {
-  console.log(value);
   selectedCustomer.value = value;
   form.customer_id = value ? value.id : null;
+
   logAction(`customer_selected ${value ? value.name : ''}`);
 };
 
-const logAction = (message) => {
-  const timestamp = new Date().toLocaleString();
-  invoiceLogs.push({ message, timestamp });
+
+
+
+const saveInvoice = async (event) => {
+  show_loader.value = true;
+  // إنشاء كائن يحتوي على بيانات الفاتورة والعناصر المباعة
+  const invoiceData = {
+    total_amount: form.total_amount, // المجموع
+    total_paid: event.amountDollar, // المبلغ المدفوع
+    customer_id:form.customer_id,
+    date: event.date, // التاريخ
+    notes: event.notes, // الملاحظات
+    items: invoiceItems.reduce((acc, item) => {
+      let existingItem = acc.find(i => i.product_id === item.product_id);
+      if (existingItem) {
+        existingItem.quantity += item.quantity; // تحديث الكمية بدلاً من إضافة منتج مكرر
+      } else {
+        acc.push(item);
+      }
+      return acc;
+    }, [])
+  };
+
+  try {
+    // إرسال الطلب إلى API باستخدام Axios
+    const response = await axios.post(route('orders.store'), invoiceData);
+
+    if (response.status === 200 || response.status === 201) {
+      logAction('invoice_saved');
+    } else {
+      logAction('invoice_save_failed');
+    }
+  } catch (error) {
+    console.error('خطأ أثناء حفظ الفاتورة:', error);
+    logAction('invoice_save_failed');
+  } finally {
+    show_loader.value = false;
+  }
 };
 
-const saveInvoice = () => {
-  show_loader.value = true;
-  form.items = invoiceItems;
 
-  form.post(route('orders.store'), {
-    onSuccess: () => {
-      show_loader.value = false;
-      logAction('invoice_saved');
-    },
-    onError: () => {
-      show_loader.value = false;
-      logAction('invoice_save_failed');
-    },
-  });
+const findBarcode = async () => {
+  if (!barcode.value) return;
+  try {
+    const response = await axios.get(`/api/products/${barcode.value}`);
+
+    if (response.data.id) {
+      barcode.value=''
+      invoiceItems.push({
+        product_id: response.data.id,
+        quantity: 1,
+        price: response.data.selling_price,
+      });
+
+      console.log("تمت إضافة المنتج:", response.data);
+    }
+  } catch (error) {
+    console.error("خطأ أثناء البحث عن الباركود:", error);
+  }
 };
 </script>

@@ -11,6 +11,9 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\DB;
+
+
 
 class OrderController extends Controller
 {
@@ -72,6 +75,7 @@ class OrderController extends Controller
                 'phone' => $customer->phone,
             ];
         });
+        $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
         $products = Product::select('id', 'name','selling_price','quantity')->get()->map(function ($product) {
             return [
                 'id' => $product->id,
@@ -85,35 +89,78 @@ class OrderController extends Controller
             'translations' => __('messages'),
             'customers' => $customers,
             'products' => $products,
+            'defaultCustomer' => $defaultCustomer
         ]);
     }
 
     /**
      * Store a newly created order in storage.
      */
+
+    
     public function store(Request $request)
     {
-        $order = Order::create([
-            'customer_id' => $request->customer_id,
-            'order_date' => Carbon::now()->format('Y-m-d'),
-            'payment_method'=>'cash',
-            'status' => 'pending', // Default status, can be changed later
-            'total_amount' => $request->total_amount,
+        // التحقق من صحة البيانات
+        $validated = $request->validate([
+            'customer_id' => 'required|exists:customers,id',
+            'total_amount' => 'required|numeric|min:0',
+            'total_paid' => 'numeric|min:0',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.price' => 'required|numeric|min:0',
         ]);
-        // Attach products with quantities to the order
-        foreach ($request->items as $productData) {
-            $order->products()->attach($productData['product_id'], [
-                'quantity' => $productData['quantity'],
-                'price' => $productData['price'],
+    
+        DB::beginTransaction();
+        try {
+            // إنشاء الطلب
+            $order = Order::create([
+                'customer_id' => $validated['customer_id'],
+                'payment_method' => 'cash',
+                'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
+                'total_amount' => $validated['total_amount'],
+                'total_paid' => $validated['total_paid'] ?? 0,
+                'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
+                'notes' => $validated['notes'] ?? '',
             ]);
+    
+            // إرفاق المنتجات مع الكميات
+            $products = [];
+            foreach ($validated['items'] as $productData) {
+                $products[$productData['product_id']] = [
+                    'quantity' => $productData['quantity'],
+                    'price' => $productData['price'],
+                ];
+            }
+            $order->products()->sync($products);
+    
+            // تسجيل العملية في السجلات
+            Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
+    
+            DB::commit();
+    
+            // إذا كان الطلب من API، أرجع JSON
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('messages.data_saved_successfully'),
+                    'order_id' => $order->id,
+                ], 201);
+            }
+    
+            return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));
+        } catch (\Exception $e) {
+            DB::rollBack();
+            Log::error('Order creation failed', ['error' => $e->getMessage()]);
+    
+            if ($request->expectsJson()) {
+                return response()->json(['error' => $e->getMessage()], 500);
+            }
+    
+            return redirect()->back()->with('error',$e->getMessage());
         }
-
-        // Log order creation
-        Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
-
-        return redirect()->route('orders.index')
-            ->with('success', __('messages.data_saved_successfully'));
     }
+    
 
     /**
      * Show the form for editing the specified order.
@@ -154,7 +201,6 @@ class OrderController extends Controller
                     'max_quantity' => $product->quantity,
                 ];
             });
-        
         return Inertia::render('Orders/Edit', [
             'translations' => __('messages'),
             'order' => [
@@ -178,34 +224,65 @@ class OrderController extends Controller
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'total_amount' => 'required|numeric|min:0',
+            'total_paid' => 'numeric|min:0',
+            'notes' => 'nullable|string',
             'items' => 'required|array',
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
         ]);
+
+        // Start transaction to ensure data consistency
+        DB::beginTransaction();
     
-        // Update the order details
-        $order->update([
-            'customer_id' => $validated['customer_id'],
-            'total_amount' => $validated['total_amount'],
-        ]);
+        try {
+            // Update the order details
+            $order->update([
+                'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
+                'total_paid' => $validated['total_paid'] ?? 0,
+                'customer_id' => $validated['customer_id'],
+                'total_amount' => $validated['total_amount'],
+                'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
+                'notes' => $validated['notes'] ?? '',
+            ]);
+
+            // Loop through each item and update the pivot table with product details
+            foreach ($validated['items'] as $item) {
+                $product = Product::find($item['product_id']);
     
-        // Sync the products in the pivot table
-        $order->products()->sync(
-            collect($validated['items'])->mapWithKeys(function ($item) {
-                return [$item['product_id'] => [
-                    'quantity' => $item['quantity'],
-                    'price' => $item['price'],
-                ]];
-            })->toArray()
-        );
+            
+            }
+
+            // Commit the transaction if everything is fine
+            DB::commit();
+
+            // Log the order update
+            Log::info('Order updated successfully', ['order_id' => $order->id]);
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'message' => __('messages.data_saved_successfully'),
+                    'order_id' => $order->id,
+                ], 201);
+            }
+            // Return with success message
+            return redirect()->route('orders.index')
+                ->with('success', __('messages.data_updated_successfully'));
     
-        // Log the order update
-        Log::info('Order updated', ['order_id' => $order->id]);
+        } catch (\Exception $e) {
+            // Rollback in case of error
+            DB::rollBack();
     
-        return redirect()->route('orders.index')
-            ->with('success', __('messages.data_updated_successfully'));
+            // Log the error
+            Log::error('Error updating order', ['error' => $e->getMessage()]);
+            if ($request->expectsJson()) {
+                return response()->json(['error' => $e->getMessage()], 500);
+            }
+    
+            // Return with error message
+            return back()->withErrors(['error' => __('messages.error_occurred')]);
+        }
     }
+    
     
     
 
@@ -267,4 +344,14 @@ public function restore($id)
     return redirect()->route('orders.index')
         ->with('success', __('messages.order_restored_successfully'));
 }
+
+public function print($id)
+{
+    // Retrieve the order with its related customer and products
+    $order = Order::with(['customer', 'products'])->findOrFail($id);
+
+    // Return the view with the order data
+    return view('orders.print-invoice', compact('order'));
+}
+
 }

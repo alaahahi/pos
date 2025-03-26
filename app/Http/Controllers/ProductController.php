@@ -9,6 +9,8 @@ use Spatie\Permission\Models\Role;
 use App\Http\Requests\Product\StoreProductRequest;
 use App\Http\Requests\Product\UpdateProductRequest;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
 
 class ProductController extends Controller
 {
@@ -197,5 +199,31 @@ class ProductController extends Controller
 
         return redirect()->route('products.index')
             ->with('success', __('messages.product_restored_successfully'));
+    }
+
+    public function findByBarcode($barcode)
+    {
+            // جلب المنتجات من الكاش أو إعادة تعبئتها إذا كانت غير موجودة
+        $products = Cache::get('all_products');
+        
+        // إذا كانت المنتجات غير موجودة في الكاش
+        if (!$products) {
+            // جلب المنتجات من قاعدة البيانات مع إضافة شرط is_active = 1
+            $products = Cache::remember('all_products', 600, function () {
+                return DB::table('products')
+                    ->select('id', 'name', 'selling_price', 'barcode')
+                    ->where('is_active', 1)
+                    ->get();
+            });
+        }
+        
+        // البحث عن المنتج باستخدام الباركود من الكاش
+        $product = $products->firstWhere('barcode', $barcode);
+        
+        if (!$product) {
+            return response()->json(['message' => 'Product not found'], 200);
+        }
+        
+        return response()->json($product);
     }
 }
