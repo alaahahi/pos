@@ -76,11 +76,11 @@ class OrderController extends Controller
             ];
         });
         $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
-        $products = Product::select('id', 'name','selling_price','quantity')->get()->map(function ($product) {
+        $products = Product::select('id', 'name','price','quantity')->get()->map(function ($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
-                'price' => $product->selling_price,
+                'price' => $product->price,
                 'max_quantity'=> $product->quantity,
             ];
         });
@@ -190,14 +190,14 @@ class OrderController extends Controller
         $orderedProductIds = $order->products->pluck('id')->toArray();
 
         // Fetch products that are not in the order
-        $products = Product::select('id', 'name', 'selling_price', 'quantity')
+        $products = Product::select('id', 'name', 'price', 'quantity')
             ->whereNotIn('id', $orderedProductIds)
             ->get()
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
-                    'price' => $product->selling_price,
+                    'price' => $product->price,
                     'max_quantity' => $product->quantity,
                 ];
             });

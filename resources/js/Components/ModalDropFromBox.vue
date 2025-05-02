@@ -48,7 +48,7 @@ const restform =()=>{
               <!-- First Row: Dollar and Dinar Amounts -->
               <div class="row g-3">
                 <div class="col-lg-6">
-                  <label for="amountDollar" class="form-label">المبلغ بالدولار</label>
+                  <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.dollar }} </label>
                   <input
                     id="amountDollar"
                     type="number"
@@ -58,7 +58,7 @@ const restform =()=>{
                 </div>
 
                 <div class="col-lg-6">
-                  <label for="amountDinar" class="form-label">المبلغ بالدينار العراقي</label>
+                  <label for="amountDinar" class="form-label">{{ translations.total }} {{ translations.dinar }} </label>
                   <input
                     id="amountDinar"
                     type="number"

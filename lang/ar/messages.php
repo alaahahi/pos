@@ -81,8 +81,8 @@ return [
     'oe_number'=>'سيريال',
     'situation'=>'الحالة',
     'price_cost'=>'سعر الكلفة',
-    'price_with_transport'=>'سعر التوصيل',
-    'selling_price'=>'سعر البيع',
+    'transport'=>'سعر التوصيل',
+    'price'=>'سعر البيع',
     'note'=>'ملاحظة',
     'date'=>'تاريخ',
     'orders'=>'فواتير',
@@ -108,7 +108,7 @@ return [
     'convert_dinar_dollar'=>'تحويل الدينار الى الدولار',
     'convert_dollar_dinar'=>'تحويل الدولار الى دينار',
     'balance_dollar'=> 'الرصيد بالدولار',
-    'dollar'=>'بالدولار',
+    'dollar'=>' ',
     'paid'=>'المدفوع',
     'balance_dinar'=> 'الرصيد بالدينار',
     'dinar'=>'بالدينار',
@@ -118,5 +118,6 @@ return [
     'due_order'=>'غير مدفوعة',
     'paid_order'=>'المدفوعة',
     'statusOrder'=>'حالة الفاتورة',
+    'barcode'=>'باركود'
 
 ];

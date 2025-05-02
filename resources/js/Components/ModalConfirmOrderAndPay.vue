@@ -6,6 +6,7 @@ import { ref, watch } from 'vue';
 const props = defineProps({
   show: Boolean,
   total: Number,
+  translations:Array
 });
 const form = ref([{
   date:getTodayDate(),
@@ -38,7 +39,7 @@ const restform =()=>{
               <div class="row g-3">
                 <!-- Amount in Dollar -->
                 <div class="col-lg-6">
-                  <label for="amountDollar" class="form-label">المبلغ بالدولار</label>
+                  <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.dollar }} </label>
                   <input
                     id="amountDollar"
                     type="number"
@@ -49,7 +50,7 @@ const restform =()=>{
 
                 <!-- Amount in Dollar -->
                 <div class="col-lg-6">
-                  <label for="amountDollar" class="form-label">المبلغ المدفوع بالدولار</label>
+                  <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.paid }} {{ translations.dollar }}</label>
                   <input
                     id="amountDollar"
                     type="number"
@@ -61,7 +62,7 @@ const restform =()=>{
 
                 <!-- Notes -->
                 <div class="col-lg-6">
-                  <label for="notes" class="form-label">ملاحظة</label>
+                  <label for="notes" class="form-label">{{ translations.note }}</label>
                   <input
                     id="notes"
                     type="text"
@@ -72,7 +73,7 @@ const restform =()=>{
 
                 <!-- Date -->
                 <div class="col-lg-6">
-                  <label for="date" class="form-label">التاريخ</label>
+                  <label for="date" class="form-label">{{ translations.date }}</label>
                   <input
                     id="date"
                     type="date"

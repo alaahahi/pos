@@ -52,9 +52,11 @@
                 <tr>
                   <th scope="col">#</th>
                   <th scope="col">{{ translations.name }}</th>
+                  <th scope="col">{{ translations.barcode }}</th>
                   <th scope="col">{{ translations.model }}</th>
                   <th scope="col">{{ translations.quantity }}</th>
-                  <th scope="col">{{ translations.selling_price }}</th>
+                  <th scope="col">{{ translations.price }}</th>
+                  
                   <th scope="col">{{ translations.created_at }}</th>
                   <th scope="col"> {{ translations.statusProdact }}</th>
                   <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
@@ -65,9 +67,10 @@
                 <tr v-for="(product, index) in products?.data" :key="product.id">
                   <th scope="row">{{ index + 1 }}</th>
                   <td>{{ product.name }}</td>
+                  <td>{{ product.barcode }}</td>
                   <td>{{ product.model }}</td>
                   <td>{{ product.quantity }}</td>
-                  <td>{{ product.selling_price }}</td>
+                  <td>{{ product.price }}</td>
                   <td>{{ product.created }}</td>
                   <td>
                   <div>

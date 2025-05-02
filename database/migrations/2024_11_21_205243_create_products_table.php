@@ -19,8 +19,8 @@ class CreateProductsTable extends Migration
             $table->string('situation')->nullable();
             $table->decimal('price_cost', 10, 2)->nullable();
             $table->integer('quantity')->default(0);
-            $table->decimal('price_with_transport', 10, 2)->nullable();
-            $table->decimal('selling_price', 10, 2)->nullable();
+            $table->decimal('transport', 10, 2)->nullable();
+            $table->decimal('price', 10, 2)->nullable();
             $table->string('balen')->nullable();
             $table->text('notes')->nullable();
             $table->softDeletes(); // Soft delete column

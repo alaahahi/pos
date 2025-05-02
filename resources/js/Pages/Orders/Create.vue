@@ -148,7 +148,7 @@
           </div>
         </div>
       </div>
-    <ModalConfirmOrderAndPay :show="ShowModalConfirmOrderAndPay" :total="totalAmount" @close="ShowModalConfirmOrderAndPay = false" @confirm="saveInvoice($event)" >
+    <ModalConfirmOrderAndPay :translations="translations" :show="ShowModalConfirmOrderAndPay" :total="totalAmount" @close="ShowModalConfirmOrderAndPay = false" @confirm="saveInvoice($event)" >
     
     </ModalConfirmOrderAndPay>
     </section>
@@ -312,7 +312,7 @@ const findBarcode = async () => {
       invoiceItems.push({
         product_id: response.data.id,
         quantity: 1,
-        price: response.data.selling_price,
+        price: response.data.price,
       });
 
       console.log("تمت إضافة المنتج:", response.data);

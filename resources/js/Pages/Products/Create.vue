@@ -41,6 +41,21 @@
                   </div>
                 </div>
 
+                <div class="row mb-3">
+                <label for="inputBarcode" class="col-sm-2 col-form-label">{{ translations.barcode }}</label>
+                  <div class="col-sm-10">
+                    <input
+                      id="inputBarcode"
+                      type="text"
+                      class="form-control"
+                      :placeholder="translations.barcode"
+                      v-model="form.barcode"
+                    />
+                    <InputError :message="form.errors.barcode" />
+                  </div>
+                </div>
+
+
                 <!-- Model -->
                 <div class="row mb-3">
                   <label for="inputModel" class="col-sm-2 col-form-label">{{ translations.model }}</label>
@@ -104,32 +119,32 @@
 
                  <!-- price_cost -->
                  <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price_with_transport }}</label>
+                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.transport }}</label>
                   <div class="col-sm-10">
                     <input
                       id="inputPrice"
                       type="number"
                       class="form-control"
-                      :placeholder="translations.price_with_transport"
-                      v-model="form.price_with_transport"
+                      :placeholder="translations.transport"
+                      v-model="form.transport"
                     />
-                    <InputError :message="form.errors.price_with_transport" />
+                    <InputError :message="form.errors.transport" />
                   </div>
                 </div>
 
                 <!-- price_cost -->
 
                  <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.selling_price }}</label>
+                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.price }}</label>
                   <div class="col-sm-10">
                     <input
                       id="inputPrice"
                       type="number"
                       class="form-control"
-                      :placeholder="translations.selling_price"
-                      v-model="form.selling_price"
+                      :placeholder="translations.price"
+                      v-model="form.price"
                     />
-                    <InputError :message="form.errors.selling_price" />
+                    <InputError :message="form.errors.price" />
                   </div>
                 </div>
                 <!-- Quantity -->
@@ -239,10 +254,11 @@ const form = useForm({
   oe_number: '',
   situation: '',
   price_cost: null,
-  price_with_transport: null,
-  selling_price: null,
+  transport: null,
+  price: null,
   quantity: null,
   note:'',
+  barcode:'',
   image: null,
 });
 

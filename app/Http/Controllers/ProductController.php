@@ -11,7 +11,7 @@ use App\Http\Requests\Product\UpdateProductRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
-
+use Illuminate\Support\Str;
 class ProductController extends Controller
 {
 
@@ -78,39 +78,52 @@ class ProductController extends Controller
      */
     public function store(StoreProductRequest $request)
     {
-        // Create product instance and assign validated data
-        $product = new Product([
-            'name' => $request->name,
-            'model'=>$request->model,
-            'name'=>$request->name,
-            'note'=>$request->note,
-            'oe_number'=>$request->oe_number,
-            'price_cost'=>$request->price_cost,
-            'price_with_transport'=>$request->price_with_transport,
-            'quantity'=>$request->quantity,
-            'selling_price'=>$request->selling_price,
-            'situation'=>$request->situation,
-            'created' =>Carbon::now()->format('Y-m-d'),
-            'image' => $request->image ? $request->image : 'products/default_product.png',
+         // التحقق من البيانات
+         $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'model' => 'nullable|string|max:100',
+            'note' => 'nullable|string',
+            'oe_number' => 'nullable|string|max:100',
+            'price_cost' => 'required|numeric|min:0',
+            'transport' => 'nullable|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
+            'price' => 'required|numeric|min:0',
+            'situation' => 'nullable|in:available,unavailable,damaged',
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'barcode' => 'nullable|integer|unique:products,barcode',
         ]);
-    
-        // Handle product upload if a file is provided
+        
+        // توليد barcode تلقائي إذا لم يتم إرساله
+        if (empty($validated['barcode'])) {
+            do {
+                $generatedBarcode = random_int(10000000, 99999999); // رقم عشوائي من 8 أرقام
+            } while (Product::where('barcode', $generatedBarcode)->exists());
+        
+            $validated['barcode'] = $generatedBarcode;
+        }
+        
+        // تعيين التاريخ
+        $validated['created'] = Carbon::now()->format('Y-m-d');
+        
+        // رفع الصورة إذا تم إرسال ملف
         if ($request->hasFile('image')) {
             $path = $request->file('image')->store('products', 'public');
-            $product->image = $path;
+            $validated['image'] = $path;
+        } else {
+            $validated['image'] = 'products/default_product.png';
         }
-    
-        // Save the product
-        $product->save();
-    
-        // Sync roles if any selected
+        
+        // إنشاء المنتج
+        $product = Product::create($validated);
+        
+        // مزامنة الصلاحيات إذا وُجدت
         if ($request->has('selectedRoles')) {
             $product->syncRoles($request->selectedRoles);
         }
-    
-        // Redirect with success message
-        return redirect()->route('products.index')
-            ->with('success', __('messages.data_saved_successfully'));
+        
+        // إعادة التوجيه مع رسالة نجاح
+        return redirect()->route('products.index')->with('success', __('messages.data_saved_successfully'));
+        
     }
     
 
@@ -142,21 +155,53 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product)
     {
-        // The request is automatically validated using the UpdateProductRequest rules
-        // Check if an avatar file is uploaded and store it
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('products', 'public');
-            $product->image = $path; // Update the product's avatar path
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'model' => 'nullable|string|max:100',
+            'note' => 'nullable|string',
+            'oe_number' => 'nullable|string|max:100',
+            'price_cost' => 'required|numeric|min:0',
+            'transport' => 'nullable|numeric|min:0',
+            'quantity' => 'required|integer|min:0',
+            'price' => 'required|numeric|min:0',
+            'situation' => 'nullable',//|in:available,unavailable,damaged
+            'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
+            'barcode' => 'nullable|integer|unique:products,barcode,' . $product->id,
+        ]);
+    
+        // توليد barcode إذا لم يكن موجودًا مسبقًا
+        if (empty($validated['barcode']) && !$product->barcode) {
+            do {
+                $generatedBarcode = random_int(10000000, 99999999);
+            } while (Product::where('barcode', $generatedBarcode)->where('id', '!=', $product->id)->exists());
+    
+            $validated['barcode'] = $generatedBarcode;
         }
     
-        // Update product information, including avatar and other fields, in a single save operation
-        $product->update($request->validated());
+        // تحديث التاريخ
+        $validated['created'] = Carbon::now()->format('Y-m-d');
     
-        // Sync roles if any
-        //$product->syncRoles($request->selectedRoles);
+        // التعامل مع رفع الصورة الجديدة
+        if ($request->hasFile('image')) {
+            // حذف الصورة القديمة إذا لم تكن الصورة الافتراضية
+            if ($product->image && $product->image !== 'products/default_product.png') {
+                Storage::disk('public')->delete($product->image);
+            }
     
-        return redirect()->route('products.index')
-            ->with('success', __('messages.data_updated_successfully'));
+            // رفع الصورة الجديدة
+            $path = $request->file('image')->store('products', 'public');
+            $validated['image'] = $path;
+        }
+    
+        // تحديث المنتج
+        $product->update($validated);
+    
+        // مزامنة الأدوار إذا تم تمريرها
+        if ($request->has('selectedRoles')) {
+            $product->syncRoles($request->selectedRoles);
+        }
+    
+        return redirect()->route('products.index')->with('success', __('messages.data_updated_successfully'));
     }
     
 
@@ -211,7 +256,7 @@ class ProductController extends Controller
             // جلب المنتجات من قاعدة البيانات مع إضافة شرط is_active = 1
             $products = Cache::remember('all_products', 600, function () {
                 return DB::table('products')
-                    ->select('id', 'name', 'selling_price', 'barcode')
+                    ->select('id', 'name', 'price', 'barcode')
                     ->where('is_active', 1)
                     ->get();
             });

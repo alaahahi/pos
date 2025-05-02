@@ -81,8 +81,8 @@ return [
     'oe_number'=>'OE number',
     'situation'=>'Situation',
     'price_cost'=>'Price cost',
-    'price_with_transport'=>'Price transport',
-    'selling_price'=>'Selling price',
+    'transport'=>'Price transport',
+    'price'=>'Selling price',
     'note'=>'Note',
     'date'=>'Date',
     'orders'=>'Orders',
@@ -118,6 +118,7 @@ return [
     'paid'=>'Paid',
     'dollar'=>'Dollar',
     'dinar'=>'Dinar',
+    'barcode'=>'Barcode'
 
 
 ];
