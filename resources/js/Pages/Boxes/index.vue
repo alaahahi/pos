@@ -46,15 +46,23 @@
         <div class="card-body">
           <form @submit.prevent="Filter">
             <div class="row filter_form">
-              <div class="col-md-3">
+              <div class="col-md-2">
+                <input type="date" class="form-control search_box" v-model="filterForm.start_date" 
+                  :placeholder="translations.start_date" />
+              </div>
+              <div class="col-md-2">
+                <input type="date" class="form-control search_box" v-model="filterForm.end_date" 
+                  :placeholder="translations.end_date" />
+              </div>
+              <div class="col-md-2">
                 <input type="text" class="form-control search_box" v-model="filterForm.name" 
                   :placeholder="translations.name" />
               </div>
-              <div class="col-md-3">
-                <input type="text" class="form-control search_box" v-model="filterForm.model" 
-                  :placeholder="translations.model" />
+              <div class="col-md-2">
+                <input type="text" class="form-control search_box" v-model="filterForm.note" 
+                  :placeholder="translations.note" />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <button type="submit" class="btn btn-primary">
                   {{ translations.search }} &nbsp; <i class="bi bi-search"></i>
                 </button>
@@ -69,18 +77,21 @@
                 <tr>
                   <th scope="col">#</th>
                   <th scope="col">الحساب</th> <!-- اسم العميل -->
+                  <th scope="col">سحب</th> <!-- الحالة -->
+                  <th scope="col">اضافة</th> <!-- الحالة -->
                   <th scope="col">البيان</th> <!-- إجمالي المبلغ -->
-                  <th scope="col">المبلغ</th> <!-- الحالة -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
                   <th scope="col" v-if="hasPermission('delete order')">{{ translations.delete }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(order, index) in boxes?.data" :key="order.id">
-                  <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ order.customer?.name }}</td> <!-- اسم العميل -->
-                  <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
-                  <td>{{ order.status }}</td> <!-- الحالة -->
+                <template v-for="(order, index) in transactions" :key="order.id">
+                <tr  :class="{'bg-red-100 dark:bg-red-900': order.type == 'outUser'||order.type == 'out','bg-green-100 dark:bg-green-900': order.type == 'inUser'||order.type == 'in'}">
+                  <th>{{ index + 1 }}</th>
+                  <td>{{ order.morphed?.name }}</td> <!-- اسم العميل -->
+                  <td><span v-if="order.type == 'outUser'||order.type == 'out'">{{ order.amount }} {{ order.currency }}</span></td> <!-- إجمالي المبلغ -->
+                  <td><span v-if="order.type == 'inUser'||order.type == 'in'">{{ order.amount }} {{ order.currency }}</span></td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.description }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
                   <td v-if="hasPermission('delete order')">
                     <button type="button" class="btn btn-danger" @click="Delete(order.id)">
@@ -88,6 +99,7 @@
                     </button>
                   </td>
                 </tr>
+                </template>
               </tbody>
             </table>
           </div>
@@ -121,7 +133,7 @@
             :show="showModalAddToBox ? true : false"
             :data="users"
             :accounts="accounts"
-            @a="confirm($event)"
+            @a="refresh()"
             @close="showModalAddToBox = false"
             >
           <template #header>
@@ -162,6 +174,7 @@ let showModalDropFromBox = ref(false);
 
 const props = defineProps({
   boxes: Object, 
+  transactions: Array,
   translations: Array 
 });
 
@@ -169,7 +182,9 @@ const page = usePage();
 
 const filterForm = reactive({
   name: '',
-  model: ''
+  model: '',
+  start_date: getTodayDate(),
+  end_date: getTodayDate()
 });
 function openConvertDollarDinar(){
   showModalConvertDollarDinar.value = true;
@@ -183,33 +198,15 @@ function openAddSales() {
 function openAddExpenses(){
   showModalDropFromBox.value = true;
 }
-function confirm(V) {
-  axios.post('/api/receiptArrived',V)
-  .then(response => {
-    showModalAddToBox.value=false;
-    //getResults();
-    window.location.reload();
-  })
-  .catch(error => {
-
-    errors.value = error.response.data.errors
-  })
+function refresh(){
+  axios.get('/boxes/transactions')
+ .then(response => {
+  props.transactions  = response.data;
+ })
+ .catch(error => {
+  console.log(error);
+ }) 
 }
-function confirmdebt(V) {
-  axios.post('/api/salesDebt',V)
-  .then(response => {
-    refresh();
-    showModaldebtSales.value=false;
-    showModalDropFromBox.value = false;
-    window.location.reload();
-
-  })
-  .catch(error => {
-
-    errors.value = error.response.data.errors
-  })
-}
-
 function confirmConvertDollarDinar(V) {
   axios.post('/api/convertDollarDinar',V)
   .then(response => {
@@ -307,7 +304,14 @@ const Delete = (id) => {
     }
   });
 };
-
+function getTodayDate() {
+  const today = new Date();
+  const year = today.getFullYear();
+  const month = String(today.getMonth() + 1).padStart(2, '0');
+  const day = String(today.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+ 
 // دالة لتنسيق التاريخ بشكل مناسب
 const formatDate = (date) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };

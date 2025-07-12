@@ -118,6 +118,8 @@ return [
     'due_order'=>'غير مدفوعة',
     'paid_order'=>'المدفوعة',
     'statusOrder'=>'حالة الفاتورة',
-    'barcode'=>'باركود'
+    'barcode'=>'باركود',
+    'start_date'=>'تاريخ البداية',
+    'end_date'=>'تاريخ النهاية',
 
 ];

@@ -1,6 +1,6 @@
 <script setup>
 import { ref, watch } from 'vue';
-
+import axios from 'axios';  
 
 
 const props = defineProps({
@@ -10,6 +10,9 @@ const props = defineProps({
 });
 const form = ref({
   date:getTodayDate(),
+  amountDollar:0,
+  amountDinar:0,
+  amountNote:'',
 });
 function getTodayDate() {
   const today = new Date();
@@ -22,6 +25,15 @@ const restform =()=>{
   form.value = {
   date:getTodayDate(),
 };
+}
+const submit = (form) => {
+  axios.post('/api/add-to-box', form)
+  .then(response => {
+    console.log(response);
+  })
+  .catch(error => {
+    console.log(error);
+  });
 }
 
 </script>
@@ -99,7 +111,7 @@ const restform =()=>{
                 <div class="px-2 flex-fill">
                   <button
                     class="btn btn-danger w-100 text-center"
-                    @click="$emit('a', form); restform();"
+                    @click="submit(form);$emit('a'); restform();"
                     :disabled="!form.amountDollar && !form.amountDinar"
                   >
                     نعم

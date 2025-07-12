@@ -46,7 +46,7 @@
               </div>
             </div>
           </form>
-
+          {{ translations }}
           <div class="table-responsive">
             <table class="table text-center">
               <thead>
@@ -57,8 +57,9 @@
 
                   <th scope="col">{{ translations.paid_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
                   <th scope="col">{{ translations.due_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
-                  <th scope="col">{{ translations.paid_order }} {{ translations.dinar }}</th> <!-- إجمالي المبلغ -->
-                  <th scope="col">{{ translations.due_order }} {{ translations.dinar }}</th> <!-- إجمالي المبلغ -->
+
+                  <!-- <th scope="col">{{ translations.paid_order }} {{ translations.dinar }}</th>  
+                  <th scope="col">{{ translations.due_order }} {{ translations.dinar }}</th>  -->
 
                   <th scope="col">{{ translations.statusOrder }}</th> <!-- الحالة -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
@@ -76,8 +77,8 @@
                   <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.total_paid }}</td> <!-- إجمالي المبلغ -->
                   <td>{{ order.total_amount - order.total_paid }}</td> <!-- إجمالي المبلغ -->
-                  <td>{{ order.total_paid_dinar }}</td>
-                  <td>{{ order.total_amount_dinar	 - order.total_paid_dinar }}</td>
+                  <!-- <td>{{ order.total_paid_dinar }}</td>
+                  <td>{{ order.total_amount_dinar	 - order.total_paid_dinar }}</td> -->
                   <td>{{ order.status }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
                 

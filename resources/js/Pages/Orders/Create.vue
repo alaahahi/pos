@@ -54,14 +54,14 @@
                 </div>
 
                 <div class="row mb-3">
-                  <label for="inputBarcode" class="col-sm-2 col-form-label">barcode</label>
+                  <label for="inputBarcode" class="col-sm-2 col-form-label">{{ translations.barcode }}</label>
                   <div class="col-sm-10">
                     <input
                      autofocus
                       id="inputBarcode"
                       type="text"
                       class="form-control"
-                      placeholder="barcode"
+                      :placeholder="translations.barcode"
                       @keyup="findBarcode()"
                       v-model="barcode"
                     />
@@ -304,18 +304,27 @@ const saveInvoice = async (event) => {
 
 const findBarcode = async () => {
   if (!barcode.value) return;
+
   try {
     const response = await axios.get(`/api/products/${barcode.value}`);
 
     if (response.data.id) {
-      barcode.value=''
-      invoiceItems.push({
-        product_id: response.data.id,
-        quantity: 1,
-        price: response.data.price,
-      });
+      const existingItem = invoiceItems.find(
+        item => item.product_id === response.data.id
+      );
 
-      console.log("تمت إضافة المنتج:", response.data);
+      if (existingItem) {
+        existingItem.quantity += 1; // فقط زِد الكمية
+      } else {
+        invoiceItems.push({
+          product_id: response.data.id,
+          quantity: 1,
+          price: response.data.price,
+        });
+      }
+
+      barcode.value = ''; // تصفير الحقل بعد الإضافة أو التحديث
+      console.log("تمت إضافة أو تحديث المنتج:", response.data);
     }
   } catch (error) {
     console.error("خطأ أثناء البحث عن الباركود:", error);

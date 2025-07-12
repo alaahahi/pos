@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Order;
+use App\Models\UserType;
+use App\Models\User;
 // use App\Http\Requests\Order\StoreOrderRequest;
 // use App\Http\Requests\Order\UpdateOrderRequest;
 use Illuminate\Http\Request;
@@ -12,18 +14,23 @@ use Inertia\Inertia;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
-
+use App\Http\Controllers\AccountingController;
 
 
 class OrderController extends Controller
 {
-    public function __construct()
+    public function __construct(AccountingController $accountingController)
     {
+        $this->accountingController = $accountingController;
         // Middleware for permission handling
         $this->middleware('permission:read order', ['only' => ['index']]);
         $this->middleware('permission:create order', ['only' => ['create', 'store']]);
         $this->middleware('permission:update order', ['only' => ['edit', 'update']]);
         $this->middleware('permission:delete order', ['only' => ['destroy']]);
+        $this->userAccount =  UserType::where('name', 'account')->first()->id;
+        $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
+        $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
+
     }
 
     /**
@@ -100,6 +107,7 @@ class OrderController extends Controller
     
     public function store(Request $request)
     {
+        
         // التحقق من صحة البيانات
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -139,6 +147,19 @@ class OrderController extends Controller
             Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
     
             DB::commit();
+
+            $transaction = $this->accountingController->increaseWallet(
+                $validated['total_paid'], // المبلغ المدفوع
+                'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
+                $validated['customer_id'], // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                'App\Models\User',
+                0,
+                0,
+                $this->defaultCurrency,
+                $order->date
+            );
+
     
             // إذا كان الطلب من API، أرجع JSON
             if ($request->expectsJson()) {

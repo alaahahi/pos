@@ -5,6 +5,7 @@ use Illuminate\Support\Facades\Auth; // Import Auth facade
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ProductController;
+use App\Http\Controllers\BoxesController;
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -27,10 +28,10 @@ Route::post('receiptArrived',[AccountingController::class, 'receiptArrived'])->n
 Route::post('receiptArrivedUser',[AccountingController::class, 'receiptArrivedUser'])->name('receiptArrivedUser');
 Route::post('salesDebtUser',[AccountingController::class, 'salesDebtUser'])->name('salesDebtUser');
 Route::get('getIndexAccountsSelas',[AccountingController::class, 'getIndexAccountsSelas'])->name('getIndexAccountsSelas');
-
+Route::post('add-to-box',[BoxesController::class, 'addToBox'])->name('add-to-box');
 Route::post('deleteTransactions',[AccountingController::class, 'delTransactions'])->name('deleteTransactions');
 Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
-
+Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name('transactions');
 Route::get('/check-session', function () {
     $user = Auth::user();
 

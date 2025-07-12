@@ -8,15 +8,23 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreBoxRequest;
 use App\Http\Requests\UpdateBoxRequest;
+use App\Http\Controllers\AccountingController;
+use App\Models\UserType;
+use App\Models\User;
+use App\Models\transactions;
 
 class BoxesController extends Controller
 {
-    public function __construct()
+    public function __construct(AccountingController $accountingController)
     {
         $this->middleware('permission:read boxes', ['only' => ['index']]);
         $this->middleware('permission:create box', ['only' => ['create']]);
         $this->middleware('permission:update box', ['only' => ['update', 'edit']]);
         $this->middleware('permission:delete box', ['only' => ['destroy']]);
+        $this->accountingController = $accountingController;
+        $this->userAccount =  UserType::where('name', 'account')->first()->id;
+        $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
+        $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
     }
 
     /**
@@ -28,32 +36,39 @@ class BoxesController extends Controller
         $filters = [
             'name' => $request->name,
             'phone' => $request->phone,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
             'is_active' => $request->is_active,
         ];
 
         // Start the Box query
-        $boxesQuery = Box::latest();
+        $transactionsQuery = transactions::with('morphed');
 
         // Apply the filters if they exist
-        $boxesQuery->when($filters['name'], function ($query, $name) {
+        $transactionsQuery->when($filters['name'], function ($query, $name) {
             return $query->where('name', 'LIKE', "%{$name}%");
         });
 
-        $boxesQuery->when($filters['phone'], function ($query, $phone) {
+        $transactionsQuery->when($filters['phone'], function ($query, $phone) {
             return $query->where('phone', 'LIKE', "%{$phone}%");
         });
 
-        if (isset($filters['is_active'])) {
-            $boxesQuery->where('is_active', $filters['is_active']);
-        }
+        $transactionsQuery->when($filters['start_date'], function ($query, $start_date) {
+            return $query->where('created', '>=', $start_date);
+        });
 
+        $transactionsQuery->when($filters['end_date'], function ($query, $end_date) {
+            return $query->where('created', '<=', $end_date);
+        });
+
+    
         // Paginate the filtered boxes
-        $boxes = $boxesQuery->paginate(10);
+        $transactions = $transactionsQuery->paginate(10);
 
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
-            'boxes' => $boxes,
+            'transactions' => $transactions->items(),
         ]);
     }
 
@@ -66,78 +81,48 @@ class BoxesController extends Controller
             'translations' => __('messages'),
         ]);
     }
-
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(StoreBoxRequest $request)
+    public function addToBox(Request $request)
     {
-        // Create box instance and assign validated data
-        $box = new Box($request->validated());
-
-        // Handle avatar upload if a file is provided
-        if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $box->avatar = $path;
-        }
-
-        // Save the box
-        $box->save();
-
-        return redirect()->route('boxes.index')
-            ->with('success', __('messages.data_saved_successfully'));
-    }
-
-    /**
-     * Show the form for editing the specified resource.
-     */
-    public function edit(Box $box)
-    {
-        return Inertia('Boxes/Edit', [
-            'translations' => __('messages'),
-            'box' => $box,
+        $request->validate([
+            'amountDollar' => 'nullable|numeric',
+            'amountDinar' => 'nullable|numeric',
+            'amountNote' => 'nullable|string',
         ]);
-    }
-
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(UpdateBoxRequest $request, Box $box)
-    {
-        // Check if an avatar file is uploaded and store it
-        if ($request->hasFile('avatar')) {
-            $path = $request->file('avatar')->store('avatars', 'public');
-            $box->avatar = $path;
+        if($request->amountDollar > 0){
+            $transaction = $this->accountingController->increaseWallet(
+                $request->amountDollar??0, // المبلغ المدفوع
+                $request->amountNote ?? '', // الوصف
+                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                'App\Models\User',
+                0,
+                0,
+                'USD',
+                $request->date
+            );
         }
-
-        // Update box information
-        $box->update($request->validated());
-
-        return redirect()->route('boxes.index')
-            ->with('success', __('messages.data_updated_successfully'));
+        if($request->amountDinar > 0){
+            $transaction = $this->accountingController->increaseWallet(
+                $request->amountDinar??0, // المبلغ المدفوع
+                $request->amountNote ?? '', // الوصف
+                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                'App\Models\User',
+                0,
+                0,
+                'IQD',
+                $request->date
+            );
+        }
+ 
+        
+        return response()->json(['message' => 'Transaction added successfully']);
     }
-
-    /**
-     * Activate or deactivate the specified resource.
-     */
-    public function activate(Box $box)
+    public function transactions(Request $request)
     {
-        $box->update([
-            'is_active' => !$box->is_active,
-        ]);
-
-        return redirect()->route('boxes.index')
-            ->with('success', __('messages.status_updated_successfully'));
-    }
-
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(Box $box)
-    {
-        $box->delete();
-
-        return redirect()->route('boxes.index')
-            ->with('success', __('messages.data_deleted_successfully'));
+        $perPage = $request->perPage ?? 10;
+        $transactions = transactions::with('morphed')->paginate($perPage);
+        $transactions->appends(request()->query());
+        return response()->json($transactions);
     }
 }

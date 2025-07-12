@@ -118,7 +118,9 @@ return [
     'paid'=>'Paid',
     'dollar'=>'Dollar',
     'dinar'=>'Dinar',
-    'barcode'=>'Barcode'
+    'barcode'=>'Barcode',
+    'start_date'=>'Start date',
+    'end_date'=>'End date',
 
 
 ];

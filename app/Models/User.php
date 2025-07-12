@@ -10,6 +10,7 @@ use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Permission\Models\Role;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class User extends Authenticatable
 {
@@ -61,19 +62,25 @@ class User extends Authenticatable
         'created_at'  => 'date:Y-m-d',
     ];
 
-
-    
+    public function wallet()
+    {
+        return $this->hasOne(Wallet::class);
+    }
+    public function morphed()
+    {
+        return $this->morphTo();
+    }
     public function getFormattedCreatedAtAttribute(): string
-{
-    return $this->created_at->format('d M Y');
-}
+    {
+        return $this->created_at->format('d M Y');
+    }
 
-public function logs(): HasMany
-{
-    return $this->hasMany(
-        \App\Models\Log::class,
-        'by_user_id'
-    );
-}
+    public function logs(): HasMany
+    {
+        return $this->hasMany(
+            \App\Models\Log::class,
+            'by_user_id'
+        );
+    }
 
 }
