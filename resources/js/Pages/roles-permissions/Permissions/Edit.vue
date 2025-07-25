@@ -3,16 +3,16 @@
 <AuthenticatedLayout :translations="translations">
   
       <!-- breadcrumb-->
-      <div class="pagetitle">
-        <h1>{{ translations.permissions }}</h1>
+      <div class="pagetitle dark:text-white">
+        <h1 class="dark:text-white">{{ translations.permissions }}</h1>
         <nav>
           <ol class="breadcrumb">
             <li class="breadcrumb-item">
-              <Link class="nav-link" :href="route('dashboard')">
+              <Link class="nav-link dark:text-white" :href="route('dashboard')">
             {{translations.Home}}
               </Link>
             </li>
-            <li class="breadcrumb-item active">{{ translations.edit }}  </li>
+            <li class="breadcrumb-item active dark:text-white ">{{ translations.edit }}  </li>
   
           </ol>
         </nav>

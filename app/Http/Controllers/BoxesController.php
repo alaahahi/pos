@@ -12,7 +12,7 @@ use App\Http\Controllers\AccountingController;
 use App\Models\UserType;
 use App\Models\User;
 use App\Models\transactions;
-
+use Carbon\Carbon;
 class BoxesController extends Controller
 {
     public function __construct(AccountingController $accountingController)
@@ -42,7 +42,7 @@ class BoxesController extends Controller
         ];
 
         // Start the Box query
-        $transactionsQuery = transactions::with('morphed');
+        $transactionsQuery = transactions::with('morphed')->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
         $transactionsQuery->when($filters['name'], function ($query, $name) {
@@ -53,11 +53,11 @@ class BoxesController extends Controller
             return $query->where('phone', 'LIKE', "%{$phone}%");
         });
 
-        $transactionsQuery->when($filters['start_date'], function ($query, $start_date) {
+        $transactionsQuery->when($filters['start_date']??Carbon::now()->subDays(1), function ($query, $start_date) {
             return $query->where('created', '>=', $start_date);
         });
 
-        $transactionsQuery->when($filters['end_date'], function ($query, $end_date) {
+        $transactionsQuery->when($filters['end_date']??Carbon::now(), function ($query, $end_date) {
             return $query->where('created', '<=', $end_date);
         });
 
@@ -68,7 +68,8 @@ class BoxesController extends Controller
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
-            'transactions' => $transactions->items(),
+            'transactions' => $transactions,
+            'mainBox' => $this->mainBox->first(),
         ]);
     }
 
@@ -120,8 +121,37 @@ class BoxesController extends Controller
     }
     public function transactions(Request $request)
     {
-        $perPage = $request->perPage ?? 10;
-        $transactions = transactions::with('morphed')->paginate($perPage);
+        $filters = [
+            'name' => $request->name,
+            'phone' => $request->phone,
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'is_active' => $request->is_active,
+        ];
+
+        // Start the Box query
+        $transactionsQuery = transactions::with('morphed')->orderBy('created_at', 'desc');
+
+        // Apply the filters if they exist
+        $transactionsQuery->when($filters['name'], function ($query, $name) {
+            return $query->where('name', 'LIKE', "%{$name}%");
+        });
+
+        $transactionsQuery->when($filters['phone'], function ($query, $phone) {
+            return $query->where('phone', 'LIKE', "%{$phone}%");
+        });
+
+        $transactionsQuery->when($filters['start_date']??Carbon::now()->subDays(1), function ($query, $start_date) {
+            return $query->where('created', '>=', $start_date);
+        });
+
+        $transactionsQuery->when($filters['end_date']??Carbon::now(), function ($query, $end_date) {
+            return $query->where('created', '<=', $end_date);
+        });
+
+    
+        // Paginate the filtered boxes
+        $transactions = $transactionsQuery->paginate(10);
         $transactions->appends(request()->query());
         return response()->json($transactions);
     }

@@ -1,16 +1,16 @@
 <template>
   <AuthenticatedLayout :translations="translations">
     <!-- breadcrumb-->
-    <div class="pagetitle">
-      <h1>{{ translations.orders }}</h1>
+    <div class="pagetitle dark:text-white">
+      <h1 class="dark:text-white">{{ translations.orders }}</h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
-            <Link class="nav-link" :href="route('dashboard')">
+            <Link class="nav-link dark:text-white" :href="route('dashboard')">
               {{ translations.home }}
             </Link>
           </li>
-          <li class="breadcrumb-item active">{{ translations.orders }}</li>
+          <li class="breadcrumb-item active dark:text-white">{{ translations.orders }}</li>
         </ol>
       </nav>
     </div>
@@ -46,8 +46,7 @@
               </div>
             </div>
           </form>
-          {{ translations }}
-          <div class="table-responsive">
+           <div class="table-responsive">
             <table class="table text-center">
               <thead>
                 <tr>

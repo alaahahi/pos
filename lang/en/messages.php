@@ -1,6 +1,7 @@
 <?php 
 
 return [
+    'app_name' => 'WE DO EVENTS',
     'Home' => 'Home',
     'language' => 'Language',
     'my_profile' => 'My profile',

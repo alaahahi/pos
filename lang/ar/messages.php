@@ -1,6 +1,7 @@
 <?php
 
 return [
+    'app_name' => 'WE DO EVENTS',
     'Home' => 'الرئيسية',
     'language' => 'اللغـة',
     'my_profile' => 'حسـابي الشخصي ',
@@ -121,5 +122,6 @@ return [
     'barcode'=>'باركود',
     'start_date'=>'تاريخ البداية',
     'end_date'=>'تاريخ النهاية',
+
 
 ];

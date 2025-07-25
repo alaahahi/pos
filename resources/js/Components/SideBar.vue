@@ -1,6 +1,6 @@
 <template>
  
-<aside id="sidebar" class="sidebar">
+<aside id="sidebar" class="sidebar bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400">
 <ul class="sidebar-nav" id="sidebar-nav">
     <li class="nav-item">
         <Link  class="nav-link "  :href="route('dashboard')"   :class="{ 'collapsed': $page.url !== '/dashboard' }" >

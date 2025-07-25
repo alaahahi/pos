@@ -29,13 +29,11 @@ const restform =()=>{
 const submit = (form) => {
   axios.post('/api/add-to-box', form)
   .then(response => {
-    console.log(response);
-  })
+   })
   .catch(error => {
-    console.log(error);
+    $emit('close');
   });
 }
-
 </script>
   
   <template>

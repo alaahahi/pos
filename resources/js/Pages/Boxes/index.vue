@@ -1,43 +1,42 @@
 <template>
   <AuthenticatedLayout :translations="translations">
     <!-- breadcrumb-->
-    <div class="pagetitle">
-      <h1>{{ translations.boxes }}</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link" :href="route('dashboard')">
-              {{ translations.home }}
-            </Link>
-          </li>
-          <li class="breadcrumb-item active">{{ translations.boxes }}</li>
-        </ol>
-      </nav>
+    <div class="pagetitle dark:text-white">
+      <h1 class="dark:text-white">{{ translations.boxes }}</h1>
     </div>
     <!-- End breadcrumb-->
-
-    <section class="section dashboard">
+     <section class="section dashboard">
       <div class="card">
         <div class="card-header">
           <div class="row">
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <button v-if="hasPermission('create order')" class="btn btn-success" @click="openAddSales()">
                   {{ translations.add_to_box }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </button>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <button v-if="hasPermission('create order')" class="btn btn-danger" @click="openAddExpenses()">
                   {{ translations.drop_from_box }} &nbsp; <i class="bi bi-stop-circle-fill"></i>
                 </button>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDollarDinar()">
                   {{ translations.convert_dinar_dollar }} &nbsp; <i class="bi bi-arrow-left-right"></i>
                 </button>
             </div>
-            <div class="col-md-3">
+            <div class="col-md-2">
                 <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDinarDollar()">
                   {{ translations.convert_dollar_dinar }} &nbsp; <i class="bi bi-arrow-left-right"></i>
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button  class="btn btn-info w-100 text-white" >
+                 الرصيد بالدولار : <span class="text-bolde">{{ mainBox.wallet.balance ?? 0 }}</span>  <i class="bi bi-currency-dollar"></i>
+                </button>
+            </div>
+            <div class="col-md-2">
+                <button  class="btn btn-info w-100 text-white" >
+                  الرصيد بالدينار : <span class="text-bold">{{ mainBox.wallet.balanceDinar ?? 0 }}</span>  <span class="text-white">IQD</span>
                 </button>
             </div>
             <!-- هنا يمكن إضافة أي أدوات تصفية أو بحث إضافية-->
@@ -85,7 +84,7 @@
                 </tr>
               </thead>
               <tbody>
-                <template v-for="(order, index) in transactions" :key="order.id">
+                <template v-for="(order, index) in transactions.data" :key="order.id">
                 <tr  :class="{'bg-red-100 dark:bg-red-900': order.type == 'outUser'||order.type == 'out','bg-green-100 dark:bg-green-900': order.type == 'inUser'||order.type == 'in'}">
                   <th>{{ index + 1 }}</th>
                   <td>{{ order.morphed?.name }}</td> <!-- اسم العميل -->
@@ -105,7 +104,7 @@
           </div>
         </div>
       </div>
-      <Pagination :links="boxes?.links" />
+      <Pagination :links="transactions?.links" />
     </section>
     <ModalConvertDollarDinar 
             :show="showModalConvertDollarDinar ? true : false"
@@ -133,7 +132,7 @@
             :show="showModalAddToBox ? true : false"
             :data="users"
             :accounts="accounts"
-            @a="refresh()"
+            @a="refresh();showModalAddToBox = false"
             @close="showModalAddToBox = false"
             >
           <template #header>
@@ -144,7 +143,7 @@
       <ModalDropFromBox 
             :show="showModalDropFromBox ? true : false"
             :boxes="boxes"
-            @a="confirmdebt($event)"
+            @a="showModalDropFromBox = false"
             @close="showModalDropFromBox = false"
             >
           <template #header>
@@ -166,7 +165,7 @@ import ModalConvertDollarDinar from "@/Components/ModalConvertDollarDinar.vue";
 import ModalConvertDinarDollar from "@/Components/ModalConvertDinarDollar.vue";
 import ModalAddToBox from "@/Components/ModalAddToBox.vue";
 import ModalDropFromBox from "@/Components/ModalDropFromBox.vue";
-
+import axios from 'axios';
 let showModalConvertDinarDollar = ref(false);
 let showModalConvertDollarDinar = ref(false);
 let showModalAddToBox = ref(false);
@@ -175,7 +174,8 @@ let showModalDropFromBox = ref(false);
 const props = defineProps({
   boxes: Object, 
   transactions: Array,
-  translations: Array 
+  translations: Array ,
+  mainBox: Object,
 });
 
 const page = usePage();
@@ -199,9 +199,10 @@ function openAddExpenses(){
   showModalDropFromBox.value = true;
 }
 function refresh(){
-  axios.get('/boxes/transactions')
+  axios.get('api/boxes/transactions')
  .then(response => {
-  props.transactions  = response.data;
+  // Use router to refresh the page data instead of directly modifying props
+  router.reload({ only: ['transactions'] });
  })
  .catch(error => {
   console.log(error);

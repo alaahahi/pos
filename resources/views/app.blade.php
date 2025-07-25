@@ -47,7 +47,7 @@
     @inertiaHead
 </head>
 
-<body class="font-sans antialiased">
+<body class="font-sans antialiased bg-gray-100 dark:bg-gray-800">
  {{-- Copyright (c) 2024 @MogahidGaffar --}}
 
     @inertia

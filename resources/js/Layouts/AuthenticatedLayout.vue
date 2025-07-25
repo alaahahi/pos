@@ -2,19 +2,19 @@
 <template>
 
     <!-- ======= Header ======= -->
-    <header id="header" class="header fixed-top d-flex align-items-center">
+    <header id="header" class="header fixed-top d-flex align-items-center  bg-gray-100 dark:bg-gray-800">   
 
         <div class="d-flex align-items-center justify-content-between">
             <Link class="logo d-flex align-items-center" :href="route('dashboard')">
-            <img src="/dashboard-assets/img/app_logo.jpg" alt="">
-            <span class="d-none d-lg-block">POS</span>
+            <img src="/dashboard-assets/img/WEDOO  LOGO PNG.webp" alt="">
+            <span class="d-none d-lg-block dark:text-white">{{translations.app_name}}</span>
             </Link>
         </div>
         <!-- End Logo -->
    
 
-        <nav class="header-nav ms-auto">
-            <ul class="d-flex align-items-center">
+        <nav class="header-nav ms-auto text-gray-600 dark:text-gray-400">
+            <ul class="d-flex align-items-center text-gray-600 dark:text-gray-400">
 
                 <!-- <li class="nav-item d-block d-lg-none">
                     <a class="nav-link nav-icon search-bar-toggle " href="#">
@@ -22,15 +22,17 @@
                     </a>
                 </li> -->
                 <!-- End Search Icon-->
-                <li class="nav-item dropdown">
+                <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
                     <select class="form-control changeLang" @change="changeLanguage">
                         <option value="" selected> {{translations.language  }} 🌍 </option>
                         <option value="en"> English</option>
                         <option value="ar">Arabic</option>
                     </select>
                 </li>
-
-                <li class="nav-item dropdown">
+                <li class="nav-item text-gray-600 dark:text-gray-400">
+                    <DarkModeToggle />
+                </li>
+                <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
                     <Link
                     class="nav-link nav-icon" 
             :href="route('notification.index')"
@@ -177,25 +179,25 @@
                 </li> -->
                 <!-- End Messages Nav -->
 
-                <li class="nav-item dropdown pe-3">
+                <li class="nav-item dropdown pe-3 text-gray-600 dark:text-gray-400">
 
                     <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
                         <img :src="user.avatar" alt="Profile" class="rounded-circle">
-                        <span class="d-none d-md-block dropdown-toggle ps-2">{{ user.name }}</span>
+                        <span class="d-none d-md-block dropdown-toggle ps-2 dark:text-white">{{ user.name }}</span>
                     </a>
                     <!-- End Profile Iamge Icon -->
 
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile">
+                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow profile text-gray-600 dark:text-gray-400">
                         <li class="dropdown-header">
-                            <h6>{{ user.name }}</h6>
-                            <span>{{ user.email }}</span>
+                            <h6 class="dark:text-white">{{ user.name }}</h6>
+                            <span class="dark:text-white">{{ user.email }}</span>
                         </li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
 
                         <li>
-                            <a class="dropdown-item d-flex align-items-center" :href="route('profile.edit')">
+                            <a class="dropdown-item d-flex align-items-center dark:text-white" :href="route('profile.edit')">
                                 <i class="bi bi-person"></i>
                                 <span>{{translations.my_profile }} </span>
                             </a>
@@ -235,7 +237,7 @@
 
     <!-- Include the main content here -->
 
-    <main id="main" class="main" >
+    <main id="main" class="main bg-gray-100 dark:bg-gray-800" >
         <div v-if="flashSuccess" class="alert alert-success bg-success text-light border-0 alert-dismissible fade show"
             role="alert">
              {{flashSuccess }}
@@ -255,6 +257,8 @@
 <script setup>
 import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
+import DarkModeToggle from '@/Components/DarkToggle.vue';
+
 defineProps({translations:Array })
 
 const showingNavigationDropdown = ref(false);
