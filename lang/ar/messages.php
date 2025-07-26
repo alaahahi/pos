@@ -122,6 +122,9 @@ return [
     'barcode'=>'باركود',
     'start_date'=>'تاريخ البداية',
     'end_date'=>'تاريخ النهاية',
-
+    'are_you_sure'=>'هل أنت متأكد؟',
+    'you_will_not_be_able_to_revert_this'=>'لن تكون قادراً على استعادة هذه البيانات مجدداً',
+    'currency'=>'العملة',
+    'amount'=>'المبلغ'
 
 ];

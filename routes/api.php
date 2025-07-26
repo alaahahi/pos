@@ -33,6 +33,8 @@ Route::post('drop-from-box',[BoxesController::class, 'dropFromBox'])->name('drop
 Route::post('deleteTransactions',[AccountingController::class, 'delTransactions'])->name('deleteTransactions');
 Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
 Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name('transactions');
+Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');
+Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
 Route::get('/check-session', function () {
     $user = Auth::user();
 

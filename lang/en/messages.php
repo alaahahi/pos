@@ -122,6 +122,9 @@ return [
     'barcode'=>'Barcode',
     'start_date'=>'Start date',
     'end_date'=>'End date',
+    'are_you_sure'=>'Are you sure?',
+    'you_will_not_be_able_to_revert_this'=>'You will not be able to revert this',
+    'currency'=>'Currency',
 
 
 ];

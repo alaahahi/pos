@@ -20,23 +20,23 @@
                 </button>
             </div>
             <div class="col-md-2">
-                <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDollarDinar()">
+                <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDinarDollar()">
                   {{ translations.convert_dinar_dollar }} &nbsp; <i class="bi bi-arrow-left-right"></i>
                 </button>
             </div>
             <div class="col-md-2">
-                <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDinarDollar()">
+                <button v-if="hasPermission('create order')" class="btn btn-warning" @click="openConvertDollarDinar()">
                   {{ translations.convert_dollar_dinar }} &nbsp; <i class="bi bi-arrow-left-right"></i>
                 </button>
             </div>
             <div class="col-md-2">
                 <button  class="btn btn-info w-100 text-white" >
-                 الرصيد بالدولار : <span class="text-bolde">{{ mainBox.wallet.balance ?? 0 }}</span>  <i class="bi bi-currency-dollar"></i>
+                 الرصيد بالدولار : <span class="text-bolde">{{  updateResults(mainBox.wallet.balance ?? 0) }}</span>  <i class="bi bi-currency-dollar"></i>
                 </button>
             </div>
             <div class="col-md-2">
                 <button  class="btn btn-info w-100 text-white" >
-                  الرصيد بالدينار : <span class="text-bold">{{ mainBox.wallet.balanceDinar ?? 0 }}</span>  <span class="text-white">IQD</span>
+                  الرصيد بالدينار : <span class="text-bold">{{  updateResults(mainBox.wallet.balance_dinar ?? 0) }}</span>  <span class="text-white">IQD</span>
                 </button>
             </div>
             <!-- هنا يمكن إضافة أي أدوات تصفية أو بحث إضافية-->
@@ -81,22 +81,59 @@
                   <th scope="col">البيان</th> <!-- إجمالي المبلغ -->
                   <th scope="col">{{ translations.created_at }}</th> <!-- تاريخ الإنشاء -->
                   <th scope="col" v-if="hasPermission('delete order')">{{ translations.delete }}</th>
+                  <th scope="col">مرفق</th> 
+                  <th scope="col">طباعة</th> 
+                  <th scope="col">عرض</th>
                 </tr>
               </thead>
               <tbody>
-                <template v-for="(order, index) in transactions.data" :key="order.id">
-                <tr  :class="{'bg-red-100 dark:bg-red-900': order.type == 'outUser'||order.type == 'out','bg-green-100 dark:bg-green-900': order.type == 'inUser'||order.type == 'in'}">
+                <template v-for="(tran, index) in transactions.data" :key="tran.id">
+                <tr  :class="{'bg-red-100 dark:bg-red-900': tran.type == 'outUser'||tran.type == 'out','bg-green-100 dark:bg-green-900': tran.type == 'inUser'||tran.type == 'in'}">
                   <th>{{ index + 1 }}</th>
-                  <td>{{ order.morphed?.name }}</td> <!-- اسم العميل -->
-                  <td><span v-if="order.type == 'outUser'||order.type == 'out'">{{ order.amount }} {{ order.currency }}</span></td> <!-- إجمالي المبلغ -->
-                  <td><span v-if="order.type == 'inUser'||order.type == 'in'">{{ order.amount }} {{ order.currency }}</span></td> <!-- إجمالي المبلغ -->
-                  <td>{{ order.description }}</td> <!-- الحالة -->
-                  <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
+                  <td>{{ tran.morphed?.name }}</td> <!-- اسم العميل -->
+                  <td><span v-if="tran.type == 'outUser'||tran.type == 'out'">{{ updateResults(tran.amount) }} {{ tran.currency }}</span></td> <!-- إجمالي المبلغ -->
+                  <td><span v-if="tran.type == 'inUser'||tran.type == 'in'">{{ updateResults(tran.amount) }} {{ tran.currency }}</span></td> <!-- إجمالي المبلغ -->
+                  <td>{{ tran.description }}</td> <!-- الحالة -->
+                  <td>{{ formatDate(tran.created_at) }}</td> <!-- تاريخ الإنشاء -->
                   <td v-if="hasPermission('delete order')">
-                    <button type="button" class="btn btn-danger" @click="Delete(order.id)">
-                      <i class="bi bi-trash"></i>
+                    <button class="px-1 py-1 text-white bg-rose-500 rounded-md focus:outline-none" @click="Delete(tran.id,tran.amount)">
+                      <trash />
                     </button>
                   </td>
+                  <td>
+                    <button class="px-1 mx-2 py-1 text-white bg-purple-600 rounded-md focus:outline-none" @click="openModalUploader(tran)" >
+                      <imags />
+                    </button>
+                  </td>
+                  <td>
+                    <a  target="_blank"
+                      v-if="tran.type === 'out' || tran.type === 'outUser'|| tran.type === 'debt'"
+                      style="display: inline-flex;"
+                      :href="`/api/getIndexAccountsSelas?user_id=${mainBox.id}&print=2&transactions_id=${tran.id}`"
+                      tabIndex="1"
+                      class="px-1 py-1  text-white bg-green-500 rounded"
+                      >
+                      <print class="inline-flex" />
+                      </a>
+                      <a  target="_blank"
+                      v-if="tran.type === 'in' || tran.type === 'inUser' "
+                      style="display: inline-flex;"
+                      :href="`/api/getIndexAccountsSelas?user_id=${mainBox.id}&print=3&transactions_id=${tran.id}`"
+                      tabIndex="1"
+                      class="px-1 py-1  text-white bg-green-500 rounded"
+                      >
+                      <print class="inline-flex" />
+                      </a>
+                      
+                  </td>
+                  <td>   <a
+                      v-for="(image, index) in tran.transactions_images"
+                      :key="index"
+                      :href="getDownloadUrl(image.name)"
+                      style="cursor: pointer;"
+                      target="_blank">
+                      <img :src="getImageUrl(image.name)" alt="" class="px-1" style="max-width: 80px;max-height: 50px;display: inline;" />
+                    </a></td>
                 </tr>
                 </template>
               </tbody>
@@ -106,6 +143,19 @@
       </div>
       <Pagination :links="transactions?.links" />
     </section>
+    <ModalUploader
+            :show="showModalUploader ? true : false"
+            :formData="tranId"
+            @a="UpdatePage($event)"
+            @close="showModalUploader = false"
+            >
+          <template #header>
+            <h2 class=" mb-5 dark:text-white w-100 text-center">
+
+            تحميل ملفات
+          </h2>
+          </template>
+    </ModalUploader>
     <ModalConvertDollarDinar 
             :show="showModalConvertDollarDinar ? true : false"
             :boxes="boxes"
@@ -165,12 +215,21 @@ import ModalConvertDollarDinar from "@/Components/ModalConvertDollarDinar.vue";
 import ModalConvertDinarDollar from "@/Components/ModalConvertDinarDollar.vue";
 import ModalAddToBox from "@/Components/ModalAddToBox.vue";
 import ModalDropFromBox from "@/Components/ModalDropFromBox.vue";
+import print from "@/Components/icon/print.vue";
+import imags from "@/Components/icon/imags.vue";
+import trash from "@/Components/icon/trash.vue";
+import ModalUploader from "@/Components/ModalUploader.vue";
+
+
 import axios from 'axios';
 let showModalConvertDinarDollar = ref(false);
 let showModalConvertDollarDinar = ref(false);
 let showModalAddToBox = ref(false);
 let showModalDropFromBox = ref(false);
+let showModalUploader = ref(false);
+let tranId = ref(0);
 
+ 
 const props = defineProps({
   boxes: Object, 
   transactions: Array,
@@ -198,11 +257,15 @@ function openAddSales() {
 function openAddExpenses(){
   showModalDropFromBox.value = true;
 }
+function UpdatePage (){
+  refresh();
+}
+
 function refresh(){
   axios.get('api/boxes/transactions')
  .then(response => {
   // Use router to refresh the page data instead of directly modifying props
-  router.reload({ only: ['transactions'] });
+  router.reload({ only: ['transactions','mainBox'] });
  })
  .catch(error => {
   console.log(error);
@@ -244,41 +307,21 @@ const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 };
 
-const Activate = (id) => {
-  Swal.fire({
-    title: props.translations.are_your_sure,
-    icon: 'warning',
-    showCancelButton: true,
-    confirmButtonColor: '#d33',
-    cancelButtonColor: '#7066e0',
-    confirmButtonText: props.translations.yes,
-    cancelButtonText: props.translations.cancel,
-  }).then((result) => {
-    if (result.isConfirmed) {
-      router.post(`/boxes/${id}/activate`, {
-        onSuccess: () => {
-          Swal.fire(
-            'Updated !',
-            'Order status has been updated.',
-            'success'
-          );
-        },
-        onError: () => {
-          Swal.fire(
-            'Error!',
-            'There was an issue updating the order status.',
-            'error'
-          );
-        }
-      });
-    }
-  });
+function updateResults(input) {
+  // Ensure the input is a number
+  if (typeof input !== 'number') {
+    // Try converting the input to a number
+    input = parseFloat(input) || 0;
+  }
+  
+  // Use toLocaleString to format the number with commas
+  return input.toLocaleString();
 }
 
-const Delete = (id) => {
+const Delete = (id,amount) => {
   Swal.fire({
-    title: props.translations.are_you_sure,
-    text: props.translations.you_will_not_be_able_to_revert_this,
+    title: props.translations.are_you_sure + props.translations.delete+' ' +  props.translations.amount +' ' + amount ,
+    text: props.translations.you_will_not_be_able_to_revert_this ,
     icon: 'warning',
     showCancelButton: true,
     confirmButtonColor: '#d33',
@@ -287,21 +330,15 @@ const Delete = (id) => {
     cancelButtonText: props.translations.cancel,
   }).then((result) => {
     if (result.isConfirmed) {
-      router.delete('boxes/' + id, {
-        onSuccess: () => {
-          Swal.fire({
-            title: props.translations.data_deleted_successfully,
-            icon: "success"
-          });
-        },
-        onError: () => {
-          Swal.fire(
-            'Error!',
-            'There was an issue deleting the order.',
-            'error'
-          );
-        }
-      });
+      axios.post('api/delTransactions/?id=' + id )
+      .then(response => {
+        router.reload({ only: ['transactions','mainBox'] });
+      })
+      .catch(error => {
+        router.reload({ only: ['transactions','mainBox'] });
+      })
+
+
     }
   });
 };
@@ -318,4 +355,9 @@ const formatDate = (date) => {
   const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
   return new Date(date).toLocaleDateString('en-US', options);
 };
+
+function openModalUploader(tran){
+  tranId.value = tran
+  showModalUploader.value = true;
+}
 </script>

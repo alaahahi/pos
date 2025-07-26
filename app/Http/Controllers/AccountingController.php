@@ -41,7 +41,6 @@ use App\Imports\ImportInfo;
 use App\Exports\ExportInfo;
 use App\Exports\ExportAccount;
 
-
 class AccountingController extends Controller
 {
     public function __construct(){
@@ -121,20 +120,20 @@ class AccountingController extends Controller
 
     public function index()
     {  
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $boxes = User::with('wallet')->where('owner_id',$owner_id)->where('email', 'mainBox@account.com')->get();
         return Inertia::render('Accounting/Index', ['boxes'=>$boxes,'accounts'=>$this->mainAccount->where('owner_id',$owner_id)->first()]);
     }
     public function wallet(Request $request)
     {  
         $id= $request->id;
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $boxes = User::with('wallet')->where('owner_id',$owner_id)->where('id',$id)->first();
         return Inertia::render('Accounting/Wallet', ['boxes'=>$boxes,'accounts'=>$this->mainAccount->where('owner_id',$owner_id)->first()]);
     }
     public function getIndexAccounting(Request $request)
     {
-     $owner_id=Auth::user()->owner_id;
+     $owner_id=1;
      $user_id = $_GET['user_id'] ?? 0;
      $from =  $_GET['from'] ?? 0;
      $to =$_GET['to'] ?? 0;
@@ -229,7 +228,7 @@ class AccountingController extends Controller
      }
      public function salesDebtUser(Request $request)
      {
-      $owner_id=Auth::user()->owner_id;
+      $owner_id=1;
       $note= $request->note??'';
       $amountDollar= $request->amountDollar??0;
       $amountDinar= $request->amountDinar??0;
@@ -253,7 +252,7 @@ class AccountingController extends Controller
       }
      public function salesDebt(Request $request)
      {
-      $owner_id=Auth::user()->owner_id;
+      $owner_id=1;
       $user_id= $request->user['id']??0;
       $note= $request->note??'';
       $amountDollar= $request->amountDollar??0;
@@ -276,7 +275,7 @@ class AccountingController extends Controller
       }
       public function receiptArrived(Request $request)
       {
-       $owner_id=Auth::user()->owner_id;
+       $owner_id=1;
        $note= $request->amountNote??'';
        $amountDollar= $request->amountDollar??0;
        $amountDinar= $request->amountDinar??0;
@@ -295,7 +294,7 @@ class AccountingController extends Controller
        }
        public function receiptArrivedUser(Request $request)
        {
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $note= $request->amountNote??'';
         $user_id=$request->id;
 
@@ -323,7 +322,7 @@ class AccountingController extends Controller
         }
     public function getIndexAccountsSelas()
     { 
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $user_id = $_GET['user_id'] ?? 0;
         $from =  $_GET['from'] ?? 0;
         $to =$_GET['to'] ?? 0;
@@ -519,7 +518,7 @@ class AccountingController extends Controller
     }
     public function addPaymentCar()
     {
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $user_id = $_GET['user_id']??0;
         $car_id = $_GET['car_id']??0;
         $amount=$_GET['amount']??0;
@@ -556,7 +555,7 @@ class AccountingController extends Controller
     }
     public function addPaymentCarTotal()
     {
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $client_id  = $_GET['client_id']  ??0;
         $amount_o  = $_GET['amount']  ??0;
         $note = $_GET['note'] ?? '';
@@ -660,7 +659,7 @@ class AccountingController extends Controller
 
     }
     public function GenExpenses (Request $request){
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $year_date=Carbon::now()->format('Y');
         $factor=$request->factor ?? 1;
         $amount=(($request->amount)/ $factor);
@@ -703,7 +702,7 @@ class AccountingController extends Controller
 
     }
     public function convertDollarDinar(Request $request){
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $amountDollar =$request->amountDollar;
         $amountResultDinar =$request->amountResultDinar;
         $exchangeRate =$request->exchangeRate;
@@ -723,7 +722,7 @@ class AccountingController extends Controller
 
     }
     public function convertDinarDollar(Request $request){
-        $owner_id=Auth::user()->owner_id;
+        $owner_id=1;
         $amountDinar =$request->amountDinar;
         $amountResultDollar =$request->amountResultDollar;
         $exchangeRate =$request->exchangeRate;
@@ -870,13 +869,11 @@ class AccountingController extends Controller
  
     public function delTransactions(Request $request)
     {
-        $owner_id=Auth::user()->owner_id;
         $transaction_id = $request->id ?? 0;
         $originalTransaction = Transactions::find($transaction_id);
         $wallet_id=$originalTransaction->wallet_id;
         $refundTransaction = 'مرتجع حذف حركة';
-
-        $wallet=Wallet::find($wallet_id);
+         $wallet=Wallet::find($wallet_id);
         if (!$originalTransaction) {
           return response()->json(['message' => 'Transaction not found'], 404);
           }
@@ -971,40 +968,9 @@ class AccountingController extends Controller
 
 
         }
-        $walletExpensesIds = [
-            $this->howler->wallet->id,
-            $this->shippingCoc->wallet->id,
-            $this->border->wallet->id,
-            $this->iran->wallet->id,
-            $this->dubai->wallet->id,
-        ];
-        if (in_array($wallet_id, $walletExpensesIds)) {
-            $expenses = Expenses::where('transaction_id',$firstTransaction->id);
-            $expenses->delete();
-        }
-        $walletContractsIds = [
-            $this->onlineContracts->where('owner_id',$owner_id)->first()->wallet->id,
-            $this->onlineContractsDinar->where('owner_id',$owner_id)->first()->wallet->id,
-            $this->debtOnlineContracts->where('owner_id',$owner_id)->first()->wallet->id,
-            $this->debtOnlineContractsDinar->where('owner_id',$owner_id)->first()->wallet->id
-        ];
-        if (in_array($wallet_id, $walletContractsIds)) {
-            $refundTransaction = 'مرتجع حذف حركة';
-            $contract = Contract::where('car_id',$firstTransaction->morphed_id)->first();
-            if($firstTransaction->currency=='$'){
-                $this->increaseWallet($firstTransaction->amount, $refundTransaction,$this->debtOnlineContracts->where('owner_id',$owner_id)->first()->id,$firstTransaction->id,'App\Models\Car',0,0,'$',0);
-                if($contract){
-                    $contract->delete();
-                }
-            }
-            if($firstTransaction->currency=='IQD'){
-                $this->increaseWallet($firstTransaction->amount, $refundTransaction,$this->debtOnlineContractsDinar->where('owner_id',$owner_id)->first()->id,$firstTransaction->id,'App\Models\Car',0,0,'IQD',0);
-                if($contract){
-                    $contract->delete();
-                }
-
-            }
-        }
+     
+  
+ 
          
         if($originalTransaction){
             foreach ($originalTransaction->TransactionsImages as $transactionsImage) {
@@ -1020,6 +986,6 @@ class AccountingController extends Controller
  
         $originalTransaction->delete();
     
-        return response()->json(['message' => $all], 200);
+        return response()->json(['message' => 'del ok']);;
     }
     }

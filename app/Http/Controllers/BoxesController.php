@@ -98,7 +98,7 @@ class BoxesController extends Controller
                 'App\Models\User',
                 0,
                 0,
-                'USD',
+                '$',
                 $request->date
             );
         }
@@ -135,7 +135,7 @@ class BoxesController extends Controller
                 'App\Models\User',
                 0,
                 0,
-                'USD',
+                '$',
                 $request->date
             );
         }
@@ -167,7 +167,7 @@ class BoxesController extends Controller
         ];
 
         // Start the Box query
-        $transactionsQuery = transactions::with('morphed')->orderBy('created_at', 'desc');
+        $transactionsQuery = transactions::with('TransactionsImages')->with('morphed')->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
         $transactionsQuery->when($filters['name'], function ($query, $name) {
