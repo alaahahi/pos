@@ -286,9 +286,13 @@ const saveInvoice = async (event) => {
 
   try {
     // إرسال الطلب إلى API باستخدام Axios
-    const response = await axios.post(route('orders.store'), invoiceData);
+    const response = await axios.post('/api/createOrder', invoiceData);
 
     if (response.status === 200 || response.status === 201) {
+      let transaction=response.data.id
+      let order_id=response.data.order_id
+
+      window.open(`/api/getIndexAccountsSelas?print=2&transactions_id=${transaction}&order_id=${order_id}`, '_blank');
       logAction('invoice_saved');
     } else {
       logAction('invoice_save_failed');

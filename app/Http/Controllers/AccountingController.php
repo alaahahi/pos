@@ -28,6 +28,7 @@ use App\Models\Transfers;
 use App\Models\Car;
 use App\Models\Company;
 use App\Models\Name;
+use App\Models\Order;
 use App\Models\CarModel;
 use App\Models\Color;
 use App\Models\ExpensesType;
@@ -147,52 +148,12 @@ class AccountingController extends Controller
      }else{
          $transactions = Transactions ::with('TransactionsImages')->with('morphed')->where('wallet_id', $user->wallet->id)->orderBy('id','desc');
      }
-     if($q){
-        $transactions = Transactions::with('TransactionsImages')->where('wallet_id', $user->wallet->id)
-        ->where(function ($query) use ($q) {
-            $query->where('id', $q)
-                  ->orWhere('description', 'LIKE', '%' . $q . '%');
-        })
-        ->orderBy('id', 'desc');
-    }
-     if($type=='wallet'){
-        $allTransactions = $transactions
-        ->whereIn('type', ['inUser', 'outUser'])
-        ->where('wallet_id', $user->wallet->id)
-        ->paginate(100);
-         }elseif($type=='printExcel'){
-            $allTransactions = $transactions->paginate(100);
-        }
-         else{
-        $allTransactions = $transactions->paginate(100);
-     }
-     $sumAllTransactions = $allTransactions->where('currency','$')->sum('amount');
-     $sumDebitTransactions = $allTransactions->where('currency','$')->whereIn('type', ['debt','outUserBox'])->sum('amount');
-     $sumInTransactions = $allTransactions->where('currency','$')->whereIn('type', ['in', 'inUserBox'])->sum('amount');
-     $sumInTransactionsUser = $allTransactions->where('currency','$')->where('type', 'inUser')->sum('amount');
-     $sumOutTransactionsUser = $allTransactions->where('currency','$')->where('type', 'outUser')->sum('amount');
-
-     $sumAllTransactionsDinar = $allTransactions->where('currency','IQD')->sum('amount');
-     $sumDebitTransactionsDinar = $allTransactions->where('currency','IQD')->whereIn('type', ['debt','outUserBox'])->sum('amount');
-     $sumInTransactionsDinar = $allTransactions->where('currency','IQD')->whereIn('type', ['in', 'inUserBox'])->sum('amount');
-     $sumInTransactionsDinarUser = $allTransactions->where('currency','IQD')->where('type', 'inUser')->sum('amount');
-     $sumOutTransactionsDinarUser = $allTransactions->where('currency','IQD')->where('type', 'outUser')->sum('amount');
-
-     
+   
      // Additional logic to retrieve client data
      $data = [
          'user' => $user,
          'transactions' => $allTransactions,
-         'sum_transactions' => $sumAllTransactions,
-         'sum_transactions_debit' => $sumDebitTransactions,
-         'sum_transactions_in' => $sumInTransactions,
-         'sum_transactions_dinar' => $sumAllTransactionsDinar,
-         'sum_transactions_debit_dinar' => $sumDebitTransactionsDinar,
-         'sum_transactions_in_dinar' => $sumInTransactionsDinar,
-         'sumInTransactionsUser' =>  $sumInTransactionsUser,
-         'sumInTransactionsDinarUser' => $sumInTransactionsDinarUser,
-         'sumOutTransactionsUser' =>  $sumOutTransactionsUser,
-         'sumOutTransactionsDinarUser' => $sumOutTransactionsDinarUser
+
      ];
      if($print==1){
          $config=SystemConfig::first();
@@ -200,7 +161,7 @@ class AccountingController extends Controller
       }
       elseif($print==2){
          $config=SystemConfig::first();
-         return view('receipt',compact('data','config','transactions_id','owner_id'));
+         return view('orders.print-invoice',compact('data','config','transactions_id','owner_id'));
       }
       elseif($print==3){
          $config=SystemConfig::first();
@@ -328,152 +289,28 @@ class AccountingController extends Controller
         $to =$_GET['to'] ?? 0;
         $print =$_GET['print'] ?? 0;
         $car_id = $_GET['car_id'] ?? 0;
-        $printExcel=$_GET['printExcel'] ?? 0;
+        $order_id=$_GET['order_id'] ?? 0;
 
         $showComplatedCars=$_GET['showComplatedCars'] ?? 0;
         $transactions_id = $_GET['transactions_id'] ?? 0;
         $client = User::with('wallet')->where('id', $user_id)->first();
         if($from && $to ){
-            $contract=Contract::where('user_id',$user_id)->whereBetween('created', [$from, $to]);
-            $transactions = Transactions ::where('wallet_id', $client?->wallet?->id)->whereBetween('created', [$from, $to]);
-            $cars = Car::with('contract')->with('CarImages')->with('exitcar')->where('client_id',$client->id)->whereBetween('date', [$from, $to]);
-            $car_total = $cars->count();
-            $car_total_unpaid =     Car::where('client_id',$client->id)->where('results',0)->whereBetween('date', [$from, $to])->count();
-            $car_total_uncomplete = Car::where('client_id',$client->id)->where('results',1)->whereBetween('date', [$from, $to])->count();
-            $car_total_complete =   Car::where('client_id',$client->id)->where('results',2)->whereBetween('date', [$from, $to])->count();
-            $cars_discount=   Car::where('client_id',$client->id)->whereBetween('date', [$from, $to])->sum('discount');
-            $cars_paid=   Car::where('client_id',$client->id)->whereBetween('date', [$from, $to])->sum('paid');
-            $cars_sum=   Car::where('client_id',$client->id)->whereBetween('date', [$from, $to])->sum('total_s');
-            $contract_total=   Car::where('client_id',$client->id)->whereBetween('date', [$from, $to])->where('contract_id','!=',0)->count();
-            $exit_car_total=   Car::where('client_id',$client->id)->whereBetween('date', [$from, $to])->where('is_exit','!=',0)->count();
-            $contract_total_debit_Dollar=($contract->sum('price')-$contract->sum('paid'))??0;
-            $contract_total_debit_Dinar=($contract->sum('price_dinar')-$contract->sum('paid_dinar'))??0;
-            $cars_need_paid=$cars_sum-($cars_paid+$cars_discount);
+              $transactions = Transactions ::where('wallet_id', $client?->wallet?->id)->whereBetween('created', [$from, $to]);
+       
         }else{
-            $contract=Contract::where('user_id',$user_id);
-            $transactions = Transactions ::where('wallet_id', $client?->wallet?->id);
-            $cars =  Car::with('contract')->with('CarImages')->with('exitcar')->where('client_id',$client->id);
-            $car_total = $cars->count();
-            $car_total_unpaid =     Car::where('client_id',$client->id)->where('results',0)->count();
-            $car_total_uncomplete = Car::where('client_id',$client->id)->where('results',1)->count();
-            $car_total_complete =   Car::where('client_id',$client->id)->where('results',2)->count();
-            $cars_discount=Car::where('client_id',$client->id)->sum('discount');
-            $cars_paid=   Car::where('client_id',$client->id)->sum('paid');
-            $cars_sum=   Car::where('client_id',$client->id)->sum('total_s');
-            $contract_total=   Car::where('client_id',$client->id)->where('contract_id','!=',0)->count();
-            $exit_car_total=   Car::where('client_id',$client->id)->where('is_exit','!=',0)->count();
-            $contract_total_debit_Dollar=($contract->sum('price')-$contract->sum('paid'))??0;
-            $contract_total_debit_Dinar=($contract->sum('price_dinar')-$contract->sum('paid_dinar'))??0;
-            $cars_need_paid=$cars_sum-($cars_paid+$cars_discount);
+             $transactions = Transactions ::where('wallet_id', $client?->wallet?->id);
+        
         }
 
         //$data = $transactions->paginate(10);
  
-
-        if($print==1){
-            if($showComplatedCars==1){
-                $clientData = [
-                    'totalAmount' =>   $transactions->sum('amount'),
-                    'data' => $cars->where('results','!=','2')->get(),
-                    'client'=>$client,
-                    'car_total'=>$cars->where('results','!=','2')->count(),
-                    'car_total_unpaid'=>$car_total_unpaid,
-                    'car_total_complete'=>$car_total_complete,
-                    'car_total_uncomplete'=>$car_total_uncomplete,
-                    'contract_total'=>$contract_total,
-                    'exit_car_total'=>$exit_car_total,
-                    'contract_total_debit_Dollar'=>$contract_total_debit_Dollar,
-                    'contract_total_debit_Dinar'=>$contract_total_debit_Dinar,
-                    'cars_sum'=>$cars_sum,
-                    'cars_paid'=>$cars_paid,
-                    'cars_discount'=>$cars_discount,
-                    'cars_need_paid'=>$cars_need_paid,
-                    'transactions'=>$transactions->get(),
-                    'date'=> Carbon::now()->format('Y-m-d')
-                ];
-            }else{
-                $clientData = [
-                    'totalAmount' =>   $transactions->sum('amount'),
-                    'data' => $cars->get(),
-                    'client'=>$client,
-                    'car_total'=>$car_total,
-                    'car_total_unpaid'=>$car_total_unpaid,
-                    'car_total_complete'=>$car_total_complete,
-                    'car_total_uncomplete'=>$car_total_uncomplete,
-                    'contract_total'=>$contract_total,
-                    'exit_car_total'=>$exit_car_total,
-                    'contract_total_debit_Dollar'=>$contract_total_debit_Dollar,
-                    'contract_total_debit_Dinar'=>$contract_total_debit_Dinar,
-                    'cars_sum'=>$cars_sum,
-                    'cars_paid'=>$cars_paid,
-                    'cars_discount'=>$cars_discount,
-                    'cars_need_paid'=>$cars_need_paid,
-                    'transactions'=>$transactions->get(),
-                    'date'=> Carbon::now()->format('Y-m-d')
-                ];
-            }
-
-            $config=SystemConfig::first();
-
-            if($printExcel){
-                return Excel::download(new ExportInfo($user_id,$showComplatedCars), $client->name.'.xlsx');
-            }else{
-                return view('show',compact('clientData','config'));
-            }
-
-
-         }
-
-         if($print==6){
-            $config=SystemConfig::first();
-            $clientData = [
-                'totalAmount' =>   $transactions->sum('amount'),
-                'data' => $cars->where('id',$car_id)->get(),
-                'client'=>$client,
-                'car_total'=>$cars->where('id',$car_id)->count(),
-                'car_total_unpaid'=>$car_total_unpaid,
-                'car_total_complete'=>$car_total_complete,
-                'car_total_uncomplete'=>$car_total_uncomplete,
-                'contract_total'=>$contract_total,
-                'exit_car_total'=>$exit_car_total,
-                'contract_total_debit_Dollar'=>$contract_total_debit_Dollar,
-                'contract_total_debit_Dinar'=>$contract_total_debit_Dinar,
-                'cars_sum'=> $cars->where('id',$car_id)->first()->total_s,
-                'cars_paid'=> $cars->where('id',$car_id)->first()->paid,
-                'cars_discount'=>$cars->where('id',$car_id)->first()->discount,
-                'cars_need_paid'=>$cars->where('id',$car_id)->first()->total_s - $cars->where('id',$car_id)->first()->paid,
-                'transactions'=>$transactions->get(),
-                'date'=> Carbon::now()->format('Y-m-d'),
-                'print'=> 6
-            ];
-            return view('show',compact('clientData','config'));
-         }
-
-                 // Additional logic to retrieve client data
-        $clientData = [
-            'totalAmount' =>   $transactions->sum('amount'),
-            'data' => $cars->get(),
-            'client'=>$client,
-            'car_total'=>$car_total,
-            'car_total_unpaid'=>$car_total_unpaid,
-            'car_total_complete'=>$car_total_complete,
-            'car_total_uncomplete'=>$car_total_uncomplete,
-            'contract_total'=>$contract_total,
-            'exit_car_total'=>$exit_car_total,
-            'contract_total_debit_Dollar'=>$contract_total_debit_Dollar,
-            'contract_total_debit_Dinar'=>$contract_total_debit_Dinar,
-            'cars_sum'=>$cars_sum,
-            'cars_paid'=>$cars_paid,
-            'cars_discount'=>$cars_discount,
-            'cars_need_paid'=>$cars_need_paid,
-            'transactions'=>$transactions->get(),
-            'date'=> Carbon::now()->format('Y-m-d')
-        ];
-
+        
+        $order = Order::with(['customer', 'products'])->findOrFail($order_id);
+ 
          if($print==2){
             $config=SystemConfig::first();
 
-            return view('receipt',compact('clientData','config','transactions_id','owner_id'));
+            return view('orders.print-invoice',compact('order','config','transactions_id','owner_id'));
          }
    
          

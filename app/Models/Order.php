@@ -40,7 +40,7 @@ class Order extends Model
                 'affected_record_id' => $invoice->id,
                 'original_data' => json_encode($invoice->getOriginal()),
                 'updated_data' => json_encode($invoice->getAttributes()),
-                'by_user_id' => auth()->user()->id, // Assuming the user is authenticated
+                'by_user_id' => auth()->user()->id ?? 1, // Assuming the user is authenticated
             ]);
         });
     }

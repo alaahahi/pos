@@ -6,6 +6,8 @@ use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BoxesController;
+use App\Http\Controllers\OrderController;
+
 /*
 |--------------------------------------------------------------------------
 | API Routes
@@ -35,6 +37,8 @@ Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
 Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name('transactions');
 Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');
 Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
+Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
+
 Route::get('/check-session', function () {
     $user = Auth::user();
 

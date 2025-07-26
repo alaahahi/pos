@@ -6,6 +6,7 @@ use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Order;
 use App\Models\UserType;
+use App\Models\SystemConfig;
 use App\Models\User;
 // use App\Http\Requests\Order\StoreOrderRequest;
 // use App\Http\Requests\Order\UpdateOrderRequest;
@@ -105,9 +106,8 @@ class OrderController extends Controller
      */
 
     
-    public function store(Request $request)
+    public function createOrder(Request $request)
     {
-        
         // التحقق من صحة البيانات
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
@@ -142,16 +142,15 @@ class OrderController extends Controller
                 ];
             }
             $order->products()->sync($products);
-    
+
             // تسجيل العملية في السجلات
             Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
     
             DB::commit();
-
             $transaction = $this->accountingController->increaseWallet(
                 $validated['total_paid'], // المبلغ المدفوع
                 'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
-                $validated['customer_id'], // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
                 $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
                 'App\Models\User',
                 0,
@@ -160,18 +159,19 @@ class OrderController extends Controller
                 $order->date
             );
 
-    
             // إذا كان الطلب من API، أرجع JSON
             if ($request->expectsJson()) {
+             
+
                 return response()->json([
                     'message' => __('messages.data_saved_successfully'),
                     'order_id' => $order->id,
+                    'id' =>$transaction->id
                 ], 201);
             }
-    
             return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));
-        } catch (\Exception $e) {
-            DB::rollBack();
+         } catch (\Exception $e) {
+             DB::rollBack();
             Log::error('Order creation failed', ['error' => $e->getMessage()]);
     
             if ($request->expectsJson()) {
