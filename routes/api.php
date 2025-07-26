@@ -29,6 +29,7 @@ Route::post('receiptArrivedUser',[AccountingController::class, 'receiptArrivedUs
 Route::post('salesDebtUser',[AccountingController::class, 'salesDebtUser'])->name('salesDebtUser');
 Route::get('getIndexAccountsSelas',[AccountingController::class, 'getIndexAccountsSelas'])->name('getIndexAccountsSelas');
 Route::post('add-to-box',[BoxesController::class, 'addToBox'])->name('add-to-box');
+Route::post('drop-from-box',[BoxesController::class, 'dropFromBox'])->name('drop-from-box');
 Route::post('deleteTransactions',[AccountingController::class, 'delTransactions'])->name('deleteTransactions');
 Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
 Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name('transactions');

@@ -143,11 +143,11 @@
       <ModalDropFromBox 
             :show="showModalDropFromBox ? true : false"
             :boxes="boxes"
-            @a="showModalDropFromBox = false"
+            @a="refresh();showModalDropFromBox = false"
             @close="showModalDropFromBox = false"
             >
           <template #header>
-            <h3 class="text-center  w-100">وصل سحب - سحب من الصندوق</h3>
+            <h2 class="text-center  w-100 dark:text-white text-black ">وصل سحب - سحب من الصندوق</h2>
             
            </template>
       </ModalDropFromBox>

@@ -119,6 +119,43 @@ class BoxesController extends Controller
         
         return response()->json(['message' => 'Transaction added successfully']);
     }
+    public function dropFromBox(Request $request)
+    {
+        $request->validate([
+            'amountDollar' => 'nullable|numeric',
+            'amountDinar' => 'nullable|numeric',
+            'amountNote' => 'nullable|string',
+        ]);
+        if($request->amountDollar > 0){
+            $transaction = $this->accountingController->decreaseWallet(
+                $request->amountDollar??0, // المبلغ المدفوع
+                $request->amountNote ?? '', // الوصف
+                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                'App\Models\User',
+                0,
+                0,
+                'USD',
+                $request->date
+            );
+        }
+        if($request->amountDinar > 0){
+            $transaction = $this->accountingController->decreaseWallet(
+                $request->amountDinar??0, // المبلغ المدفوع
+                $request->amountNote ?? '', // الوصف
+                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
+                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                'App\Models\User',
+                0,
+                0,
+                'IQD',
+                $request->date
+            );
+        }
+ 
+        
+        return response()->json(['message' => 'Transaction dropped successfully']);
+    }
     public function transactions(Request $request)
     {
         $filters = [

@@ -1,19 +1,18 @@
 <script setup>
 import { ref, watch } from 'vue';
+import axios from 'axios';  
 
 
 const props = defineProps({
   show: Boolean,
-  boxes: Array,
+  data: Array,
+  accounts: Array,
 });
 const form = ref({
-  user: {
-    percentage:0,
-  },
   date:getTodayDate(),
-  amount: 0,
-
-
+  amountDollar:0,
+  amountDinar:0,
+  amountNote:'',
 });
 function getTodayDate() {
   const today = new Date();
@@ -24,19 +23,20 @@ function getTodayDate() {
 }
 const restform =()=>{
   form.value = {
-  user: {
-    percentage:0,
-  },
   date:getTodayDate(),
-  amount: 0,
-
 };
 }
-
-
+const submit = (form) => {
+  axios.post('/api/drop-from-box', form)
+  .then(response => {
+   })
+  .catch(error => {
+    $emit('close');
+  });
+}
 </script>
   
-  <template>  
+  <template>
     <Transition name="modal">
       <div v-if="show" class="modal-mask ">
         <div class="modal-wrapper  max-h-[80vh]">
@@ -45,10 +45,11 @@ const restform =()=>{
               <slot name="header"></slot>
             </div>
             <div class="modal-body">
-              <!-- First Row: Dollar and Dinar Amounts -->
+       
               <div class="row g-3">
+                <!-- Amount in Dollar -->
                 <div class="col-lg-6">
-                  <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.dollar }} </label>
+                  <label for="amountDollar" class="form-label">المبلغ بالدولار</label>
                   <input
                     id="amountDollar"
                     type="number"
@@ -57,8 +58,9 @@ const restform =()=>{
                   />
                 </div>
 
+                <!-- Amount in Dinar -->
                 <div class="col-lg-6">
-                  <label for="amountDinar" class="form-label">{{ translations.total }} {{ translations.dinar }} </label>
+                  <label for="amountDinar" class="form-label">المبلغ بالدينار</label>
                   <input
                     id="amountDinar"
                     type="number"
@@ -66,10 +68,19 @@ const restform =()=>{
                     v-model="form.amountDinar"
                   />
                 </div>
-              </div>
 
-              <!-- Second Row: Date and Note -->
-              <div class="row g-3 mt-3">
+                <!-- Notes -->
+                <div class="col-lg-6">
+                  <label for="note" class="form-label">ملاحظة</label>
+                  <input
+                    id="note"
+                    type="text"
+                    class="form-control"
+                    v-model="form.amountNote"
+                  />
+                </div>
+
+                <!-- Date -->
                 <div class="col-lg-6">
                   <label for="date" class="form-label">التاريخ</label>
                   <input
@@ -77,16 +88,6 @@ const restform =()=>{
                     type="date"
                     class="form-control"
                     v-model="form.date"
-                  />
-                </div>
-
-                <div class="col-lg-6">
-                  <label for="note" class="form-label">ملاحظة</label>
-                  <input
-                    id="note"
-                    type="text"
-                    class="form-control"
-                    v-model="form.note"
                   />
                 </div>
               </div>
@@ -108,7 +109,7 @@ const restform =()=>{
                 <div class="px-2 flex-fill">
                   <button
                     class="btn btn-danger w-100 text-center"
-                    @click="$emit('a', form); restform();"
+                    @click="submit(form);$emit('a'); restform();"
                     :disabled="!form.amountDollar && !form.amountDinar"
                   >
                     نعم
