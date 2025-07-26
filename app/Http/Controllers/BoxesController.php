@@ -11,7 +11,7 @@ use App\Http\Requests\UpdateBoxRequest;
 use App\Http\Controllers\AccountingController;
 use App\Models\UserType;
 use App\Models\User;
-use App\Models\transactions;
+use App\Models\Transactions;
 use Carbon\Carbon;
 class BoxesController extends Controller
 {
