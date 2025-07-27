@@ -1,7 +1,7 @@
 <?php
 
 return [
-    'app_name' => 'WE DO EVENTS',
+    'app_name' => 'WEDOO EVENTS',
     'Home' => 'الرئيسية',
     'language' => 'اللغـة',
     'my_profile' => 'حسـابي الشخصي ',
