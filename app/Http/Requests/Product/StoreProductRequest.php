@@ -23,13 +23,13 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'model' => 'required|string|max:255',
+            'model' => 'nullable|string|max:255',
             'oe_number' => 'nullable|string|max:50',
             'situation' => 'nullable|string|max:50',
-            'price_cost' => 'required|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
+            'price_cost' => 'nullable|numeric|min:0',
+            'quantity' => 'nullable|integer|min:0',
             'transport' => 'nullable|numeric|min:0',
-            'price' => 'nullable|numeric|min:0',
+            'price' => 'required|numeric|min:0',
             'balen' => 'nullable|string|max:100',
             'note' => 'nullable|string|max:1000',
             'created' => 'nullable|date',
