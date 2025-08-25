@@ -62,7 +62,7 @@
                       type="text"
                       class="form-control"
                       :placeholder="translations.barcode"
-                      @keyup="findBarcode()"
+                      @keyup.enter="findBarcode()"
                       v-model="barcode"
                     />
                     <InputError :message="form.errors.name" />
