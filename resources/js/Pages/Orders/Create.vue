@@ -62,7 +62,7 @@
                       type="text"
                       class="form-control"
                       :placeholder="translations.barcode"
-                      @keyup.enter="findBarcode()"
+                      @keyup="findBarcode()"
                       v-model="barcode"
                     />
                     <InputError :message="form.errors.name" />
@@ -166,6 +166,8 @@ import 'vue-select/dist/vue-select.css'; // Import vue-select styles
 import axios from "axios";
 import Swal from 'sweetalert2';
 import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue';
+import debounce from 'lodash/debounce';
+
 let searchQuery = ref('');
 let show_loader = ref(false);
 let barcode = ref("");
@@ -306,7 +308,7 @@ const saveInvoice = async (event) => {
 };
 
 
-const findBarcode = async () => {
+const findBarcode = debounce(async () => {
   if (!barcode.value) return;
 
   try {
@@ -318,7 +320,7 @@ const findBarcode = async () => {
       );
 
       if (existingItem) {
-        existingItem.quantity += 1; // فقط زِد الكمية
+        existingItem.quantity += 1;
       } else {
         invoiceItems.push({
           product_id: response.data.id,
@@ -327,11 +329,11 @@ const findBarcode = async () => {
         });
       }
 
-      barcode.value = ''; // تصفير الحقل بعد الإضافة أو التحديث
+      barcode.value = '';
       console.log("تمت إضافة أو تحديث المنتج:", response.data);
     }
   } catch (error) {
     console.error("خطأ أثناء البحث عن الباركود:", error);
   }
-};
+}, 500);
 </script>
