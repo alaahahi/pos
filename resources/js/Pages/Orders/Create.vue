@@ -26,7 +26,7 @@
               <h5 class="card-title"> {{ translations.create_invoice }} </h5>
 
               <!-- Invoice Form  -->
-              <form @submit.prevent="ShowModalConfirmOrderAndPay=true" class="row g-3">
+              <form class="row g-3">
                 <!-- Customer Selection or Add New Customer -->
                 <div class="row mb-3">
                   <label for="customerSelect" class="col-sm-2 col-form-label"> {{ translations.client }} </label>
@@ -136,7 +136,7 @@
                   -->
                 <!-- Submit -->
                 <div class="text-center">
-                  <button type="submit" class="btn btn-primary" :disabled="show_loader">
+                  <button type="submit" class="btn btn-primary" :disabled="show_loader" @click="ShowModalConfirmOrderAndPay=true">
                     {{ translations.save }} &nbsp; 
                     <i class="bi bi-save" v-if="!show_loader"></i>
                     <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" v-if="show_loader"></span>
