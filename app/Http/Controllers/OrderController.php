@@ -97,7 +97,8 @@ class OrderController extends Controller
             'translations' => __('messages'),
             'customers' => $customers,
             'products' => $products,
-            'defaultCustomer' => $defaultCustomer
+            'defaultCustomer' => $defaultCustomer,
+            'defaultCurrency' => $this->defaultCurrency
         ]);
     }
 
@@ -147,6 +148,7 @@ class OrderController extends Controller
             Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
     
             DB::commit();
+            if($validated['total_paid']>0){
             $transaction = $this->accountingController->increaseWallet(
                 $validated['total_paid'], // المبلغ المدفوع
                 'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
@@ -158,7 +160,7 @@ class OrderController extends Controller
                 $this->defaultCurrency,
                 $order->date
             );
-
+            }
             // إذا كان الطلب من API، أرجع JSON
             if ($request->expectsJson()) {
              
@@ -166,7 +168,7 @@ class OrderController extends Controller
                 return response()->json([
                     'message' => __('messages.data_saved_successfully'),
                     'order_id' => $order->id,
-                    'id' =>$transaction->id
+                    'id' =>$transaction->id ?? null
                 ], 201);
             }
             return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));

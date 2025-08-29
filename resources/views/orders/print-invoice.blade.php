@@ -104,8 +104,12 @@
                         <div class="col-md-4">
                             <div class="border p-3 rounded">
                                 <h5 class="mb-3">الإجمالي</h5>
-                                <p><strong>الإجمالي الفرعي:</strong> {{env('DEFAULT_CURRENCY', 'IQD')}} {{ number_format($order->total_paid, 2) }}</p>
-                                <p><strong>المبلغ الكلي:</strong> <span class="text-primary h5">{{env('DEFAULT_CURRENCY', 'IQD')}} {{ number_format($order->total_paid, 2) }}</span></p>
+                                <p><strong>الإجمالي المدفوع:</strong> {{env('DEFAULT_CURRENCY', 'IQD')}} {{ number_format($order->total_paid, 2) }}</p>
+                                @if($order->total_amount - $order->total_paid > 0)
+                                <p><strong>الإجمالي المتبقي:</strong> {{env('DEFAULT_CURRENCY', 'IQD')}} {{ number_format($order->total_amount - $order->total_paid, 2) }}</p>
+                                @endif
+
+                                <p><strong>المبلغ الكلي:</strong> <span class="text-primary h5">{{env('DEFAULT_CURRENCY', 'IQD')}} {{ number_format($order->total_amount, 2) }}</span></p>
                             </div>
                         </div>
                     </div>

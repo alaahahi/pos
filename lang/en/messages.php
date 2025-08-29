@@ -125,6 +125,10 @@ return [
     'are_you_sure'=>'Are you sure?',
     'you_will_not_be_able_to_revert_this'=>'You will not be able to revert this',
     'currency'=>'Currency',
+    'amount'=>'Amount',
+    'continue'=>'Continue',
+    'save_without_invoice'=>'Save without invoice',
+    'save_with_invoice'=>'Save with invoice'
 
 
 ];

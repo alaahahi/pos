@@ -125,6 +125,9 @@ return [
     'are_you_sure'=>'هل أنت متأكد؟',
     'you_will_not_be_able_to_revert_this'=>'لن تكون قادراً على استعادة هذه البيانات مجدداً',
     'currency'=>'العملة',
-    'amount'=>'المبلغ'
+    'amount'=>'المبلغ',
+    'continue'=>'استمرار',
+    'save_without_invoice'=>'حفظ بدون فاتورة',
+    'save_with_invoice'=>'حفظ مع فاتورة'
 
 ];
