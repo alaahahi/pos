@@ -128,6 +128,7 @@ return [
     'amount'=>'المبلغ',
     'continue'=>'استمرار',
     'save_without_invoice'=>'حفظ بدون فاتورة',
-    'save_with_invoice'=>'حفظ مع فاتورة'
+    'save_with_invoice'=>'حفظ مع فاتورة',
+    'add_quantity'=>'اضافة مشتريات',
 
 ];

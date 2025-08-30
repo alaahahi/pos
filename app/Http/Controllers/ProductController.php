@@ -271,4 +271,21 @@ class ProductController extends Controller
         
         return response()->json($product);
     }
+
+    /**
+     * Check if the product is available in the stock
+     * 
+     * @param int $product_id
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkStock($product_id)
+    {
+        $product = Product::find($product_id);
+        if ($product->quantity <= 0) {
+            return response()->json(['message' => 'Product not available'], 409);
+        }else{
+            return response()->json(['available_quantity' => $product->quantity], 200);
+        }
+     }       
 }

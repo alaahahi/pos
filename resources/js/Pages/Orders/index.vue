@@ -66,7 +66,6 @@
                   <th scope="col" v-if="hasPermission('delete order')"></th>
                   <th scope="col" v-if="hasPermission('delete order')"></th>
                   <th scope="col" v-if="hasPermission('update order')"></th>
-
                 </tr>
               </thead>
               <tbody>
@@ -81,11 +80,7 @@
                   <td>{{ order.status }}</td> <!-- الحالة -->
                   <td>{{ formatDate(order.created_at) }}</td> <!-- تاريخ الإنشاء -->
                 
-                  <td v-if="hasPermission('update order')">
-                    <a class="btn btn-primary" :href="route('orders.edit', { order: order.id })">
-                      <i class="bi bi-pencil-square"></i>
-                    </a>
-                  </td>
+             
                   <td v-if="hasPermission('delete order')">
                     <button type="button" class="btn btn-danger" @click="Delete(order.id)">
                       <i class="bi bi-trash"></i>
@@ -97,12 +92,13 @@
                       <i class="bi bi-printer text-white"></i>
                     </a>
                   </td>
-                  <td v-if="hasPermission('update order')&& order.status=='pending'">
+                  <td v-if="hasPermission('update order')&& order.status=='due'">
                     <a class="btn btn-success" :href="route('orders.edit', { order: order.id })">
                       <i class="bi bi-currency-dollar"></i>
                     </a>
                   </td>
                 </tr>
+
               </tbody>
             </table>
           </div>

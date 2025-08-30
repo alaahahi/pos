@@ -2,7 +2,7 @@
   <AuthenticatedLayout :translations="translations">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white"> {{ translations.edit_order }} </h1>
+      <h1 class="dark:text-white"> {{ translations.edit_invoice }} </h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
@@ -10,7 +10,14 @@
               {{ translations.Home }}
             </Link>
           </li>
-          <li class="breadcrumb-item active dark:text-white   "> {{ translations.edit_order }} </li>
+          <li class="breadcrumb-item">
+            <Link class="nav-link dark:text-white" :href="route('orders.index')">
+              {{ translations.invoices }}
+            </Link>
+          </li>
+          <li class="breadcrumb-item active dark:text-white">
+            {{ translations.edit_invoice }}
+          </li>
         </ol>
       </nav>
     </div>
@@ -21,63 +28,65 @@
         <div class="col-lg-12">
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title"> {{ translations.edit_order }} </h5>
+              <h5 class="card-title"> {{ translations.edit_invoice }} </h5>
 
               <!-- Invoice Form -->
-              <form @submit.prevent="updateInvoice" class="row g-3">
-                <!-- Customer Selection -->
+              <form class="row g-3" @submit.prevent="openConfirmModal">
+                
+                <!-- Customer -->
                 <div class="row mb-3">
-                  <label for="customerSelect" class="col-sm-2 col-form-label"> {{ translations.client }} </label>
+                  <label class="col-sm-2 col-form-label">{{ translations.client }}</label>
                   <div class="col-sm-10">
                     <vue-select
                       v-model="selectedCustomer"
                       :options="customers"
                       label="name"
                       track-by="id"
-                      :reduce="customer => ({ id: customer.id, name: customer.name })"
+                      :reduce="c => ({ id: c.id, name: c.name })"
                       :clearable="true"
                       :placeholder="translations.select_customer"
-                      @mouseleave="selectCustomer(selectedCustomer)"
+                      @input="selectCustomer"
                     />
-                    <InputError :message="form.errors.customer" />
+                    <InputError :message="form.errors.customer_id" />
                   </div>
                 </div>
 
-                <!-- Products Table -->
+                <!-- Products -->
                 <div class="row mb-3" v-if="selectedCustomer">
-                  <label for="productTable" class="col-sm-2 col-form-label"> {{ translations.products }} </label>
+                  <label class="col-sm-2 col-form-label">{{ translations.products }}</label>
                   <div class="col-sm-10">
                     <table class="table">
                       <thead>
                         <tr>
                           <th>{{ translations.product }}</th>
                           <th>{{ translations.quantity }}</th>
-                          <th>{{ translations.price }}</th>
-                          <th>{{ translations.total }}</th>
+                          <th>{{ translations.price }} {{ translations.dollar }}</th>
+                          <th>{{ translations.total }} {{ translations.dollar }}</th>
                           <th>{{ translations.actions }}</th>
                         </tr>
                       </thead>
                       <tbody>
                         <tr v-for="(item, index) in orderItems" :key="index">
-                          <vue-select
-                            v-model="item.product_id"
-                            :options="products"
-                            label="name"
-                            :disabled="item.canadd != 'true'"
-                            :reduce="product => product.id"
-                            :placeholder="translations.select_product"
-                            class="form-control"
-                            style="min-width: 200px;"
-                            @mouseleave="updatePrice(item)" 
-                          />
-                          <td>
-                            <input type="number" @input="updateMax(item)"  v-model="item.quantity" min="1" :max="item.max_quantity" class="form-control" placeholder="Quantity">
+                          <td style="min-width:200px;">
+                            <vue-select
+                              v-model="item.product_id"
+                              :options="all_products"
+                              label="name"
+                              track-by="id"
+                              :reduce="p => p.id"
+                              :placeholder="translations.select_product"
+                              class="form-control"
+                              @input="updatePrice(item)"
+                            />
                           </td>
                           <td>
-                            <input type="number" v-model="item.price" min="0" class="form-control" placeholder="Price">
+                            <input type="number" v-model="item.quantity" @input="updateMax(item)" min="1" :max="item.max_quantity" class="form-control" />
                           </td>
                           <td>
-                            <input type="number" :value="item.quantity * item.price" class="form-control" disabled>
+                            <input type="number" v-model="item.price" min="0" class="form-control" />
+                          </td>
+                          <td>
+                            <input type="number" :value="item.quantity * item.price" class="form-control"  @input="check_stock(item)"  />
                           </td>
                           <td>
                             <button type="button" class="btn btn-danger" @click="removeItem(index)">
@@ -87,26 +96,28 @@
                         </tr>
                       </tbody>
                     </table>
-                    <button type="button" class="btn btn-primary" v-if="products?.length" @click="addProduct">{{ translations.add_product }}</button>
+                    <button type="button" class="btn btn-primary" @click="addProduct" v-if="products?.length">
+                      {{ translations.add_product }}
+                    </button>
                   </div>
                 </div>
 
-                <!-- Total Row -->
+                <!-- Total -->
                 <div class="row">
                   <div class="col-md-6">
-                    <strong>{{ translations.total }}:</strong>
+                    <strong>{{ translations.total }} {{ translations.dollar }}:</strong>
                   </div>
                   <div class="col-md-6">
                     <input type="number" v-model="totalAmount" class="form-control" readonly />
                   </div>
                 </div>
-{{ totalAmount }}
-                <!-- Submit -->
-                <div class="text-center">
+
+                <!-- Save -->
+                <div class="text-center mt-3">
                   <button type="submit" class="btn btn-primary" :disabled="show_loader">
-                    {{ translations.save }} &nbsp; 
+                    {{ translations.save }} &nbsp;
                     <i class="bi bi-save" v-if="!show_loader"></i>
-                    <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true" v-if="show_loader"></span>
+                    <span v-if="show_loader" class="spinner-border spinner-border-sm"></span>
                   </button>
                 </div>
               </form>
@@ -115,15 +126,16 @@
           </div>
         </div>
       </div>
-    </section>
 
-    <!-- Modal for Payment Confirmation -->
-    <ModalConfirmOrderAndPay
-      :show="ShowModalConfirmOrderAndPay"
-      :total="totalAmount"
-      @close="ShowModalConfirmOrderAndPay = false"
-      @confirm="saveInvoice($event)"
-    />
+      <!-- Modal -->
+      <ModalConfirmOrderAndPay
+        :translations="translations"
+        :show="ShowModalConfirmOrderAndPay"
+        :total="totalAmount"
+        @close="ShowModalConfirmOrderAndPay = false"
+        @confirm="saveInvoice"
+      />
+    </section>
   </AuthenticatedLayout>
 </template>
 
@@ -132,131 +144,196 @@ import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useForm } from '@inertiajs/vue3';
 import InputError from '@/Components/InputError.vue';
 import { ref, reactive, computed, watch } from 'vue';
-import VueSelect from 'vue-select'; // Import vue-select component
-import 'vue-select/dist/vue-select.css'; // Import vue-select styles
-import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue'; // Import the modal
+import VueSelect from 'vue-select';
+import 'vue-select/dist/vue-select.css';
 import axios from "axios";
-
-const show_loader = ref(false);
-const ShowModalConfirmOrderAndPay = ref(false); // Modal visibility flag
+import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue';
+import debounce from 'lodash/debounce';
+import { useToast } from "vue-toastification";
+let toast = useToast();
 
 const props = defineProps({
-  order: Object,  // existing order data
   products: Array,
+  all_products: Array,
   customers: Array,
+  order: Object,
   translations: Object,
 });
 
-const selectedCustomer = ref(
-  props.customers.find((customer) => customer.id === props.order.customer_id) || null
-);
+let show_loader = ref(false);
+let ShowModalConfirmOrderAndPay = ref(false);
+
+// init form with order data
 const form = useForm({
   id: props.order.id,
   customer_id: props.order.customer_id,
   items: props.order.items || [],
-  total_amount: props.order.total_amount || 0
+  total_amount: props.order.total_amount || 0,
 });
 
-const orderItems = reactive(form.items);
-const orderLogs = reactive([]);
+const selectedCustomer = ref(
+  props.customers.find(c => c.id === props.order.customer_id) || null
+);
 
-// Compute total amount
-const totalAmount = computed(() => {
-  return orderItems.reduce((total, item) => {
-    return total + (item.quantity * item.price);
-  }, 0);
-});
+const orderItems = reactive(
+  props.order.items?.map(i => ({
+    product_id: i.product_id,
+    quantity: i.quantity,
+    price: i.price,
+    max_quantity: props.products.find(p => p.id === i.product_id)?.max_quantity || 9999,
+  })) || []
+);
 
-watch(totalAmount, (newTotal) => {
-  form.total_amount = newTotal;
-});
-
-// Add product to the order
-const addProduct = () => {
-  orderItems.push({
-    product_id: '',
-    quantity: 1,
-    price: 0,
-    canadd: 'true',
-  });
-};
-
-// Remove product from the order
-const removeItem = (index) => {
-  orderItems.splice(index, 1);
-};
-
-// Update product price when selected
-const updatePrice = (item) => {
-  const selectedProduct = props.products.find(product => product.id === item.product_id);
-  if (selectedProduct) {
-    item.price = selectedProduct.price;
-  }
-};
-
-// Enforce max quantity for each product
-const updateMax = (item) => {
-  const selectedProduct = props.products.find(product => product.id === item.product_id);
-  if (selectedProduct) {
-    if (item.quantity > selectedProduct.max_quantity) {
-      item.quantity = selectedProduct.max_quantity;
-    }   
-  }
-};
-
-// Select a customer
+// methods
 const selectCustomer = (value) => {
   selectedCustomer.value = value;
   form.customer_id = value ? value.id : null;
 };
 
-// Update the invoice and submit it
-const updateInvoice = () => {
-  ShowModalConfirmOrderAndPay.value = true; // Open modal on form submission
+const updatePrice = (item) => {
+  const p = props.products.find(p => p.id === item.product_id);
+  if (p) {
+    item.price = p.price;
+    item.max_quantity = p.max_quantity;
+  }
 };
-const invoiceLogs = reactive([]);
 
-const logAction = (message) => {
-  const timestamp = new Date().toLocaleString();
-  invoiceLogs.push({ message, timestamp });
+const updateMax = (item) => {
+  const p = props.products.find(p => p.id === item.product_id);
+  if (p && item.quantity > p.max_quantity) {
+    item.quantity = p.max_quantity;
+  }
+};
+
+const addProduct = () => {
+  orderItems.push({ product_id: '', quantity: 1, price: 0 });
+};
+
+const removeItem = (i) => {
+  orderItems.splice(i, 1);
+};
+
+// computed
+const totalAmount = computed(() =>
+  orderItems.reduce((t, i) => t + (i.quantity * i.price), 0)
+);
+
+watch(totalAmount, (newTotal) => {
+  form.total_amount = newTotal;
+});
+
+// modal handler
+const openConfirmModal = () => {
+  ShowModalConfirmOrderAndPay.value = true;
 };
 
 const saveInvoice = async (event) => {
   show_loader.value = true;
-  // إنشاء كائن يحتوي على بيانات الفاتورة والعناصر المباعة
   const invoiceData = {
-    total_amount: form.total_amount, // المجموع
-    total_paid: event.amountDollar, // المبلغ المدفوع
-    customer_id:form.customer_id,
-    date: event.date, // التاريخ
-    notes: event.notes, // الملاحظات
-    items: orderItems.reduce((acc, item) => {
-      let existingItem = acc.find(i => i.product_id === item.product_id);
-      if (existingItem) {
-        existingItem.quantity += item.quantity; // تحديث الكمية بدلاً من إضافة منتج مكرر
-      } else {
-        acc.push(item);
-      }
-      return acc;
-    }, [])
+    total_amount: form.total_amount,
+    total_paid: event.amountDollar ?? 0,
+    customer_id: form.customer_id,
+    date: event.date,
+    notes: event.notes,
+    items: orderItems.map(i => ({
+      product_id: i.product_id,
+      quantity: i.quantity,
+      price: i.price,
+    })),
   };
 
   try {
-    // إرسال الطلب إلى API باستخدام Axios
     const response = await axios.put(route('orders.update', form.id), invoiceData);
-
     if (response.status === 200 || response.status === 201) {
-      logAction('invoice_saved');
       window.location.href = '/orders';
-    } else {
-      logAction('invoice_save_failed');
     }
   } catch (error) {
-    console.error('خطأ أثناء حفظ الفاتورة:', error);
-    logAction('invoice_save_failed');
+    console.error("خطأ أثناء تحديث الفاتورة:", error);
   } finally {
     show_loader.value = false;
+    ShowModalConfirmOrderAndPay.value = false;
   }
 };
 
+const findBarcode = debounce(async () => {
+  if (!barcode.value) return;
+
+  try {
+    // جلب بيانات المنتج
+    const response = await axios.get(`/api/products/${barcode.value}`);
+
+    if (response.data.id) {
+      // تحقق من توفر الكمية بالمخزون عبر API
+      const stockResponse = await axios.get(`/api/check-stock/${response.data.id}`);
+
+      if (stockResponse.data.available_quantity > 0) {
+        const existingItem = invoiceItems.find(i => i.product_id === response.data.id);
+
+        if (existingItem) {
+          // تحقق من أن الكمية الجديدة لا تتجاوز المخزون
+          if (existingItem.quantity + 1 <= stockResponse.data.available_quantity) {
+            existingItem.quantity += 1;
+          } else {
+             toast.warning("لا توجد كمية كافية في المخزون", {
+              timeout: 5000,
+              position: "bottom-right",
+              rtl: true
+
+            });
+          }
+        } else {
+          invoiceItems.push({
+            product_id: response.data.id,
+            quantity: 1,
+            price: response.data.price,
+          });
+        }
+
+        barcode.value = '';
+      } else {
+         toast.warning("المادة غير متوفرة في المخزون", {
+          timeout: 5000,
+          position: "bottom-right",
+          rtl: true 
+        })
+      }
+    }else{
+      
+             toast.error("تعذر تحقق من المنتج عن طريق الباركود", {
+              timeout: 5000,
+              position: "bottom-right",
+              rtl: true
+
+            });
+    }
+  } catch (error) {
+    toast.warning("المادة غير متوفرة في المخزون", {
+      timeout: 5000,
+      position: "bottom-right",
+      rtl: true
+    })
+  }
+}, 500);
+
+const check_stock = async (item) => {
+  try {
+    const response = await axios.get(`/api/check-stock/${item.product_id}`);
+
+    if (item.quantity > response.data.available_quantity) {
+      toast.success(
+        `الكمية المتوفرة فقط: ${response.data.available_quantity}`, 
+        {
+          timeout: 5000,
+          position: "bottom-right",
+          rtl: true
+        }
+      );
+
+      // ترجع الكمية للحد المسموح
+      item.quantity = response.data.available_quantity;
+    }
+  } catch (error) {
+    console.error("خطأ عند التحقق من المخزون:", error);
+  }
+};
 </script>

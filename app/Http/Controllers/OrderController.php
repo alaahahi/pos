@@ -107,82 +107,134 @@ class OrderController extends Controller
      */
 
     
-    public function createOrder(Request $request)
-    {
-        // التحقق من صحة البيانات
-        $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
-            'total_amount' => 'required|numeric|min:0',
-            'total_paid' => 'numeric|min:0',
-            'notes' => 'nullable|string',
-            'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.price' => 'required|numeric|min:0',
-        ]);
-    
-        DB::beginTransaction();
-        try {
-            // إنشاء الطلب
-            $order = Order::create([
-                'customer_id' => $validated['customer_id'],
-                'payment_method' => 'cash',
-                'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
-                'total_amount' => $validated['total_amount'],
-                'total_paid' => $validated['total_paid'] ?? 0,
-                'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
-                'notes' => $validated['notes'] ?? '',
-            ]);
-    
-            // إرفاق المنتجات مع الكميات
-            $products = [];
-            foreach ($validated['items'] as $productData) {
-                $products[$productData['product_id']] = [
-                    'quantity' => $productData['quantity'],
-                    'price' => $productData['price'],
-                ];
-            }
-            $order->products()->sync($products);
+     public function createOrder(Request $request)
+     {
+         // التحقق من صحة البيانات
+         $validated = $request->validate([
+             'customer_id' => 'required|exists:customers,id',
+             'total_amount' => 'required|numeric|min:0',
+             'total_paid' => 'numeric|min:0',
+             'notes' => 'nullable|string',
+             'items' => 'required|array|min:1',
+             'items.*.product_id' => 'required|exists:products,id',
+             'items.*.quantity' => 'required|integer|min:1',
+             'items.*.price' => 'required|numeric|min:0',
+         ]);
+     
+         DB::beginTransaction();
+         try {
+             // إنشاء الطلب
+             $order = Order::create([
+                 'customer_id' => $validated['customer_id'],
+                 'payment_method' => 'cash',
+                 'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
+                 'total_amount' => $validated['total_amount'],
+                 'total_paid' => $validated['total_paid'] ?? 0,
+                 'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
+                 'notes' => $validated['notes'] ?? '',
+             ]);
+     
+             // إرفاق المنتجات مع الكميات
+             $products = [];
+             foreach ($validated['items'] as $productData) {
+                 $products[$productData['product_id']] = [
+                     'quantity' => $productData['quantity'],
+                     'price' => $productData['price'],
+                 ];
+             }
+             $order->products()->sync($products);
+     
+             // تنزيل الكمية من المخزن
+             foreach ($validated['items'] as $productData) {
+                 $product = Product::find($productData['product_id']);
 
-            // تسجيل العملية في السجلات
-            Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
-    
-            DB::commit();
-            if($validated['total_paid']>0){
-            $transaction = $this->accountingController->increaseWallet(
-                $validated['total_paid'], // المبلغ المدفوع
-                'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
-                $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
-                $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
-                'App\Models\User',
-                0,
-                0,
-                $this->defaultCurrency,
-                $order->date
-            );
-            }
-            // إذا كان الطلب من API، أرجع JSON
-            if ($request->expectsJson()) {
-             
+                 if ($product) {
+                     if ($product->quantity < $productData['quantity']) {
+                         throw new \Exception("الكمية غير متوفرة للمادة: {$product->name}");
+                     }
+                     $product->quantity -= $productData['quantity'];
+                     $product->save();
+                 }
+             }
+     
+             // تسجيل العملية في السجلات
+             Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
+     
+             DB::commit();
+     
+                        // المبلغ السابق
+                $oldPaid = $order->total_paid;
 
-                return response()->json([
-                    'message' => __('messages.data_saved_successfully'),
-                    'order_id' => $order->id,
-                    'id' =>$transaction->id ?? null
-                ], 201);
-            }
-            return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));
+                // المبلغ الجديد
+                $newPaid = $validated['total_paid'];
+
+                // الفرق بين المدفوع الجديد والقديم
+                $diff = $newPaid - $oldPaid;
+
+                if ($diff > 0) {
+                    // العميل دفع مبلغ إضافي
+                    $transaction = $this->accountingController->increaseWallet(
+                        $diff, // الفرق فقط
+                        'دفعة إضافية فاتورة رقم ' . $order->id,
+                        $this->mainBox->first()->id, // الصندوق الرئيسي
+                        $this->mainBox->first()->id, // صندوق النظام
+                        'App\Models\User',
+                        0,
+                        0,
+                        $this->defaultCurrency,
+                        $order->date
+                    );
+                } elseif ($diff < 0) {
+                    // العميل دفع سابقاً أكثر (أو تم خصم على الفاتورة)
+                    $transaction = $this->accountingController->decreaseWallet(
+                        abs($diff), // المبلغ المسترجع
+                        'استرجاع/خصم فاتورة رقم ' . $order->id,
+                        $this->mainBox->first()->id, // الصندوق الرئيسي
+                        $this->mainBox->first()->id, // صندوق النظام
+                        'App\Models\User',
+                        0,
+                        0,
+                        $this->defaultCurrency,
+                        $order->date
+                    );
+                } else {
+                    // لا تغيير بالمبلغ (مافي داعي لأي حركة مالية)
+                    $transaction = null;
+                }
+
+                // تحديث حالة الفاتورة
+                if ($validated['total_amount'] == $newPaid) {
+                    $order->update(['status' => 'paid']);
+                } elseif ($validated['total_amount'] > $newPaid) {
+                    $order->update(['status' => 'due']); // باقي مبلغ
+                } elseif ($validated['total_amount'] < $newPaid) {
+                    $order->update(['status' => 'overpaid']); // مدفوع أكثر من المطلوب
+                }
+
+                // تحديث المبلغ المدفوع بالفاتورة
+                $order->update(['total_paid' => $newPaid]);
+     
+             // إذا كان الطلب من API، أرجع JSON
+             if ($request->expectsJson()) {
+                 return response()->json([
+                     'message' => __('messages.data_saved_successfully'),
+                     'order_id' => $order->id,
+                     'id' => isset($transaction) ? $transaction->id : null
+                 ], 201);
+             }
+     
+             return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));
          } catch (\Exception $e) {
              DB::rollBack();
-            Log::error('Order creation failed', ['error' => $e->getMessage()]);
-    
-            if ($request->expectsJson()) {
-                return response()->json(['error' => $e->getMessage()], 500);
-            }
-    
-            return redirect()->back()->with('error',$e->getMessage());
-        }
-    }
+             Log::error('Order creation failed', ['error' => $e->getMessage()]);
+     
+             if ($request->expectsJson()) {
+                 return response()->json(['error' => $e->getMessage()], 500);
+             }
+     
+             return redirect()->back()->with('error',$e->getMessage());
+         }
+     }
     
 
     /**
@@ -224,6 +276,14 @@ class OrderController extends Controller
                     'max_quantity' => $product->quantity,
                 ];
             });
+            $all_products = Product::select('id', 'name','price','quantity')->get()->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'price' => $product->price,
+                    'max_quantity'=> $product->quantity,
+                ];
+            });
         return Inertia::render('Orders/Edit', [
             'translations' => __('messages'),
             'order' => [
@@ -234,6 +294,7 @@ class OrderController extends Controller
             ],
             'customers' => $customers,
             'products' => $products,
+            'all_products' => $all_products,
         ]);
     }
     
@@ -243,7 +304,6 @@ class OrderController extends Controller
      */
     public function update(Request $request, Order $order)
     {
-        // Validate the request data
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
             'total_amount' => 'required|numeric|min:0',
@@ -254,54 +314,112 @@ class OrderController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
         ]);
-
-        // Start transaction to ensure data consistency
+    
         DB::beginTransaction();
     
         try {
-            // Update the order details
+            // تحديث تفاصيل الفاتورة
             $order->update([
-                'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
+                'status' => $validated['total_amount'] == $validated['total_paid'] ? 'paid' : 'due',
                 'total_paid' => $validated['total_paid'] ?? 0,
                 'customer_id' => $validated['customer_id'],
                 'total_amount' => $validated['total_amount'],
-                'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
+                'date' => $request->date ?? Carbon::now()->format('Y-m-d'),
                 'notes' => $validated['notes'] ?? '',
             ]);
-
-            // Loop through each item and update the pivot table with product details
-            foreach ($validated['items'] as $item) {
-                $product = Product::find($item['product_id']);
     
-            
+            // العناصر القديمة (قبل التعديل)
+            $oldItems = $order->products->keyBy('id');
+    
+            // العناصر الجديدة (من الفورم)
+            $newItems = collect($validated['items'])->keyBy('product_id');
+    
+            // تجهيز بيانات المزامنة
+            $syncData = [];
+    
+            // مقارنة القديم مع الجديد
+            foreach ($newItems as $productId => $item) {
+                $product = Product::find($productId);
+                if (!$product) continue;
+    
+                $oldQty = $oldItems[$productId]->pivot->quantity ?? 0;
+                $newQty = $item['quantity'];
+    
+                // إذا زادت الكمية → ننقص الفرق من المخزن
+                if ($newQty > $oldQty) {
+                    $diff = $newQty - $oldQty;
+                    if ($product->quantity < $diff) {
+                        throw new \Exception("الكمية غير متوفرة للمادة: {$product->name}");
+                    }
+                    $product->quantity -= $diff;
+                }
+                // إذا نقصت الكمية → نرجع الفرق للمخزن
+                elseif ($newQty < $oldQty) {
+                    $diff = $oldQty - $newQty;
+                    $product->quantity += $diff;
+                }
+    
+                $product->save();
+    
+                // تجهيز بيانات الـ pivot
+                $syncData[$productId] = [
+                    'quantity' => $newQty,
+                    'price'    => $item['price'],
+                ];
             }
 
-            // Commit the transaction if everything is fine
+              if($validated['total_paid']>0){
+                 $transaction = $this->accountingController->increaseWallet(
+                     $validated['total_paid'], // المبلغ المدفوع
+                     'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
+                     $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
+                     $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                     'App\Models\User',
+                     0,
+                     0,
+                     $this->defaultCurrency,
+                     $order->date
+                 );
+             }
+    
+            // المنتجات اللي كانت موجودة بالقديم وانحذفت في الجديد → نرجع مخزونها
+            $removedProducts = $oldItems->keys()->diff($newItems->keys());
+    
+            foreach ($removedProducts as $removedId) {
+                $removedProduct = Product::find($removedId);
+                if ($removedProduct) {
+                    $removedProduct->quantity += $oldItems[$removedId]->pivot->quantity;
+                    $removedProduct->save();
+                }
+            }
+    
+            // تحديث العلاقة في Pivot Table
+            $order->products()->sync($syncData);
+    
+            // حفظ التغييرات
             DB::commit();
-
-            // Log the order update
+    
             Log::info('Order updated successfully', ['order_id' => $order->id]);
+    
             if ($request->expectsJson()) {
                 return response()->json([
                     'message' => __('messages.data_saved_successfully'),
                     'order_id' => $order->id,
                 ], 201);
             }
-            // Return with success message
+    
             return redirect()->route('orders.index')
                 ->with('success', __('messages.data_updated_successfully'));
     
         } catch (\Exception $e) {
-            // Rollback in case of error
             DB::rollBack();
     
-            // Log the error
             Log::error('Error updating order', ['error' => $e->getMessage()]);
+    
             if ($request->expectsJson()) {
                 return response()->json(['error' => $e->getMessage()], 500);
             }
     
-            // Return with error message
             return back()->withErrors(['error' => __('messages.error_occurred')]);
         }
     }
@@ -312,17 +430,62 @@ class OrderController extends Controller
     /**
      * Remove the specified order from storage.
      */
-    public function destroy(Order $order)
+  public function destroy(Order $order)
     {
-        // Soft delete the order
-        $order->delete();
+        DB::beginTransaction();
 
-        // Log order deletion
-        Log::info('Order deleted', ['order_id' => $order->id]);
+        try {
+            // استرجاع جميع المواد المرتبطة بالطلب (إرجاع الكمية للمخزون)
+            foreach ($order->products as $product) {
+                $qty = $product->pivot->quantity;
 
-        return redirect()->route('orders.index')
-            ->with('success', __('messages.data_deleted_successfully'));
+                $product->quantity += $qty;
+                $product->save();
+            }
+
+            // إذا كان هناك مبلغ مدفوع → نرجعه من الصندوق
+            if ($order->total_paid > 0) {
+                $this->accountingController->decreaseWallet(
+                    $order->total_paid, // كل المبلغ المدفوع
+                    'استرجاع دفعة بعد حذف فاتورة رقم ' . $order->id,
+                    $this->mainBox->first()->id, // الصندوق الرئيسي
+                    $this->mainBox->first()->id, // صندوق النظام
+                    'App\Models\User',
+                    0,
+                    0,
+                    $this->defaultCurrency,
+                    $order->date
+                );
+            }
+
+            // حذف الفاتورة (soft delete)
+            $order->delete();
+
+            DB::commit();
+
+            // Log
+            Log::info('Order deleted, stock restored, and payments refunded', [
+                'order_id' => $order->id,
+                'refunded_amount' => $order->total_paid,
+            ]);
+
+            return redirect()->route('orders.index')
+                ->with('success', __('messages.data_deleted_successfully'));
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+
+            Log::error('Error deleting order', [
+                'error' => $e->getMessage(),
+                'order_id' => $order->id,
+            ]);
+
+            return redirect()->route('orders.index')
+                ->with('error', __('messages.error_occurred'));
+        }
     }
+
+    
     
     /**
      * Change the status of an order.

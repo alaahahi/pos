@@ -6,7 +6,8 @@ import { createApp, h } from 'vue';
 import { createInertiaApp } from '@inertiajs/vue3';
 import { resolvePageComponent } from 'laravel-vite-plugin/inertia-helpers';
 import { ZiggyVue } from '../../vendor/tightenco/ziggy';
-
+import Toast from "vue-toastification";
+import "vue-toastification/dist/index.css";
 const appName = import.meta.env.VITE_APP_NAME || 'Laravel';
 
 createInertiaApp({
@@ -15,7 +16,13 @@ createInertiaApp({
     setup({ el, App, props, plugin }) {
         const app = createApp({ render: () => h(App, props) })
             .use(plugin)
-            .use(ZiggyVue);
+            .use(ZiggyVue)
+            .use(Toast, {
+            // إعدادات افتراضية
+            position: "bottom-right",
+            timeout: 5000,
+            rtl: true,
+            });
 
         // Global session checker
         app.config.globalProperties.$checkSession = async () => {

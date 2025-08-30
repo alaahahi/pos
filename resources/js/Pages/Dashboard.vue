@@ -60,7 +60,6 @@
                     </div>
                     <div class="ps-3">
                       <h6>{{ orderDueCount }}</h6>
-                     <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> 
                     </div>
                   </div>
                 </div>
@@ -100,7 +99,7 @@
                       <i class="bi bi-cart"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>145</h6>
+                      <h6>{{ productCount }}</h6>
                       <!-- <span class="text-success small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">increase</span> -->
                     </div>
                   </div>
@@ -114,8 +113,7 @@
               <div class="card info-card revenue-card">
                 <div class="card-body">
                   <h5 class="card-title">
-                    {{ translations.roles }}
-                    <!-- <span>| This Month</span> -->
+                    {{ translations.customers }}
                   </h5>
 
                   <div class="d-flex align-items-center">
@@ -123,7 +121,7 @@
                       <i class="bi bi-lock"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>{{ rolesCount }}</h6>
+                      <h6>{{ customerCount }}</h6>
                       <!-- <span class="text-success small pt-1 fw-bold">8%</span> <span class="text-muted small pt-2 ps-1">increase</span> -->
                     </div>
                   </div>
@@ -197,6 +195,7 @@ import Chart from '@/Components/Chart.vue';
 defineProps({
   userCount: Number,
   orderCount:Number,
+  customerCount:Number,
   orderDueCount:Number,
   orderCompletCount:Number,
   rolesCount: Number,
@@ -206,5 +205,6 @@ defineProps({
   modulesChartData: Object,
   usersChartData: Object,
   statusChartData: Object,
+  productCount: Number,
 });
 </script>

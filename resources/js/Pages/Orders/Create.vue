@@ -82,20 +82,45 @@
                               label="name"
                               :reduce="product => product.id"
                               :placeholder="translations.select_product"
-                              @input="updatePrice(item)"
+                              @mouseleave="updatePrice(item)"
                             />
                           </td>
+
                           <td>
-                            <input type="number" v-model="item.quantity" min="1" class="form-control" />
+                            <!-- تحقق عند تغيير الكمية -->
+                            <input 
+                              type="number" 
+                              v-model.number="item.quantity" 
+                              min="1" 
+                              class="form-control" 
+                              @input="check_stock(item)" 
+                            />
                           </td>
+
                           <td>
-                            <input type="number" v-model="item.price" min="0" class="form-control" />
+                            <input 
+                              type="number" 
+                              v-model.number="item.price" 
+                              min="0" 
+                              class="form-control" 
+                            />
                           </td>
+
                           <td>
-                            <input type="text" :value="defaultCurrency + ' '+ item.quantity * item.price" class="form-control" disabled />
+                            <input 
+                              type="text" 
+                              :value="defaultCurrency + ' ' + (item.quantity * item.price)" 
+                              class="form-control" 
+                              disabled 
+                            />
                           </td>
+
                           <td>
-                            <button type="button" class="btn btn-danger" @click="removeItem(index)">
+                            <button 
+                              type="button" 
+                              class="btn btn-danger" 
+                              @click="removeItem(index)"
+                            >
                               <i class="bi bi-trash"></i>
                             </button>
                           </td>
@@ -154,6 +179,8 @@ import 'vue-select/dist/vue-select.css';
 import axios from "axios";
 import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue';
 import debounce from 'lodash/debounce';
+import { useToast } from "vue-toastification";
+let toast = useToast();
 
 let show_loader = ref(false);
 let barcode = ref("");
@@ -192,7 +219,7 @@ const selectCustomer = (value) => {
 // تحديث السعر عند اختيار المنتج
 const updatePrice = (item) => {
   const selectedProduct = props.products.find(p => p.id === item.product_id);
-  if (selectedProduct) {
+   if (selectedProduct) {
     item.price = selectedProduct.price;
   }
 };
@@ -240,7 +267,12 @@ const saveInvoice = async (event) => {
       }
     }
   } catch (error) {
-    console.error('خطأ أثناء حفظ الفاتورة:', error);
+     toast.error("خطأ أثناء حفظ الفاتورة", {
+      timeout: 5000,
+      position: "bottom-right",
+      rtl: true 
+    })
+    
   } finally {
     show_loader.value = false;
     ShowModalConfirmOrderAndPay.value = false;
@@ -250,23 +282,83 @@ const saveInvoice = async (event) => {
 // البحث بالباركود
 const findBarcode = debounce(async () => {
   if (!barcode.value) return;
+
   try {
+    // جلب بيانات المنتج
     const response = await axios.get(`/api/products/${barcode.value}`);
+
     if (response.data.id) {
-      const existingItem = invoiceItems.find(i => i.product_id === response.data.id);
-      if (existingItem) {
-        existingItem.quantity += 1;
+      // تحقق من توفر الكمية بالمخزون عبر API
+      const stockResponse = await axios.get(`/api/check-stock/${response.data.id}`);
+
+      if (stockResponse.data.available_quantity > 0) {
+        const existingItem = invoiceItems.find(i => i.product_id === response.data.id);
+
+        if (existingItem) {
+          // تحقق من أن الكمية الجديدة لا تتجاوز المخزون
+          if (existingItem.quantity + 1 <= stockResponse.data.available_quantity) {
+            existingItem.quantity += 1;
+          } else {
+             toast.warning("لا توجد كمية كافية في المخزون", {
+              timeout: 5000,
+              position: "bottom-right",
+              rtl: true
+
+            });
+          }
+        } else {
+          invoiceItems.push({
+            product_id: response.data.id,
+            quantity: 1,
+            price: response.data.price,
+          });
+        }
+
+        barcode.value = '';
       } else {
-        invoiceItems.push({
-          product_id: response.data.id,
-          quantity: 1,
-          price: response.data.price,
-        });
+         toast.warning("المادة غير متوفرة في المخزون", {
+          timeout: 5000,
+          position: "bottom-right",
+          rtl: true 
+        })
       }
-      barcode.value = '';
+    }else{
+      
+             toast.error("تعذر تحقق من المنتج عن طريق الباركود", {
+              timeout: 5000,
+              position: "bottom-right",
+              rtl: true
+
+            });
     }
   } catch (error) {
-    console.error("خطأ أثناء البحث عن الباركود:", error);
+    toast.warning("المادة غير متوفرة في المخزون", {
+      timeout: 5000,
+      position: "bottom-right",
+      rtl: true
+    })
   }
 }, 500);
+
+const check_stock = async (item) => {
+  try {
+    const response = await axios.get(`/api/check-stock/${item.product_id}`);
+
+    if (item.quantity > response.data.available_quantity) {
+      toast.success(
+        `الكمية المتوفرة فقط: ${response.data.available_quantity}`, 
+        {
+          timeout: 5000,
+          position: "bottom-right",
+          rtl: true
+        }
+      );
+
+      // ترجع الكمية للحد المسموح
+      item.quantity = response.data.available_quantity;
+    }
+  } catch (error) {
+    console.error("خطأ عند التحقق من المخزون:", error);
+  }
+};
 </script>

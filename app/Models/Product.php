@@ -29,7 +29,7 @@ class Product extends Model
         'image',
         'created',
         'barcode',
-        'is_active'
+        'is_active',
     ];
 
     /**

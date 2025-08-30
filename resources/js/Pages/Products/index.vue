@@ -61,6 +61,8 @@
                   <th scope="col"> {{ translations.statusProdact }}</th>
                   <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
                   <th scope="col" v-if="hasPermission('delete products')">{{ translations.delete }}</th>
+                  <th scope="col" v-if="hasPermission('update products')">{{ translations.add_quantity }}</th>
+
                 </tr>
               </thead>
               <tbody>
@@ -92,6 +94,11 @@
                     <button type="button" class="btn btn-danger" @click="Delete(product.id)">
                       <i class="bi bi-trash"></i>
                     </button>
+                  </td>
+                  <td v-if="hasPermission('update products')">
+                  <button class="btn btn-success" >
+                      <i class="bi bi-currency-dollar"></i>
+                  </button>
                   </td>
                 </tr>
               </tbody>

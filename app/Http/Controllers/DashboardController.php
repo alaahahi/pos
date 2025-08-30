@@ -7,6 +7,8 @@ use App\Models\Order;
 use App\Models\Log;
 use Spatie\Permission\Models\Role;
 
+use App\Models\Product;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Cache;
@@ -31,10 +33,12 @@ class DashboardController extends Controller
         'modulesChartData' => $modulesChartData,
         'usersChartData' => $usersChartData,
         'statusChartData' => $statusChartData, 
+        'productCount'=> Product::where('is_active', 1)->where('quantity', '>', 0)->count(),
+        'customerCount'=> Customer::count(),
         'userCount' => User::count(),
         'orderCount'=> Order::count(),
-        'orderDueCount'=> Order::count(),
-        'orderCompletCount'=> Order::count(),
+        'orderDueCount'=> Order::where('status', 'due')->count(),
+        'orderCompletCount'=> Order::where('status', 'paid')->count(),
         'rolesCount' => Role::count(),
     ]);
 }

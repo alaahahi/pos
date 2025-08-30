@@ -128,7 +128,9 @@ return [
     'amount'=>'Amount',
     'continue'=>'Continue',
     'save_without_invoice'=>'Save without invoice',
-    'save_with_invoice'=>'Save with invoice'
+    'save_with_invoice'=>'Save with invoice',
+    'add_quantity'=>'Add quantity',
+
 
 
 ];
