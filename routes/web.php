@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UsersController;
@@ -92,6 +93,17 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
   Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update'); 
+
+  // Barcode routes
+  Route::prefix('barcode')->name('barcode.')->group(function () {
+    Route::get('/', [BarcodeController::class, 'index'])->name('index');
+    Route::post('/generate', [BarcodeController::class, 'generate'])->name('generate');
+    Route::post('/print', [BarcodeController::class, 'print'])->name('print');
+    Route::post('/batch-print', [BarcodeController::class, 'batchPrint'])->name('batch.print');
+    Route::get('/download/{product}', [BarcodeController::class, 'download'])->name('download');
+    Route::get('/preview', [BarcodeController::class, 'preview'])->name('preview');
+    Route::get('/printer-settings', [BarcodeController::class, 'printerSettings'])->name('printer.settings');
+  });
 
 });
 
