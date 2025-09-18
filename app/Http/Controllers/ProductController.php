@@ -35,6 +35,7 @@ class ProductController extends Controller
         $filters = [
             'name' => $request->name,
             'model' => $request->model,
+            'search' => $request->search,
             'is_active' => $request->is_active,
         ];
         // Start the Product query
@@ -47,6 +48,12 @@ class ProductController extends Controller
 
         $ProductQuery->when($filters['model'], function ($query, $model) {
             return $query->where('model', 'LIKE', "%{$model}%");
+        });
+
+        // Search by name or barcode
+        $ProductQuery->when($filters['search'], function ($query, $search) {
+            return $query->where('name', 'LIKE', "%{$search}%")
+                        ->orWhere('barcode', 'LIKE', "%{$search}%");
         });
 
 
@@ -85,10 +92,8 @@ class ProductController extends Controller
             'note' => 'nullable|string',
             'oe_number' => 'nullable|string|max:100',
             'price_cost' => 'nullable|numeric|min:0',
-            'transport' => 'nullable|numeric|min:0',
             'quantity' => 'nullable|integer|min:0',
             'price' => 'nullable|numeric|min:0',
-            'situation' => 'nullable|in:available,unavailable,damaged',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode',
         ]);
@@ -161,10 +166,8 @@ class ProductController extends Controller
             'note' => 'nullable|string',
             'oe_number' => 'nullable|string|max:100',
             'price_cost' => 'required|numeric|min:0',
-            'transport' => 'nullable|numeric|min:0',
             'quantity' => 'required|integer|min:0',
             'price' => 'required|numeric|min:0',
-            'situation' => 'nullable',//|in:available,unavailable,damaged
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode,' . $product->id,
         ]);

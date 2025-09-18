@@ -25,7 +25,7 @@
               <h5 class="card-title"> {{ translations.create_invoice }} </h5>
 
               <!-- Invoice Form  -->
-              <form class="row g-3" @submit.prevent="openConfirmModal">
+              <form class="row g-3" @submit.prevent="openConfirmModal" @keydown.enter.prevent>
 
                 <!-- Customer -->
                 <div class="row mb-3">
@@ -55,6 +55,7 @@
                       :placeholder="translations.barcode"
                       v-model="barcode"
                       @keyup="findBarcode"
+                      @keyup.enter="findBarcode"
                     />
                   </div>
                 </div>

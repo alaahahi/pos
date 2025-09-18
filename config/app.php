@@ -168,6 +168,7 @@ return [
         // App\Providers\BroadcastServiceProvider::class,
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
+        App\Providers\BarcodeServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
     Maatwebsite\Excel\ExcelServiceProvider::class,
 
@@ -189,6 +190,7 @@ return [
     'aliases' => Facade::defaultAliases()->merge([
         // 'Example' => App\Facades\Example::class,
     'Excel' =>Maatwebsite\Excel\Facades\Excel::class,
+    'Barcode' => App\Facades\Barcode::class,
 
     ])->toArray(),
 

@@ -23,6 +23,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read product')">
+    <Link  class="nav-link "  :href="route('barcode.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/barcode') }" >
+            <i class="bi bi-qr-code"></i>
+            <span>{{translations.barcode_generation  }}</span>
+               </Link>
+    </li>
+
     <li class="nav-item" v-if="hasPermission('read boxes')">
     <Link  class="nav-link "  :href="route('boxes.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/boxes') }" >
             <i class="bi bi-people"></i>

@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\UsersController;
@@ -93,9 +94,26 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
   Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update'); 
 
+  // Barcode routes (with authentication)
+  Route::prefix('barcode')->name('barcode.')->group(function () {
+    Route::get('/', [BarcodeController::class, 'index'])->name('index');
+    Route::post('/batch-print', [BarcodeController::class, 'batchPrint'])->name('batch.print');
+    Route::get('/printer-settings', [BarcodeController::class, 'printerSettings'])->name('printer.settings');
+  });
+
 });
 
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
 Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
+
+// Public barcode routes (no authentication required)
+Route::get('/barcode/preview', [BarcodeController::class, 'preview'])->name('barcode.preview');
+Route::get('/barcode/download/{product}', [BarcodeController::class, 'download'])->name('barcode.download');
+
+// Barcode routes with CSRF but without authentication
+Route::prefix('barcode')->name('barcode.')->middleware(['web'])->group(function () {
+  Route::post('/generate', [BarcodeController::class, 'generate'])->name('generate');
+  Route::post('/print', [BarcodeController::class, 'print'])->name('print');
+});
 
 require __DIR__ . '/auth.php';

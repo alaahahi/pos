@@ -88,20 +88,7 @@
                   </div>
                 </div>
 
-                <!-- Situation -->
-                <div class="row mb-3">
-                  <label for="inputSituation" class="col-sm-2 col-form-label">{{ translations.situation }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputSituation"
-                      type="text"
-                      class="form-control"
-                      :placeholder="translations.situation"
-                      v-model="form.situation"
-                    />
-                    <InputError :message="form.errors.situation" />
-                  </div>
-                </div>
+            
 
                 <!-- price_cost -->
                 <div class="row mb-3">
@@ -119,20 +106,7 @@
                 </div>
     
 
-                 <!-- price_cost -->
-                 <div class="row mb-3">
-                  <label for="inputPrice" class="col-sm-2 col-form-label">{{ translations.transport }}</label>
-                  <div class="col-sm-10">
-                    <input
-                      id="inputPrice"
-                      type="number"
-                      class="form-control"
-                      :placeholder="translations.transport"
-                      v-model="form.transport"
-                    />
-                    <InputError :message="form.errors.transport" />
-                  </div>
-                </div>
+       
 
                 <!-- price_cost -->
 
@@ -248,10 +222,8 @@ const form = useForm({
   note:props.product.note,
   oe_number:props.product.oe_number,
   price_cost:props.product.price_cost,
-  transport:props.product.transport,
   quantity:props.product.quantity,
   price:props.product.price,
-  situation:props.product.situation,
   created: props.product.created,
   barcode:props.product.barcode,
   selectedRoles: props.userRoles,

@@ -19,10 +19,8 @@ class Product extends Model
         'name',
         'model',
         'oe_number',
-        'situation',
         'price_cost',
         'quantity',
-        'transport',
         'price',
         'balen',
         'note',
@@ -39,8 +37,7 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return ''; 
-        $this->attributes['image'] 
+        return $this->attributes['image'] 
             ? asset("storage/{$this->attributes['image']}") 
             : null;
     }

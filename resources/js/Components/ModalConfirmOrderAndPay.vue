@@ -1,17 +1,12 @@
 <script setup>
 import { ref, watch } from 'vue';
 
-
-
 const props = defineProps({
   show: Boolean,
   total: Number,
-  translations:Array
+  translations: Object
 });
-const form = ref([{
-  date:getTodayDate(),
-  printInvoice:false
-}]);
+
 function getTodayDate() {
   const today = new Date();
   const year = today.getFullYear();
@@ -19,12 +14,35 @@ function getTodayDate() {
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-const restform =()=>{
-  form.value = {
-  date:getTodayDate(),
-};
-}
 
+const form = ref({
+  date: getTodayDate(),
+  printInvoice: false,
+  amountDollar: props.total
+});
+
+// 📌 الواتشر: كل ما يتغير props.total ينعكس على الفورم
+watch(
+  () => props.total,
+  (newVal) => {
+    form.value.amountDollar = newVal;
+  }
+);
+watch(
+  () => form.value.amountDollar,
+  (newVal) => {
+    if (newVal < 0) {
+      form.value.amountDollar = 0;
+    }
+  }
+);
+const resetForm = () => {
+  form.value = {
+    date: getTodayDate(),
+    printInvoice: false,
+    amountDollar: props.total
+  };
+};
 </script>
   
   <template>
@@ -40,15 +58,15 @@ const restform =()=>{
               <div class="row g-3">
                 <!-- Amount in Dollar -->
                 <div class="col-lg-6">
-                  <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.dollar }} </label>
+                  <label class="form-label">{{ translations.total }} {{ translations.dollar }} </label>
                   <input
-                    id="amountDollar"
-                    type="number"
+                     type="number"
                     class="form-control"
                     :value="total"
+                    disabled
                   />
                 </div>
-
+                
                 <!-- Amount in Dollar -->
                 <div class="col-lg-6">
                   <label for="amountDollar" class="form-label">{{ translations.total }} {{ translations.paid }} {{ translations.dollar }}</label>
@@ -56,8 +74,30 @@ const restform =()=>{
                     id="amountDollar"
                     type="number"
                     class="form-control"
-                    @focus="form.amountDollar=total"
                     v-model="form.amountDollar"
+                      min="0"
+                  />
+                </div>
+
+                <div class="col-lg-6">
+                  <label class="form-label">خصم مبلغ </label>
+                  <input
+                     type="number"
+                    class="form-control"
+                     v-model="form.discount_amount"
+                    min="0"
+                  />
+                </div>
+                
+                <!-- Amount in Dollar -->
+                <div class="col-lg-6">
+                  <label for="amountDollar" class="form-label">خصم نسبة على الفاتورة</label>
+                  <input
+                    id="amountDollar"
+                    type="number"
+                    class="form-control"
+                    v-model="form.discount_rate"
+                      min="0"
                   />
                 </div>
 
