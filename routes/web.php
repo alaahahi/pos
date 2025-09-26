@@ -16,6 +16,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ExportController;
+use App\Http\Controllers\MigrationController;
 use Illuminate\Support\Facades\Artisan;
 
 
@@ -139,6 +140,14 @@ Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class,
 
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
 Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
+
+// Migration Management Routes
+Route::middleware(['auth'])->prefix('admin')->group(function () {
+    Route::get('/migrations', [MigrationController::class, 'index'])->name('admin.migrations');
+    Route::post('/migrations/run', [MigrationController::class, 'runMigrations'])->name('admin.migrations.run');
+    Route::post('/migrations/rollback', [MigrationController::class, 'rollbackMigrations'])->name('admin.migrations.rollback');
+    Route::post('/migrations/refresh', [MigrationController::class, 'refreshMigrations'])->name('admin.migrations.refresh');
+});
 
 // Public barcode routes (no authentication required)
 Route::get('/barcode/preview', [BarcodeController::class, 'preview'])->name('barcode.preview');

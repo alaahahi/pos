@@ -23,7 +23,7 @@ class Product extends Model
         'quantity',
         'price',
         'balen',
-        'note',
+        'notes',
         'image',
         'created',
         'barcode',

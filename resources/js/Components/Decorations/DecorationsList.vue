@@ -73,7 +73,7 @@
 
     <!-- Decorations Grid -->
     <div class="row" v-if="decorations.data.length > 0">
-      <div class="col-xl-3 col-lg-4 col-md-6 mb-4" v-for="decoration in decorations.data" :key="decoration.id">
+      <div class="col-xl-4 col-lg-4 col-md-6 mb-4" v-for="decoration in decorations.data" :key="decoration.id">
         <div class="card h-100 decoration-card">
           <!-- Image -->
           <div class="card-img-top position-relative" style="height: 200px; overflow: hidden;">

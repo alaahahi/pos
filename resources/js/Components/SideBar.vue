@@ -126,6 +126,13 @@
                </Link>
     </li>
 
+    <li class="nav-item">
+    <Link  class="nav-link "  :href="route('admin.migrations')"  :class="{ 'collapsed':  !$page.url.startsWith('/admin/migrations') }" >
+            <i class="bi bi-gear"></i>
+            <span>إدارة المايكريشنات</span>
+               </Link>
+    </li>
+
 
 
 </ul>

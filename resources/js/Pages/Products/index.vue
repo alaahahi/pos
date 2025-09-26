@@ -35,7 +35,7 @@
                 </button>
               </div>
               <div class="col-md-3">
-                <Link v-if="hasPermission('create products')" class="btn btn-primary" :href="route('products.create')">
+                <Link v-if="hasPermission('create product')" class="btn btn-primary" :href="route('products.create')">
                   {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
@@ -55,9 +55,9 @@
                   
                   <th scope="col">{{ translations.created_at }}</th>
                   <th scope="col"> {{ translations.statusProdact }}</th>
-                  <th scope="col" v-if="hasPermission('update products')">{{ translations.edit }}</th>
-                  <th scope="col" v-if="hasPermission('delete products')">{{ translations.delete }}</th>
-                  <th scope="col" v-if="hasPermission('update products')">{{ translations.add_quantity }}</th>
+                  <th scope="col" v-if="hasPermission('update product')">{{ translations.edit }}</th>
+                  <th scope="col" v-if="hasPermission('delete product')">{{ translations.delete }}</th>
+                  <th scope="col" v-if="hasPermission('update product')">{{ translations.add_quantity }}</th>
                   <th scope="col">{{ translations.barcode_actions }}</th>
 
                 </tr>
@@ -82,17 +82,17 @@
                     </label>
                   </div>
                   </td>
-                  <td v-if="hasPermission('update products')">
+                  <td v-if="hasPermission('update product')">
                     <a class="btn btn-primary" :href="route('products.edit', { product: product.id })">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
-                  <td v-if="hasPermission('delete products')">
+                  <td v-if="hasPermission('delete product')">
                     <button type="button" class="btn btn-danger" @click="Delete(product.id)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
-                  <td v-if="hasPermission('update products')">
+                  <td v-if="hasPermission('update product')">
                   <button class="btn btn-success" @click="showModalPurchasesProduct = true; data = product" >
                       <i class="bi bi-currency-dollar"></i>
                   </button>

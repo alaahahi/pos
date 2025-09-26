@@ -145,9 +145,9 @@
                       type="text"
                       class="form-control"
                       :placeholder="translations.note"
-                      v-model="form.note"
+                      v-model="form.notes"
                     />
-                    <InputError :message="form.errors.note" />
+                    <InputError :message="form.errors.notes" />
                   </div>
                 </div>
                 <div class="row mb-3">
@@ -219,7 +219,7 @@ const form = useForm({
   name : props.product.name,
   model:props.product.model,
   name:props.product.name,
-  note:props.product.note,
+  notes:props.product.notes,
   oe_number:props.product.oe_number,
   price_cost:props.product.price_cost,
   quantity:props.product.quantity,

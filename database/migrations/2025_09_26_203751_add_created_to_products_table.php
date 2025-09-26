@@ -12,13 +12,8 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            if (!Schema::hasColumn('products', 'barcode')) {
-                // Check if image column exists, if not add barcode at the end
-                if (Schema::hasColumn('products', 'image')) {
-                    $table->string('barcode')->nullable()->unique()->after('image');
-                } else {
-                    $table->string('barcode')->nullable()->unique();
-                }
+            if (!Schema::hasColumn('products', 'created')) {
+                $table->date('created')->nullable()->after('image');
             }
         });
     }
@@ -29,8 +24,8 @@ return new class extends Migration
     public function down(): void
     {
         Schema::table('products', function (Blueprint $table) {
-            if (Schema::hasColumn('products', 'barcode')) {
-                $table->dropColumn('barcode');
+            if (Schema::hasColumn('products', 'created')) {
+                $table->dropColumn('created');
             }
         });
     }
