@@ -85,6 +85,64 @@
                 </div>
               </div>
             </div>
+            
+            <!-- Decoration Orders Cards -->
+            <div class="col-xxl-4 col-md-4">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    طلبات الديكور
+                  </h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-palette"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ decorationOrderCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-xxl-4 col-md-4">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    طلبات الديكور المعلقة
+                  </h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-clock"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ decorationOrderPendingCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-xxl-4 col-md-4">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">
+                    طلبات الديكور المكتملة
+                  </h5>
+
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ decorationOrderCompletedCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
             <!-- Products Card -->
             <div class="col-xxl-4 col-md-4">
               <div class="card info-card sales-card">
@@ -172,6 +230,10 @@
             <h2>{{ translations.logs_by_action}} </h2>
             <Chart :chartData="actionsChartData" chartId="actionsChart" chartType="pie" />
           </div>
+          <div class="col-md-6">
+            <h2>طلبات الديكور حسب الحالة</h2>
+            <Chart :chartData="decorationOrdersChartData" chartId="decorationOrdersChart" chartType="pie" />
+          </div>
         </div>
       </div>
 
@@ -206,5 +268,10 @@ defineProps({
   usersChartData: Object,
   statusChartData: Object,
   productCount: Number,
+  decorationOrdersChartData: Object,
+  decorationOrderCount: Number,
+  decorationOrderPendingCount: Number,
+  decorationOrderCompletedCount: Number,
+  decorationOrderPaidCount: Number,
 });
 </script>

@@ -33,11 +33,14 @@ class User extends Authenticatable
         'updated_at'
     ];
 
-    protected $appends = ['avatar'];
+    protected $appends = ['avatar_url'];
 
-    public function getAvatarAttribute()
+    public function getAvatarUrlAttribute()
     {
-        return asset("storage/{$this->attributes['avatar']}");
+        if (isset($this->attributes['avatar']) && $this->attributes['avatar']) {
+            return asset("storage/{$this->attributes['avatar']}");
+        }
+        return asset('storage/avatars/default_avatar.png');
     }
     /**
      * The attributes that should be hidden for serialization.
@@ -81,6 +84,11 @@ class User extends Authenticatable
             \App\Models\Log::class,
             'by_user_id'
         );
+    }
+
+    public function assignedDecorationOrders(): HasMany
+    {
+        return $this->hasMany(\App\Models\DecorationOrder::class, 'assigned_employee_id');
     }
 
 }

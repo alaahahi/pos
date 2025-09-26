@@ -43,6 +43,10 @@
    
     <!-- Scripts -->
     @routes
+    <script>
+        window.translations = @json(__('messages'));
+        window.permissions = @json(auth()->user() ? auth()->user()->getAllPermissions()->pluck('name') : []);
+    </script>
     @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
     @inertiaHead
 </head>
@@ -141,6 +145,14 @@
   .card-body {
   padding: 20px 20px 20px 20px !important;
 }
+
+textarea.form-control {
+    border-radius: 10px !important;
+    border: 1px   #000 !important;
+  }
+  .modal-header {
+    justify-content: center !important;
+  }
   </style>
 </body>
 </html>

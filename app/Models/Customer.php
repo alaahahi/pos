@@ -20,6 +20,7 @@ class Customer extends Model
     protected $fillable = [
         'name', 
         'phone',
+        'email',
         'address',
         'is_active',
         'last_purchase_date', 
@@ -62,7 +63,10 @@ class Customer extends Model
      */
     public function getAvatarUrlAttribute()
     {
-        return '';//asset("storage/{$this->attributes['avatar']}")
+        if (isset($this->attributes['avatar']) && $this->attributes['avatar']) {
+            return asset("storage/{$this->attributes['avatar']}");
+        }
+        return asset('storage/avatars/default_avatar.png');
     }
 
     /**
@@ -82,5 +86,13 @@ class Customer extends Model
             \App\Models\Log::class,
             'by_user_id' // افترض أن العلاقة تشير إلى حقل customer_id
         );
+    }
+
+    /**
+     * Define a relationship to decoration orders.
+     */
+    public function decorationOrders(): HasMany
+    {
+        return $this->hasMany(\App\Models\DecorationOrder::class);
     }
 }

@@ -30,6 +30,45 @@
                </Link>
     </li>
 
+    <!-- Decorations Section -->
+    <li class="nav-item" v-if="hasPermission('read product')">
+        <a class="nav-link " data-bs-target="#decorations-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations') && !$page.url.startsWith('/decoration-orders') && !$page.url.startsWith('/decoration-payments') && !$page.url.startsWith('/decoration-monthly-accounting') }" >
+            <i class="bi bi-palette"></i><span>{{translations.decorations  }}</span><i class="bi bi-chevron-down ms-auto"></i>
+        </a>
+        <ul id="decorations-nav" class="nav-content collapse " data-bs-parent="#sidebar-nav">
+            <li>
+                <Link   :href="route('decorations.dashboard')"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations-dashboard') }" >
+            <i class="bi bi-circle"></i>
+            <span>{{translations.decorations_dashboard  }}</span>
+               </Link>
+            </li>
+            <li>
+                <Link   :href="route('decorations.index')"  :class="{ 'collapsed':  $page.url.startsWith('/decorations') && !$page.url.startsWith('/decorations-dashboard') }" >
+            <i class="bi bi-circle"></i>
+            <span>{{translations.decorations_list  }}</span>
+               </Link>
+            </li>
+            <li>
+                <Link   :href="route('decorations.orders')"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations-orders') }" >
+            <i class="bi bi-circle"></i>
+            <span>{{translations.decoration_orders  }}</span>
+               </Link>
+            </li>
+            <li v-if="hasPermission('read payment')">
+                <Link   :href="route('decoration.payments')"  :class="{ 'collapsed':  !$page.url.startsWith('/decoration-payments') }" >
+            <i class="bi bi-circle"></i>
+            <span>إدارة الدفعات</span>
+               </Link>
+            </li>
+            <li v-if="hasPermission('read monthly_accounting')">
+                <Link   :href="route('decoration.monthly.accounting')"  :class="{ 'collapsed':  !$page.url.startsWith('/decoration-monthly-accounting') }" >
+            <i class="bi bi-circle"></i>
+            <span>المحاسبة الشهرية</span>
+               </Link>
+            </li>
+        </ul>
+    </li>
+
     <li class="nav-item" v-if="hasPermission('read boxes')">
     <Link  class="nav-link "  :href="route('boxes.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/boxes') }" >
             <i class="bi bi-people"></i>
@@ -96,16 +135,338 @@
 
 </template>
 
+<style scoped>
+/* تحسين الوضع الليلي - خلفيات وألوان محسنة */
+.dark .nav-content {
+  background: linear-gradient(135deg, #1f2937 0%, #111827 100%) !important;
+  border: 2px solid #374151 !important;
+  border-radius: 12px;
+  margin-top: 8px;
+  padding: 15px 0;
+  box-shadow: 
+    0 4px 6px rgba(0, 0, 0, 0.4),
+    0 0 0 1px rgba(59, 130, 246, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
 
+.dark .nav-content li {
+  margin: 0;
+}
+
+.dark .nav-content .nav-link {
+  background: linear-gradient(135deg, rgba(255, 255, 255, 0.05) 0%, rgba(255, 255, 255, 0.02) 100%) !important;
+  color: #f8fafc !important;
+  padding: 12px 25px;
+  margin: 4px 20px;
+  border-radius: 8px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  font-weight: 600;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .nav-content .nav-link::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+  transition: left 0.5s;
+}
+
+.dark .nav-content .nav-link:hover::before {
+  left: 100%;
+}
+
+.dark .nav-content .nav-link:hover {
+  background: linear-gradient(135deg, #374151 0%, #1f2937 100%) !important;
+  color: #ffffff !important;
+  border-color: #4b5563 !important;
+  transform: translateX(8px) scale(1.02);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    0 0 0 1px rgba(59, 130, 246, 0.3);
+}
+
+.dark .nav-content .nav-link.collapsed {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
+  color: #dbeafe !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 
+    0 4px 12px rgba(59, 130, 246, 0.4),
+    0 0 0 1px rgba(59, 130, 246, 0.5),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.dark .nav-content .nav-link i {
+  color: #cbd5e1 !important;
+  margin-right: 12px;
+  font-size: 16px;
+  transition: all 0.3s ease;
+}
+
+.dark .nav-content .nav-link:hover i {
+  color: #ffffff !important;
+  transform: scale(1.1);
+}
+
+.dark .nav-content .nav-link.collapsed i {
+  color: #dbeafe !important;
+  text-shadow: 0 0 8px rgba(219, 234, 254, 0.5);
+}
+
+/* Light mode styles for sub-navigation */
+.nav-content {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-top: 5px;
+  padding: 10px 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.nav-content li {
+  margin: 0;
+}
+
+.nav-content .nav-link {
+  background-color: transparent !important;
+  color: #374151 !important;
+  padding: 10px 20px;
+  margin: 3px 15px;
+  border-radius: 6px;
+  transition: all 0.3s ease;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.nav-content .nav-link:hover {
+  background-color: #f3f4f6 !important;
+  color: #1f2937 !important;
+  border-color: #d1d5db !important;
+  transform: translateX(5px);
+}
+
+.nav-content .nav-link.collapsed {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.nav-content .nav-link i {
+  color: #6b7280 !important;
+  margin-right: 10px;
+  font-size: 14px;
+}
+
+.nav-content .nav-link.collapsed i {
+  color: #1e40af !important;
+}
+
+/* Main navigation link styles for dark mode */
+.dark .nav-link {
+  color: #d1d5db !important;
+  background-color: #374151 !important;
+  border: 1px solid #4b5563 !important;
+  font-weight: 600;
+}
+
+.dark .nav-link:hover {
+  background-color: #4b5563 !important;
+  color: #ffffff !important;
+  border-color: #6b7280 !important;
+}
+
+.dark .nav-link.collapsed {
+  color: #9ca3af !important;
+  border-color: #374151 !important;
+}
+
+.dark .nav-link i {
+  color: #9ca3af !important;
+}
+
+.dark .nav-link.collapsed i {
+  color: #6b7280 !important;
+}
+
+/* تحسين التبويب الرئيسي "الديكورات" في الوضع الليلي */
+.dark .nav-link[data-bs-target="#decorations-nav"] {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
+  color: #dbeafe !important;
+  border: 2px solid #3b82f6 !important;
+  box-shadow: 
+    0 4px 12px rgba(59, 130, 246, 0.4),
+    0 0 0 1px rgba(59, 130, 246, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+}
+
+.dark .nav-link[data-bs-target="#decorations-nav"]::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.6s;
+}
+
+.dark .nav-link[data-bs-target="#decorations-nav"]:hover::before {
+  left: 100%;
+}
+
+.dark .nav-link[data-bs-target="#decorations-nav"]:hover {
+  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
+  color: #ffffff !important;
+  transform: translateY(-2px);
+  box-shadow: 
+    0 6px 16px rgba(59, 130, 246, 0.5),
+    0 0 0 1px rgba(59, 130, 246, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.dark .nav-link[data-bs-target="#decorations-nav"] i {
+  color: #dbeafe !important;
+  text-shadow: 0 0 8px rgba(219, 234, 254, 0.6);
+  transition: all 0.3s ease;
+}
+
+.dark .nav-link[data-bs-target="#decorations-nav"]:hover i {
+  color: #ffffff !important;
+  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
+  transform: scale(1.1);
+}
+
+/* Chevron icon animation */
+.nav-link .bi-chevron-down {
+  transition: transform 0.3s ease;
+}
+
+.nav-link[aria-expanded="true"] .bi-chevron-down {
+  transform: rotate(180deg);
+}
+
+/* Collapse animation */
+.nav-content.collapse {
+  transition: height 0.3s ease;
+}
+
+.nav-content.collapsing {
+  height: 0;
+  overflow: hidden;
+  transition: height 0.3s ease;
+}
+
+/* Light mode main navigation improvements */
+.nav-link {
+  border: 1px solid #e5e7eb !important;
+  font-weight: 600;
+}
+
+.nav-link:hover {
+  border-color: #d1d5db !important;
+}
+
+/* Special styling for main decoration link in light mode */
+.nav-link[data-bs-target="#decorations-nav"] {
+  background-color: #dbeafe !important;
+  color: #1e40af !important;
+  border-color: #3b82f6 !important;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+}
+
+.nav-link[data-bs-target="#decorations-nav"]:hover {
+  background-color: #bfdbfe !important;
+  color: #1e3a8a !important;
+}
+
+.nav-link[data-bs-target="#decorations-nav"] i {
+  color: #1e40af !important;
+}
+
+/* تحسين ألوان التبويبات الفرعية */
+/* الوضع الليلي - أبيض مع تأثيرات إضافية */
+.dark .sidebar-nav .nav-content a {
+  color: #ffffff !important;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
+  font-weight: 600;
+}
+
+.dark .sidebar-nav .nav-content a:hover {
+  color: #ffffff !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+}
+
+.dark .sidebar-nav .nav-content a.collapsed {
+  color: #dbeafe !important;
+  text-shadow: 0 0 8px rgba(219, 234, 254, 0.6);
+}
+
+/* الوضع العادي - أزرق */
+.sidebar-nav .nav-content a {
+  color: #1e40af !important;
+}
+
+.sidebar-nav .nav-content a:hover {
+  color: #1e3a8a !important;
+}
+
+.sidebar-nav .nav-content a.collapsed {
+  color: #1e40af !important;
+}
+
+/* تحسين الأيقونات */
+/* الوضع الليلي - أيقونات بيضاء */
+.dark .sidebar-nav .nav-content a i {
+  color: #ffffff !important;
+}
+
+.dark .sidebar-nav .nav-content a.collapsed i {
+  color: #dbeafe !important;
+}
+
+/* الوضع العادي - أيقونات زرقاء */
+.sidebar-nav .nav-content a i {
+  color: #1e40af !important;
+}
+
+.sidebar-nav .nav-content a.collapsed i {
+  color: #1e40af !important;
+}
+</style>
 
 <script setup>
 import { Link , usePage} from '@inertiajs/vue3'
+import { onMounted, nextTick } from 'vue'
+
 const page = usePage()
 
 const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 }
-defineProps({message: String,translations:Array})
+
+// Auto-expand decoration submenu if on decoration pages
+onMounted(() => {
+  nextTick(() => {
+    const currentUrl = page.url.value
+    if (currentUrl.startsWith('/decorations') || currentUrl.startsWith('/decoration-orders') || currentUrl.startsWith('/decoration-payments') || currentUrl.startsWith('/decoration-monthly-accounting')) {
+      const decorationsNav = document.getElementById('decorations-nav')
+      if (decorationsNav) {
+        decorationsNav.classList.add('show')
+        decorationsNav.classList.remove('collapse')
+      }
+    }
+  })
+})
+
+defineProps({message: String,translations: Object})
 </script>
 
 <script>

@@ -7,7 +7,7 @@
         <div class="d-flex align-items-center justify-content-between">
             <Link class="logo d-flex align-items-center" :href="route('dashboard')">
             <img src="/dashboard-assets/img/WEDOO  LOGO PNG.webp" alt="">
-            <span class="d-none d-lg-block dark:text-white">{{translations.app_name}}</span>
+            <span class="d-none d-lg-block dark:text-white">{{ translations.app_name || 'WEDOO EVENTS' }}</span>
             </Link>
         </div>
         <!-- End Logo -->
@@ -24,7 +24,7 @@
                 <!-- End Search Icon-->
                 <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
                     <select class="form-control changeLang" @change="changeLanguage">
-                        <option value="" selected> {{translations.language  }} 🌍 </option>
+                        <option value="" selected> {{ translations.language || 'Language' }} 🌍 </option>
                         <option value="en"> English</option>
                         <option value="ar">Arabic</option>
                     </select>
@@ -255,13 +255,16 @@
 
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import DarkModeToggle from '@/Components/DarkToggle.vue';
 
-defineProps({translations:Array })
+defineProps({translations: Object})
 
 const showingNavigationDropdown = ref(false);
+
+// Access window.translations safely
+const translations = computed(() => window.translations || {});
 </script>
 
 

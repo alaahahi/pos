@@ -9,6 +9,7 @@ use Spatie\Permission\Models\Role;
 
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\DecorationOrder;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Cache;
@@ -25,6 +26,9 @@ class DashboardController extends Controller
     $modulesChartData = $this->getLogsChartDataByModule();
     $usersChartData = $this->getLogsChartDataByUser();
     $statusChartData = $this->getUsersChartDataByStatus();
+    
+    // Decoration orders statistics
+    $decorationOrdersChartData = $this->getDecorationOrdersChartData();
 
     return Inertia::render('Dashboard', [
         'translations' => __('messages'),
@@ -40,6 +44,11 @@ class DashboardController extends Controller
         'orderDueCount'=> Order::where('status', 'due')->count(),
         'orderCompletCount'=> Order::where('status', 'paid')->count(),
         'rolesCount' => Role::count(),
+        'decorationOrdersChartData' => $decorationOrdersChartData,
+        'decorationOrderCount' => DecorationOrder::count(),
+        'decorationOrderPendingCount' => DecorationOrder::where('status', 'created')->count(),
+        'decorationOrderCompletedCount' => DecorationOrder::where('status', 'completed')->count(),
+        'decorationOrderPaidCount' => DecorationOrder::where('status', 'full_payment')->count(),
     ]);
 }
 
@@ -139,6 +148,38 @@ class DashboardController extends Controller
                             $usersByStatus->where('is_active', 0)->first()->total ?? 0,
                             $usersByStatus->where('is_active', 1)->first()->total ?? 0,
                         ],
+                    ],
+                ],
+            ];
+        });
+    }
+    
+    private function getDecorationOrdersChartData()
+    {
+        return Cache::remember('decoration_orders_by_status_chart_data', 60, function () {
+            $ordersByStatus = DecorationOrder::select('status', \DB::raw('count(*) as total'))
+                ->groupBy('status')
+                ->get();
+    
+            $statusLabels = [
+                'created' => 'تم الإنشاء',
+                'received' => 'تم الاستلام',
+                'executing' => 'قيد التنفيذ',
+                'partial_payment' => 'دفع جزئي',
+                'full_payment' => 'دفع كامل',
+                'completed' => 'مكتمل',
+                'cancelled' => 'ملغي'
+            ];
+    
+            return [
+                'labels' => $ordersByStatus->map(function ($item) use ($statusLabels) {
+                    return $statusLabels[$item->status] ?? $item->status;
+                }),
+                'datasets' => [
+                    [
+                        'label' => 'طلبات الديكور حسب الحالة',
+                        'backgroundColor' => ['#6c757d', '#17a2b8', '#007bff', '#ffc107', '#28a745', '#28a745', '#dc3545'],
+                        'data' => $ordersByStatus->pluck('total'),
                     ],
                 ],
             ];

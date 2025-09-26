@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\DecorationController;
 use App\Http\Controllers\BarcodeController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ProfileController;
@@ -52,6 +53,39 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::post('suppliers/{supplier}', [CustomersController::class, 'update'])->name('suppliers.update');
 
 
+    // Decoration routes
+    Route::get('/decorations-dashboard', [DecorationController::class, 'dashboard'])->name('decorations.dashboard');
+    Route::resource('decorations', DecorationController::class);
+    Route::post('decorations/{decoration}/update-post', [DecorationController::class, 'updatePost'])->name('decorations.update.post');
+    Route::get('/decorations-orders', [DecorationController::class, 'orders'])->name('decorations.orders');
+    Route::post('/decoration-orders', [DecorationController::class, 'createOrder'])->name('decoration.orders.store');
+    Route::patch('/decoration-orders/{order}/status', [DecorationController::class, 'updateOrderStatus'])->name('decoration.orders.status');
+    Route::patch('/decoration-orders/{order}/pricing', [DecorationController::class, 'updateOrderPricing'])->name('decoration.orders.pricing');
+    Route::get('/decoration-orders/{order}/print', [DecorationController::class, 'printOrder'])->name('decoration.orders.print');
+    Route::get('/decoration-orders/{order}/verify', [DecorationController::class, 'verifyOrder'])->name('decoration.orders.verify');
+
+// Decoration Payments and Accounting Routes
+Route::get('/decoration-payments', [DecorationController::class, 'payments'])->name('decoration.payments');
+Route::post('/decoration-payments/add', [DecorationController::class, 'addPayment'])->name('decoration.payments.add');
+Route::post('/decoration-payments/balance/add', [DecorationController::class, 'addBalance'])->name('decoration.payments.balance.add');
+Route::post('/decoration-payments/balance/withdraw', [DecorationController::class, 'withdrawBalance'])->name('decoration.payments.balance.withdraw');
+Route::get('/decoration-payments/balance/{customer}', [DecorationController::class, 'getCustomerBalance'])->name('decoration.payments.balance.get');
+
+// Monthly Accounting Routes
+Route::get('/decoration-monthly-accounting', [DecorationController::class, 'monthlyAccounting'])->name('decoration.monthly.accounting');
+Route::post('/decoration-monthly-accounting/close', [DecorationController::class, 'closeMonth'])->name('decoration.monthly.close');
+Route::get('/decoration-monthly-accounting/report', [DecorationController::class, 'getMonthlyReport'])->name('decoration.monthly.report');
+Route::put('/decoration-monthly-accounting/{monthlyAccount}', [DecorationController::class, 'updateMonthlyAccount'])->name('decoration.monthly.update');
+Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [DecorationController::class, 'recalculateMonthlyData'])->name('decoration.monthly.recalculate');
+
+// Public Gallery Routes (No Authentication Required)
+Route::get('/gallery', [App\Http\Controllers\PublicGalleryController::class, 'index'])->name('public.gallery');
+Route::get('/gallery/{decoration}', [App\Http\Controllers\PublicGalleryController::class, 'show'])->name('public.decoration.show');
+Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class, 'api'])->name('public.gallery.api');
+    Route::get('/decoration-orders/{order}', [DecorationController::class, 'showOrder'])->name('decoration.orders.show');
+    Route::get('/my-decoration-orders', [DecorationController::class, 'myOrders'])->name('decoration.orders.my');
+
+  // Products routes
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
   Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update'); 

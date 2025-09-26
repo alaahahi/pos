@@ -48,6 +48,27 @@ class UserRolePermissionSeeder extends Seeder
         Permission::create(['name' => 'delete logs']);
         Permission::create(['name' => 'view logs']);
 
+        // Decoration permissions
+        Permission::firstOrCreate(['name' => 'create decoration']);
+        Permission::firstOrCreate(['name' => 'read decoration']);
+        Permission::firstOrCreate(['name' => 'update decoration']);
+        Permission::firstOrCreate(['name' => 'delete decoration']);
+        Permission::firstOrCreate(['name' => 'view decoration']);
+
+        // Decoration payments permissions
+        Permission::firstOrCreate(['name' => 'create payment']);
+        Permission::firstOrCreate(['name' => 'read payment']);
+        Permission::firstOrCreate(['name' => 'update payment']);
+        Permission::firstOrCreate(['name' => 'delete payment']);
+        Permission::firstOrCreate(['name' => 'view payment']);
+
+        // Monthly accounting permissions
+        Permission::firstOrCreate(['name' => 'create monthly_accounting']);
+        Permission::firstOrCreate(['name' => 'read monthly_accounting']);
+        Permission::firstOrCreate(['name' => 'update monthly_accounting']);
+        Permission::firstOrCreate(['name' => 'delete monthly_accounting']);
+        Permission::firstOrCreate(['name' => 'view monthly_accounting']);
+
 
     // Create Roles 
         $superAdminRole = Role::create(['name' => 'superadmin']); //as super-admin
@@ -64,6 +85,14 @@ class UserRolePermissionSeeder extends Seeder
          $adminRole->givePermissionTo(['create permissions','read permissions', 'view permissions']);
          $adminRole->givePermissionTo(['create users', 'read users','view users', 'update users']);
          $adminRole->givePermissionTo(['create logs', 'read logs','view logs', 'update logs']);
+         $adminRole->givePermissionTo(['create decoration', 'read decoration', 'view decoration', 'update decoration', 'delete decoration']);
+         $adminRole->givePermissionTo(['create payment', 'read payment', 'view payment', 'update payment', 'delete payment']);
+         $adminRole->givePermissionTo(['create monthly_accounting', 'read monthly_accounting', 'view monthly_accounting', 'update monthly_accounting', 'delete monthly_accounting']);
+         
+         // Let's give decoration permissions to staff role
+         $staffRole->givePermissionTo(['read decoration', 'view decoration', 'create decoration']);
+         $staffRole->givePermissionTo(['read payment', 'view payment', 'create payment']);
+         $staffRole->givePermissionTo(['read monthly_accounting', 'view monthly_accounting']);
        
 //php artisan cache:forget spatie.permission.cache 
 
