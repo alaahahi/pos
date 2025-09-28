@@ -28,7 +28,7 @@ class OrderController extends Controller
         $this->middleware('permission:create order', ['only' => ['create', 'store']]);
         $this->middleware('permission:update order', ['only' => ['edit', 'update']]);
         $this->middleware('permission:delete order', ['only' => ['destroy']]);
-        $this->userAccount =  UserType::where('name', 'account')->first()->id;
+        $this->userAccount =  UserType::where('name', 'account')->first()?->id;
         $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
         $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
 

@@ -11,6 +11,7 @@ use App\Http\Requests\Product\UpdateProductRequest;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 class ProductController extends Controller
 {
@@ -101,7 +102,7 @@ class ProductController extends Controller
         // توليد barcode تلقائي إذا لم يتم إرساله
         if (empty($validated['barcode'])) {
             do {
-                $generatedBarcode = random_int(10000000, 99999999); // رقم عشوائي من 8 أرقام
+                $generatedBarcode = random_int(1000000000, 9999999999); // رقم عشوائي من 8 أرقام
             } while (Product::where('barcode', $generatedBarcode)->exists());
         
             $validated['barcode'] = $generatedBarcode;
@@ -160,50 +161,52 @@ class ProductController extends Controller
      */
     public function update(UpdateProductRequest $request, Product $product)
     {
+        // التحقق من البيانات
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'model' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'oe_number' => 'nullable|string|max:100',
-            'price_cost' => 'required|numeric|min:0',
-            'quantity' => 'required|integer|min:0',
-            'price' => 'required|numeric|min:0',
+            'price_cost' => 'nullable|numeric|min:0',
+            'quantity' => 'nullable|integer|min:0',
+            'price' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode,' . $product->id,
         ]);
-    
-        // توليد barcode إذا لم يكن موجودًا مسبقًا
+        
+        // توليد barcode تلقائي إذا لم يتم إرساله ولم يكن موجودًا
         if (empty($validated['barcode']) && !$product->barcode) {
             do {
-                $generatedBarcode = random_int(10000000, 99999999);
+                $generatedBarcode = random_int(1000000000, 9999999999); // رقم عشوائي من 8 أرقام
             } while (Product::where('barcode', $generatedBarcode)->where('id', '!=', $product->id)->exists());
-    
+        
             $validated['barcode'] = $generatedBarcode;
         }
-    
+        
         // تحديث التاريخ
         $validated['created'] = Carbon::now()->format('Y-m-d');
-    
+        
         // التعامل مع رفع الصورة الجديدة
         if ($request->hasFile('image')) {
             // حذف الصورة القديمة إذا لم تكن الصورة الافتراضية
             if ($product->image && $product->image !== 'products/default_product.png') {
                 Storage::disk('public')->delete($product->image);
             }
-    
+            
             // رفع الصورة الجديدة
             $path = $request->file('image')->store('products', 'public');
             $validated['image'] = $path;
         }
-    
+        
         // تحديث المنتج
         $product->update($validated);
-    
-        // مزامنة الأدوار إذا تم تمريرها
+        
+        // مزامنة الصلاحيات إذا وُجدت
         if ($request->has('selectedRoles')) {
             $product->syncRoles($request->selectedRoles);
         }
-    
+        
+        // إعادة التوجيه مع رسالة نجاح
         return redirect()->route('products.index')->with('success', __('messages.data_updated_successfully'));
     }
     
@@ -273,6 +276,121 @@ class ProductController extends Controller
         }
         
         return response()->json($product);
+    }
+
+    /**
+     * Check if the product is available in the stock
+     * 
+     * @param int $product_id
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    /**
+     * Process product purchase with optional box withdrawal
+     * 
+     * @param Request $request
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function processPurchase(Request $request)
+    {
+        $request->validate([
+            'product_id' => 'required|exists:products,id',
+            'quantity' => 'required|integer|min:1',
+            'price_cost' => 'required|numeric|min:0',
+            'price' => 'required|numeric|min:0',
+            'date' => 'required|date',
+            'withdraw_from_box' => 'boolean',
+            'currency' => 'required|in:IQD,$'
+        ]);
+
+        $product = Product::find($request->product_id);
+         if (!$product) {
+            return response()->json([
+                'success' => false,
+                'message' => 'المنتج غير موجود'
+            ], 404);
+        }
+        
+        // Calculate total cost
+        $totalCost = $request->quantity * $request->price_cost;
+        
+        // Update product quantity and prices
+        $product->update([
+            'quantity' => $product->quantity + $request->quantity,
+            'price_cost' => $request->price_cost,
+            'price' => $request->price,
+            'created' => $request->date
+        ]);
+
+        $response = [
+            'success' => true,
+            'message' => 'تم تحديث المنتج بنجاح',
+            'product' => $product,
+            'total_cost' => $totalCost,
+            'currency' => $request->currency
+        ];
+
+        // If withdrawal from box is requested
+        if ($request->withdraw_from_box) {
+            try {
+                // Get main box
+                $userAccount = \App\Models\UserType::where('name', 'account')->first();
+                $mainBox = \App\Models\User::with('wallet')
+                    ->where('type_id', $userAccount->id)
+                    ->where('email', 'mainBox@account.com')
+                    ->first();
+
+                if (!$mainBox || !$mainBox->wallet) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'الصندوق الرئيسي غير موجود'
+                    ], 400);
+                }
+
+                // Create withdrawal transaction
+                $accountingController = new \App\Http\Controllers\AccountingController();
+                $transaction = $accountingController->decreaseWallet(
+                    $totalCost, // المبلغ المدفوع
+                    "شراء منتج: {$product->name} - الكمية: {$request->quantity}", // الوصف
+                    $mainBox->id, // الصندوق الرئيسي
+                    $mainBox->id, // صندوق النظام
+                    'App\Models\User',
+                    0,
+                    0,
+                    $request->currency,
+                    $request->date
+                );
+
+                $response['box_transaction'] = $transaction;
+                $response['message'] = 'تم تحديث المنتج وسحب المبلغ من الصندوق بنجاح';
+
+            } catch (\Exception $e) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'حدث خطأ أثناء السحب من الصندوق: ' . $e->getMessage()
+                ], 500);
+            }
+        }
+
+        return response()->json($response);
+    }
+
+    /**
+     * Check if barcode is unique
+     * 
+     * @param string $barcode
+     * 
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function checkBarcodeUnique($barcode)
+    {
+        $exists = Product::where('barcode', $barcode)->exists();
+        
+        return response()->json([
+            'unique' => !$exists,
+            'message' => $exists ? 'الباركود مستخدم بالفعل' : 'الباركود متاح'
+        ]);
     }
 
     /**

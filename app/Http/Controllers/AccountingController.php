@@ -46,9 +46,9 @@ class AccountingController extends Controller
 {
     public function __construct(){
         $this->url = env('FRONTEND_URL');
-        $this->userAdmin =  UserType::where('name', 'admin')->first()->id;
-        $this->userClient =  UserType::where('name', 'client')->first()->id;
-        $this->userAccount =  UserType::where('name', 'account')->first()->id;
+        $this->userAdmin =  UserType::where('name', 'admin')->first()?->id;
+        $this->userClient =  UserType::where('name', 'client')->first()?->id;
+        $this->userAccount =  UserType::where('name', 'account')->first()?->id;
     
         $this->mainAccount= User::with('wallet')->where('type_id', $this->userAccount)->where('email','main@account.com');
         $this->onlineContracts= User::with('wallet')->where('type_id', $this->userAccount)->where('email','online-contracts');

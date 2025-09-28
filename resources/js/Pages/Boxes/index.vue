@@ -31,12 +31,12 @@
             </div>
             <div class="col-md-2">
                 <button  class="btn btn-info w-100 text-white" >
-                 الرصيد بالدولار : <span class="text-bolde">{{  updateResults(mainBox.wallet.balance ?? 0) }}</span>  <i class="bi bi-currency-dollar"></i>
+                 الرصيد بالدولار : <span class="text-bolde">{{  updateResults(mainBox?.wallet?.balance ?? 0) }}</span>  <i class="bi bi-currency-dollar"></i>
                 </button>
             </div>
             <div class="col-md-2">
                 <button  class="btn btn-info w-100 text-white" >
-                  الرصيد بالدينار : <span class="text-bold">{{  updateResults(mainBox.wallet.balance_dinar ?? 0) }}</span>  <span class="text-white">IQD</span>
+                  الرصيد بالدينار : <span class="text-bold">{{  updateResults(mainBox?.wallet?.balance_dinar ?? 0) }}</span>  <span class="text-white">IQD</span>
                 </button>
             </div>
             <!-- هنا يمكن إضافة أي أدوات تصفية أو بحث إضافية-->

@@ -24,7 +24,7 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'model' => 'required|string|max:255',
+            'model' => 'nullable|string|max:255',
             'oe_number' => 'nullable|string|max:50',
             'situation' => 'nullable|string|max:50',
             'price_cost' => 'required|numeric|min:0',
@@ -45,7 +45,6 @@ class UpdateProductRequest extends FormRequest
     {
         return [
             'name.required' => __('rules.Name_is_required'),
-            'model.required' => __('rules.Model_is_required'),
             'price_cost.required' => __('rules.Price_cost_is_required'),
             'quantity.required' => __('rules.Quantity_is_required'),
             'quantity.integer' => __('rules.Quantity_must_be_an_integer'),

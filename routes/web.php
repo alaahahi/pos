@@ -92,7 +92,16 @@ Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class,
   Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update'); 
   Route::get('products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
   Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
+  
+  // Product API routes
+  Route::get('products/find-by-barcode/{barcode}', [ProductController::class, 'findByBarcode'])->name('products.findByBarcode');
+  Route::get('products/check-stock/{product_id}', [ProductController::class, 'checkStock'])->name('products.checkStock');
+  Route::get('products/check-barcode-unique/{barcode}', [ProductController::class, 'checkBarcodeUnique'])->name('products.checkBarcodeUnique');
 
+  Route::resource('purchase-invoices', App\Http\Controllers\PurchaseInvoiceController::class);
+  Route::get('purchase-invoices/search/products', [App\Http\Controllers\PurchaseInvoiceController::class, 'searchProducts'])->name('purchase-invoices.search-products');
+  Route::get('purchase-invoices/search/suppliers', [App\Http\Controllers\PurchaseInvoiceController::class, 'searchSuppliers'])->name('purchase-invoices.search-suppliers');
+  // Orders routes
   Route::resource('orders', OrderController::class);
   Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('orders.activate');
   Route::put('ordersEdit/{order}', [OrderController::class, 'update'])->name('orders.update');
@@ -158,5 +167,6 @@ Route::prefix('barcode')->name('barcode.')->middleware(['web'])->group(function 
   Route::post('/generate', [BarcodeController::class, 'generate'])->name('generate');
   Route::post('/print', [BarcodeController::class, 'print'])->name('print');
 });
+
 
 require __DIR__ . '/auth.php';

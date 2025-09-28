@@ -10,13 +10,18 @@ class VerifyActiveSession
     public function handle($request, Closure $next)
     {
         $user = Auth::user();
-        if ($user && $user->session_id !== session()->getId()) {
+        
+        // Skip session verification for API routes or AJAX requests
+        if ($request->expectsJson() || $request->ajax()) {
+            return $next($request);
+        }
+        
+        if ($user && isset($user->session_id) && $user->session_id !== session()->getId()) {
             Auth::logout();
             return back()->withErrors([
                 'is_active' => 'Your account is inactive. Please contact support.',
             ]);
         }
-       
 
         return $next($request);
     }

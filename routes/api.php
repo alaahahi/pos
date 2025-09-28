@@ -35,6 +35,7 @@ Route::post('drop-from-box',[BoxesController::class, 'dropFromBox'])->name('drop
 Route::post('deleteTransactions',[AccountingController::class, 'delTransactions'])->name('deleteTransactions');
 Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
 Route::get('check-stock/{product_id}', [ProductController::class, 'checkStock'])->name('check-stock');
+Route::post('products/process-purchase', [ProductController::class, 'processPurchase'])->name('products.processPurchase');
 
 Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name('transactions');
 Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');

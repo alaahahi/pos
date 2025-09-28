@@ -22,7 +22,7 @@ class BoxesController extends Controller
         $this->middleware('permission:update box', ['only' => ['update', 'edit']]);
         $this->middleware('permission:delete box', ['only' => ['destroy']]);
         $this->accountingController = $accountingController;
-        $this->userAccount =  UserType::where('name', 'account')->first()->id;
+        $this->userAccount =  UserType::where('name', 'account')->first()?->id;
         $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
         $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
     }

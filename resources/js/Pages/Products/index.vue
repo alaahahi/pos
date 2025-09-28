@@ -17,139 +17,375 @@
     <!-- End breadcrumb-->
 
     <section class="section dashboard">
-      <div class="card">
-        <div class="card-header">
-          <div class="d-flex">
+      <!-- Statistics Cards -->
+      <div class="row mb-4">
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card sales-card">
+            <div class="card-body">
+              <h5 class="card-title">{{ translations.total_products }} <span>| {{ translations.all }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-box-seam"></i>
+          </div>
+                <div class="ps-3">
+                  <h6>{{ props.products?.total || 0 }}</h6>
+                  <span class="text-success small pt-1 fw-bold">{{ translations.products }}</span>
+        </div>
+              </div>
+            </div>
           </div>
         </div>
+
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card revenue-card">
         <div class="card-body">
-          <form @submit.prevent="Filter">
-            <div class="row filter_form">
-              <div class="col-md-6">
-                <input type="text" class="form-control search_box" v-model="filterForm.search" 
-                  :placeholder="translations.search_by_name_or_barcode" />
+              <h5 class="card-title">{{ translations.low_stock }} <span>| {{ translations.warning }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-exclamation-triangle"></i>
               </div>
-              <div class="col-md-3">
-                <button type="submit" class="btn btn-primary">
-                  {{ translations.search }} &nbsp; <i class="bi bi-search"></i>
-                </button>
+                <div class="ps-3">
+                  <h6>{{ getLowStockCount() }}</h6>
+                  <span class="text-warning small pt-1 fw-bold">{{ translations.items }}</span>
               </div>
-              <div class="col-md-3">
-                <Link v-if="hasPermission('create product')" class="btn btn-primary" :href="route('products.create')">
-                  {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card customers-card">
+        <div class="card-body">
+              <h5 class="card-title">{{ translations.active_products }} <span>| {{ translations.enabled }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-check-circle"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ getActiveCount() }}</h6>
+                  <span class="text-success small pt-1 fw-bold">{{ translations.active }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card revenue-card">
+            <div class="card-body">
+              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.inventory }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-currency-dollar"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ getTotalValue() }}</h6>
+                  <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Main Card -->
+      <div class="card">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">
+            <i class="bi bi-box-seam me-2"></i>
+            {{ translations.products_management }}
+          </h5>
+          <div class="d-flex gap-2">
+            <button class="btn btn-outline-primary" @click="toggleViewMode">
+              <i :class="viewMode === 'grid' ? 'bi bi-list' : 'bi bi-grid'"></i>
+              {{ viewMode === 'grid' ? translations.list_view : translations.grid_view }}
+            </button>
+            <Link v-if="hasPermission('create product')" class="btn btn-primary" :href="route('products.create')">
+              <i class="bi bi-plus-circle"></i>
+              {{ translations.add_product }}
                 </Link>
               </div>
             </div>
-          </form>
+        
+        <div class="card-body">
+          <!-- Advanced Search and Filters -->
+          <div class="row mb-4">
+            <div class="col-md-4">
+              <div class="search-box">
+                <input 
+                  type="text" 
+                  class="form-control" 
+                  v-model="filterForm.search" 
+                  :placeholder="translations.search_by_name_or_barcode"
+                  @input="debouncedSearch"
+                />
+                <i class="bi bi-search search-icon"></i>
+              </div>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" v-model="filterForm.status" @change="Filter">
+                <option value="">{{ translations.all_status }}</option>
+                <option value="active">{{ translations.active }}</option>
+                <option value="inactive">{{ translations.inactive }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" v-model="filterForm.stock" @change="Filter">
+                <option value="">{{ translations.all_stock }}</option>
+                <option value="low">{{ translations.low_stock }}</option>
+                <option value="out">{{ translations.out_of_stock }}</option>
+                <option value="available">{{ translations.in_stock }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <select class="form-select" v-model="filterForm.sort" @change="Filter">
+                <option value="name">{{ translations.sort_by_name }}</option>
+                <option value="price">{{ translations.sort_by_price }}</option>
+                <option value="quantity">{{ translations.sort_by_quantity }}</option>
+                <option value="created">{{ translations.sort_by_date }}</option>
+              </select>
+            </div>
+            <div class="col-md-2">
+              <button class="btn btn-outline-secondary w-100" @click="clearFilters">
+                <i class="bi bi-arrow-clockwise"></i>
+                {{ translations.clear }}
+              </button>
+            </div>
+          </div>
 
+          <!-- Products Display -->
+          <div v-if="viewMode === 'table'">
           <div class="table-responsive">
-            <table class="table text-center">
-              <thead>
-                <tr>
-                  <th scope="col">#</th>
-                  <th scope="col">{{ translations.name }}</th>
+              <table class="table table-hover">
+                <thead class="table-dark">
+                  <tr>
+                    <th scope="col" class="text-center">
+                      <i class="bi bi-image"></i>
+                    </th>
+                    <th scope="col">{{ translations.product_info }}</th>
                   <th scope="col">{{ translations.barcode }}</th>
-                  <th scope="col">{{ translations.model }}</th>
-                  <th scope="col">{{ translations.quantity }}</th>
+                    <th scope="col">{{ translations.stock }}</th>
                   <th scope="col">{{ translations.price }}</th>
-                  
-                  <th scope="col">{{ translations.created_at }}</th>
-                  <th scope="col"> {{ translations.statusProdact }}</th>
-                  <th scope="col" v-if="hasPermission('update product')">{{ translations.edit }}</th>
-                  <th scope="col" v-if="hasPermission('delete product')">{{ translations.delete }}</th>
-                  <th scope="col" v-if="hasPermission('update product')">{{ translations.add_quantity }}</th>
-                  <th scope="col">{{ translations.barcode_actions }}</th>
-
+                    <th scope="col">{{ translations.status }}</th>
+                    <th scope="col" class="text-center">{{ translations.actions }}</th>
                 </tr>
               </thead>
               <tbody>
-                <tr v-for="(product, index) in products?.data" :key="product.id">
-                  <th scope="row">{{ index + 1 }}</th>
-                  <td>{{ product.name }}</td>
-                  <td>{{ product.barcode }}</td>
-                  <td>{{ product.model }}</td>
-                  <td>{{ product.quantity }}</td>
-                  <td>{{ product.price }}</td>
-                  <td>{{ product.created }}</td>
-                  <td>
-                  <div>
-                    <label class="inline-flex items-center me-5 cursor-pointer">
-                      <input type="checkbox" class="sr-only peer" :checked="product.is_active == 1"
-                        @change="Activate(product.id)">
-                      <div
-                        class="relative w-11 h-6 bg-gray-200 rounded-full peer dark:bg-gray-700 peer-focus:ring-4 peer-focus:ring-green-300 dark:peer-focus:ring-green-800 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-0.5 after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-green-600">
+                  <tr v-for="(product, index) in props.products?.data" :key="product.id" class="product-row">
+                    <td class="text-center">
+                      <div class="product-image-container">
+                        <img 
+                          :src="getProductImage(product)" 
+                          :alt="product.name"
+                          class="product-image"
+                          @error="handleImageError"
+                        />
+                        <div v-if="product.quantity <= 5" class="stock-badge low-stock">
+                          <i class="bi bi-exclamation-triangle"></i>
+                        </div>
+                        <div v-if="product.quantity === 0" class="stock-badge out-of-stock">
+                          <i class="bi bi-x-circle"></i>
+                        </div>
                       </div>
-                    </label>
+                    </td>
+                    <td>
+                      <div class="product-info">
+                        <h6 class="product-name mb-1">{{ product.name }}</h6>
+                        <small class="text-muted">{{ product.model }}</small>
+                        <br>
+                        <small class="text-muted">{{ translations.created }}: {{ formatDate(product.created) }}</small>
+                      </div>
+                    </td>
+                    <td>
+                      <div class="barcode-info">
+                        <span v-if="product.barcode" class="barcode-text">{{ product.barcode }}</span>
+                        <span v-else class="text-muted">{{ translations.no_barcode }}</span>
                   </div>
                   </td>
-                  <td v-if="hasPermission('update product')">
-                    <a class="btn btn-primary" :href="route('products.edit', { product: product.id })">
-                      <i class="bi bi-pencil-square"></i>
-                    </a>
+                    <td>
+                      <div class="stock-info">
+                        <span class="stock-quantity" :class="getStockClass(product.quantity)">
+                          {{ product.quantity }}
+                        </span>
+                        <small class="d-block text-muted">{{ translations.units }}</small>
+                      </div>
                   </td>
-                  <td v-if="hasPermission('delete product')">
-                    <button type="button" class="btn btn-danger" @click="Delete(product.id)">
-                      <i class="bi bi-trash"></i>
-                    </button>
+                    <td>
+                      <div class="price-info">
+                        <span class="price-amount">{{ formatPrice(product.price) }}</span>
+                        <small class="d-block text-muted">{{ translations.selling_price }}</small>
+                      </div>
                   </td>
-                  <td v-if="hasPermission('update product')">
-                  <button class="btn btn-success" @click="showModalPurchasesProduct = true; data = product" >
-                      <i class="bi bi-currency-dollar"></i>
-                  </button>
+                    <td>
+                      <div class="status-toggle">
+                        <label class="switch">
+                          <input 
+                            type="checkbox" 
+                            :checked="product.is_active == 1"
+                            @change="Activate(product.id)"
+                          >
+                          <span class="slider round"></span>
+                        </label>
+                        <small class="d-block mt-1" :class="product.is_active ? 'text-success' : 'text-danger'">
+                          {{ product.is_active ? translations.active : translations.inactive }}
+                        </small>
+                      </div>
                   </td>
                   <td>
+                      <div class="action-buttons">
+                        <div class="btn-group-vertical" role="group">
+                          <Link 
+                            v-if="hasPermission('update product')"
+                            class="btn btn-sm btn-outline-primary mb-1" 
+                            :href="route('products.edit', { product: product.id })"
+                            :title="translations.edit"
+                          >
+                            <i class="bi bi-pencil"></i>
+                          </Link>
+                          
+                          <button 
+                            v-if="hasPermission('update product')"
+                            class="btn btn-sm btn-outline-success mb-1" 
+                            @click="showModalPurchasesProduct = true; data = product"
+                            title="{{ translations.add_stock }}"
+                          >
+                            <i class="bi bi-plus-circle"></i>
+                          </button>
+                          
                     <div class="btn-group" role="group">
-                      <!-- Generate button - only show if no barcode -->
                       <button 
                         v-if="!product.barcode"
-                        class="btn btn-sm btn-primary" 
+                              class="btn btn-sm btn-outline-info" 
                         @click="generateBarcode(product)"
                         :disabled="loading"
-                        title="توليد باركود"
+                              title="{{ translations.generate_barcode }}"
                       >
                         <i class="bi bi-qr-code"></i>
                       </button>
                       
-                      <!-- Print button - only show if has barcode -->
                       <button 
                         v-if="product.barcode"
-                        class="btn btn-sm btn-success" 
+                              class="btn btn-sm btn-outline-secondary" 
                         @click="printBarcode(product)"
-                        title="طباعة باركود"
+                              title="{{ translations.print_barcode }}"
                       >
                         <i class="bi bi-printer"></i>
                       </button>
+                          </div>
                       
-                      <!-- Preview button - only show if has barcode -->
                       <button 
-                        v-if="product.barcode"
-                        class="btn btn-sm btn-info" 
-                        @click="previewBarcode(product)"
-                        title="معاينة باركود"
-                      >
-                        <i class="bi bi-eye"></i>
+                            v-if="hasPermission('delete product')"
+                            class="btn btn-sm btn-outline-danger mt-1" 
+                            @click="Delete(product.id)"
+                            title="{{ translations.delete }}"
+                          >
+                            <i class="bi bi-trash"></i>
                       </button>
-                      
-                      <!-- Download button - only show if has barcode -->
-                      <button 
-                        v-if="product.barcode"
-                        class="btn btn-sm btn-secondary" 
-                        @click="downloadBarcode(product)"
-                        title="تحميل باركود"
-                      >
-                        <i class="bi bi-download"></i>
-                      </button>
+                        </div>
                     </div>
                   </td>
                 </tr>
               </tbody>
             </table>
+            </div>
+          </div>
+
+          <!-- Grid View -->
+          <div v-else class="row">
+            <div 
+              v-for="product in props.products?.data" 
+              :key="product.id" 
+              class="col-xl-3 col-lg-4 col-md-6 mb-4"
+            >
+              <div class="card product-card h-100">
+                <div class="card-body">
+                  <div class="product-image-container mb-3">
+                    <img 
+                      :src="getProductImage(product)" 
+                      :alt="product.name"
+                      class="product-image-large"
+                      @error="handleImageError"
+                    />
+                    <div v-if="product.quantity <= 5" class="stock-badge low-stock">
+                      <i class="bi bi-exclamation-triangle"></i>
+                    </div>
+                    <div v-if="product.quantity === 0" class="stock-badge out-of-stock">
+                      <i class="bi bi-x-circle"></i>
+                    </div>
+                  </div>
+                  
+                  <h6 class="card-title">{{ product.name }}</h6>
+                  <p class="card-text text-muted small">{{ product.model }}</p>
+                  
+                  <div class="row mb-3">
+                    <div class="col-6">
+                      <small class="text-muted d-block">{{ translations.stock }}</small>
+                      <span class="fw-bold" :class="getStockClass(product.quantity)">
+                        {{ product.quantity }}
+                      </span>
+                    </div>
+                    <div class="col-6">
+                      <small class="text-muted d-block">{{ translations.price }}</small>
+                      <span class="fw-bold text-primary">{{ formatPrice(product.price) }}</span>
+                    </div>
+                  </div>
+                  
+                  <div class="d-flex justify-content-between align-items-center">
+                    <div class="status-toggle">
+                      <label class="switch">
+                        <input 
+                          type="checkbox" 
+                          :checked="product.is_active == 1"
+                          @change="Activate(product.id)"
+                        >
+                        <span class="slider round"></span>
+                      </label>
+                    </div>
+                    
+                    <div class="btn-group" role="group">
+                      <Link 
+                        v-if="hasPermission('update product')"
+                        class="btn btn-sm btn-outline-primary" 
+                        :href="route('products.edit', { product: product.id })"
+                        :title="translations.edit"
+                      >
+                        <i class="bi bi-pencil"></i>
+                      </Link>
+                      
+                      <button 
+                        v-if="hasPermission('update product')"
+                        class="btn btn-sm btn-outline-success" 
+                        @click="showModalPurchasesProduct = true; data = product"
+                        title="{{ translations.add_stock }}"
+                      >
+                        <i class="bi bi-plus-circle"></i>
+                      </button>
+                      
+                      <button 
+                        v-if="hasPermission('delete product')"
+                        class="btn btn-sm btn-outline-danger" 
+                        @click="Delete(product.id)"
+                        title="{{ translations.delete }}"
+                      >
+                        <i class="bi bi-trash"></i>
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
-      <Pagination :links="products?.links" />
+      <Pagination :links="props.products?.links" />
     </section>
-    <ModalPurchasesProduct :show="showModalPurchasesProduct" :translations="translations" @close="showModalPurchasesProduct = false" :data="data"  />
+    <ModalPurchasesProduct 
+      :show="showModalPurchasesProduct" 
+      :translations="translations" 
+      :data="data"
+      @close="showModalPurchasesProduct = false" 
+      @success="handlePurchaseSuccess"
+    />
   </AuthenticatedLayout>
 </template>
 
@@ -164,6 +400,7 @@ import { reactive } from 'vue';
 import { ref } from 'vue';
 import ModalPurchasesProduct from '@/Components/ModalPurchasesProduct.vue';
 import { useToast } from 'vue-toastification';
+import { debounce } from 'lodash';
 
 const props = defineProps({
   products: Object, 
@@ -180,9 +417,141 @@ const previewLoading = ref(false);
 const previewImage = ref(null);
 const selectedProduct = ref(null);
 
-const filterForm = reactive({
-  search: ''
+// Add barcode validation
+const barcodeValidation = ref({
+  checking: false,
+  isValid: true,
+  message: ''
 });
+
+const filterForm = reactive({
+  search: '',
+  status: '',
+  stock: '',
+  sort: 'name'
+});
+
+// View mode (table or grid)
+const viewMode = ref('table');
+
+// Barcode validation function
+
+// Barcode validation function
+const validateBarcode = async (barcode) => {
+  if (!barcode || barcode.length < 3) {
+    barcodeValidation.value = {
+      checking: false,
+      isValid: true,
+      message: ''
+    };
+    return;
+  }
+
+  barcodeValidation.value.checking = true;
+  
+  try {
+    const response = await fetch(route('products.checkBarcodeUnique', barcode));
+    const data = await response.json();
+    
+    barcodeValidation.value = {
+      checking: false,
+      isValid: data.unique,
+      message: data.message
+    };
+    
+    if (!data.unique) {
+      toast.warning(data.message);
+    }
+  } catch (error) {
+    console.error('Barcode validation error:', error);
+    barcodeValidation.value = {
+      checking: false,
+      isValid: false,
+      message: 'خطأ في التحقق من الباركود'
+    };
+  }
+};
+
+// Debounced barcode validation
+const debouncedValidateBarcode = debounce(validateBarcode, 500);
+
+// Debounced search
+const debouncedSearch = debounce(() => {
+  Filter();
+}, 500);
+
+// Handle purchase success
+const handlePurchaseSuccess = (response) => {
+  toast.success('تم تحديث المنتج بنجاح');
+  // Refresh the page to show updated data
+  window.location.reload();
+};
+
+// Toggle view mode
+const toggleViewMode = () => {
+  viewMode.value = viewMode.value === 'table' ? 'grid' : 'table';
+};
+
+// Clear filters
+const clearFilters = () => {
+  filterForm.search = '';
+  filterForm.status = '';
+  filterForm.stock = '';
+  filterForm.sort = 'name';
+  Filter();
+};
+
+// Get product image
+const getProductImage = (product) => {
+  if (product.image && product.image !== 'products/default_product.png') {
+    return `/storage/${product.image}`;
+  }
+  return '/dashboard-assets/img/product-placeholder.svg';
+};
+
+// Handle image error
+const handleImageError = (event) => {
+  event.target.src = '/dashboard-assets/img/product-placeholder.svg';
+};
+
+// Get stock class
+const getStockClass = (quantity) => {
+  if (quantity === 0) return 'text-danger';
+  if (quantity <= 5) return 'text-warning';
+  return 'text-success';
+};
+
+// Format price
+const formatPrice = (price) => {
+  return parseFloat(price || 0).toFixed(2);
+};
+
+// Format date
+const formatDate = (date) => {
+  if (!date) return '-';
+  return new Date(date).toLocaleDateString('ar-SA');
+};
+
+// Get low stock count
+const getLowStockCount = () => {
+  if (!props.products?.data) return 0;
+  return props.products.data.filter(product => product.quantity <= 5).length;
+};
+
+// Get active count
+const getActiveCount = () => {
+  if (!props.products?.data) return 0;
+  return props.products.data.filter(product => product.is_active).length;
+};
+
+// Get total value
+const getTotalValue = () => {
+  if (!props.products?.data) return '0.00';
+  const total = props.products.data.reduce((sum, product) => {
+    return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
+  }, 0);
+  return total.toFixed(2);
+};
 
 // Barcode functions
 const generateBarcode = async (product) => {
@@ -575,3 +944,270 @@ const Delete = (id) => {
   });
 };
 </script>
+
+<style scoped>
+/* Statistics Cards */
+.info-card {
+  border-left: 4px solid #3b82f6;
+  transition: all 0.3s ease;
+}
+
+.info-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+}
+
+.info-card .card-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  width: 60px;
+  height: 60px;
+  font-size: 1.5rem;
+}
+
+.sales-card {
+  border-left-color: #10b981;
+}
+
+.revenue-card {
+  border-left-color: #f59e0b;
+}
+
+.customers-card {
+  border-left-color: #8b5cf6;
+}
+
+/* Search Box */
+.search-box {
+  position: relative;
+}
+
+.search-box .search-icon {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  color: #6b7280;
+  font-size: 1.1rem;
+}
+
+/* Product Images */
+.product-image-container {
+  position: relative;
+  display: inline-block;
+}
+
+.product-image {
+  width: 50px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+}
+
+.product-image-large {
+  width: 100%;
+  height: 200px;
+  object-fit: cover;
+  border-radius: 8px;
+  border: 2px solid #e5e7eb;
+}
+
+.stock-badge {
+  position: absolute;
+  top: -5px;
+  right: -5px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  color: white;
+}
+
+.stock-badge.low-stock {
+  background: #f59e0b;
+}
+
+.stock-badge.out-of-stock {
+  background: #ef4444;
+}
+
+/* Product Cards */
+.product-card {
+  transition: all 0.3s ease;
+  border: 1px solid #e5e7eb;
+}
+
+.product-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
+  border-color: #3b82f6;
+}
+
+.product-card .card-title {
+  font-size: 1rem;
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.5rem;
+}
+
+/* Table Styling */
+.product-row {
+  transition: all 0.2s ease;
+}
+
+.product-row:hover {
+  background-color: #f8fafc;
+}
+
+.product-name {
+  font-weight: 600;
+  color: #1f2937;
+  margin-bottom: 0.25rem;
+}
+
+.barcode-text {
+  font-family: 'Courier New', monospace;
+  font-size: 0.9rem;
+  background: #f3f4f6;
+  padding: 2px 6px;
+  border-radius: 4px;
+  color: #374151;
+}
+
+.stock-quantity {
+  font-weight: 700;
+  font-size: 1.1rem;
+}
+
+.price-amount {
+  font-weight: 600;
+  color: #059669;
+  font-size: 1rem;
+}
+
+/* Switch Toggle */
+.switch {
+  position: relative;
+  display: inline-block;
+  width: 50px;
+  height: 24px;
+}
+
+.switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #ccc;
+  transition: .4s;
+  border-radius: 24px;
+}
+
+.slider:before {
+  position: absolute;
+  content: "";
+  height: 18px;
+  width: 18px;
+  left: 3px;
+  bottom: 3px;
+  background-color: white;
+  transition: .4s;
+  border-radius: 50%;
+}
+
+input:checked + .slider {
+  background-color: #10b981;
+}
+
+input:checked + .slider:before {
+  transform: translateX(26px);
+}
+
+/* Action Buttons */
+.action-buttons .btn {
+  border-radius: 6px;
+  transition: all 0.2s ease;
+}
+
+.action-buttons .btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .product-image {
+    width: 40px;
+    height: 40px;
+  }
+  
+  .product-image-large {
+    height: 150px;
+  }
+  
+  .info-card .card-icon {
+    width: 50px;
+    height: 50px;
+    font-size: 1.2rem;
+  }
+}
+
+/* Loading States */
+.loading-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(255, 255, 255, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10;
+}
+
+/* Animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.product-card {
+  animation: fadeIn 0.3s ease-out;
+}
+
+/* Status Indicators */
+.text-success {
+  color: #10b981 !important;
+}
+
+.text-warning {
+  color: #f59e0b !important;
+}
+
+.text-danger {
+  color: #ef4444 !important;
+}
+
+.text-primary {
+  color: #3b82f6 !important;
+}
+</style>
