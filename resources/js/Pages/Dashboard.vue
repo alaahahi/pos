@@ -20,43 +20,68 @@
 
 
       <div class="row">
-        <!-- Left side columns -->
+        <!-- Statistics Cards -->
         <div class="col-lg-12">
           <div class="row">
-            <!-- Users Card -->
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card customers-card">
+            <!-- الصندوق -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card revenue-card">
                 <div class="card-body">
-                  <h5 class="card-title">
-                    {{ translations.orders }}
-                    <!-- <span>| This Year</span> -->
-                  </h5>
-
+                  <h5 class="card-title">الصندوق</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-people"></i>
+                      <i class="bi bi-wallet2"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>{{ orderCount }}</h6>
-                        <!-- <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> -->
+                      <h6>{{ boxBalance || '0' }} IQD</h6>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- End Customers Card -->
-          
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card customers-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    {{ translations.due_order }}
-                    <!-- <span>| This Year</span> -->
-                  </h5>
 
+            <!-- إجمالي الفواتير -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card sales-card">
+                <div class="card-body">
+                  <h5 class="card-title">إجمالي الفواتير</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-people"></i>
+                      <i class="bi bi-receipt"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ orderCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- الفواتير المدفوعة -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">الفواتير المدفوعة</h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-check-circle-fill"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ orderCompletCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- الفواتير المعلقة -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card revenue-card">
+                <div class="card-body">
+                  <h5 class="card-title">الفواتير المعلقة</h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-clock-fill"></i>
                     </div>
                     <div class="ps-3">
                       <h6>{{ orderDueCount }}</h6>
@@ -65,38 +90,83 @@
                 </div>
               </div>
             </div>
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card customers-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    {{ translations.paid_order }}
-                    <!-- <span>| This Year</span> -->
-                  </h5>
 
+            <!-- المنتجات -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card sales-card">
+                <div class="card-body">
+                  <h5 class="card-title">المنتجات</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-people"></i>
+                      <i class="bi bi-box"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>{{ orderCompletCount }}</h6>
-                      <!-- <span class="text-danger small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">decrease</span> -->
+                      <h6>{{ productCount }}</h6>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            
-            <!-- Decoration Orders Cards -->
-            <div class="col-xxl-4 col-md-4">
+
+            <!-- المنتجات النشطة -->
+            <div class="col-xxl-3 col-md-6">
               <div class="card info-card customers-card">
                 <div class="card-body">
-                  <h5 class="card-title">
-                    طلبات الديكور
-                  </h5>
-
+                  <h5 class="card-title">المنتجات النشطة</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-palette"></i>
+                      <i class="bi bi-check-circle"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ activeProductCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- المنتجات منخفضة المخزون -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card revenue-card">
+                <div class="card-body">
+                  <h5 class="card-title">منخفضة المخزون</h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-exclamation-triangle-fill"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ lowStockCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- الزبائن -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card sales-card">
+                <div class="card-body">
+                  <h5 class="card-title">الزبائن</h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-people-fill"></i>
+                    </div>
+                    <div class="ps-3">
+                      <h6>{{ customerCount }}</h6>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- طلبات الديكور -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">طلبات الديكور</h5>
+                  <div class="d-flex align-items-center">
+                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                      <i class="bi bi-palette-fill"></i>
                     </div>
                     <div class="ps-3">
                       <h6>{{ decorationOrderCount }}</h6>
@@ -105,17 +175,15 @@
                 </div>
               </div>
             </div>
-            
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card customers-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    طلبات الديكور المعلقة
-                  </h5>
 
+            <!-- طلبات الديكور المعلقة -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card revenue-card">
+                <div class="card-body">
+                  <h5 class="card-title">طلبات الديكور المعلقة</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-clock"></i>
+                      <i class="bi bi-clock-fill"></i>
                     </div>
                     <div class="ps-3">
                       <h6>{{ decorationOrderPendingCount }}</h6>
@@ -124,17 +192,15 @@
                 </div>
               </div>
             </div>
-            
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card customers-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    طلبات الديكور المكتملة
-                  </h5>
 
+            <!-- طلبات الديكور المكتملة -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card sales-card">
+                <div class="card-body">
+                  <h5 class="card-title">طلبات الديكور المكتملة</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-check-circle"></i>
+                      <i class="bi bi-check-circle-fill"></i>
                     </div>
                     <div class="ps-3">
                       <h6>{{ decorationOrderCompletedCount }}</h6>
@@ -143,103 +209,66 @@
                 </div>
               </div>
             </div>
-            <!-- Products Card -->
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card sales-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    {{ translations.products }}
-                    <!-- <span>| Today</span> -->
-                  </h5>
 
+            <!-- طلبات الديكور المدفوعة -->
+            <div class="col-xxl-3 col-md-6">
+              <div class="card info-card customers-card">
+                <div class="card-body">
+                  <h5 class="card-title">طلبات الديكور المدفوعة</h5>
                   <div class="d-flex align-items-center">
                     <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-cart"></i>
+                      <i class="bi bi-currency-dollar"></i>
                     </div>
                     <div class="ps-3">
-                      <h6>{{ productCount }}</h6>
-                      <!-- <span class="text-success small pt-1 fw-bold">12%</span> <span class="text-muted small pt-2 ps-1">increase</span> -->
+                      <h6>{{ decorationOrderPaidCount }}</h6>
                     </div>
                   </div>
                 </div>
               </div>
             </div>
-            <!-- End Products Card -->
+          </div>
+        </div>
+      </div>
 
-            <!-- Rules Card -->
-            <div class="col-xxl-4 col-md-4">
-              <div class="card info-card revenue-card">
-                <div class="card-body">
-                  <h5 class="card-title">
-                    {{ translations.customers }}
-                  </h5>
 
-                  <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-lock"></i>
-                    </div>
-                    <div class="ps-3">
-                      <h6>{{ customerCount }}</h6>
-                      <!-- <span class="text-success small pt-1 fw-bold">8%</span> <span class="text-muted small pt-2 ps-1">increase</span> -->
-                    </div>
-                  </div>
+      <!-- Charts Section -->
+      <div class="row">
+        <div class="col-12">
+          <div class="card">
+            <div class="card-body">
+              <h5 class="card-title">إحصائيات تدفق البيع</h5>
+              
+              <div class="row">
+                <!-- إحصائيات الفواتير -->
+                <div class="col-md-6">
+                  <h6>حالة الفواتير</h6>
+                  <Chart :chartData="ordersStatusChartData" chartId="ordersStatusChart" chartType="pie" />
+                </div>
+                
+                <!-- إحصائيات المنتجات -->
+                <div class="col-md-6">
+                  <h6>حالة المنتجات</h6>
+                  <Chart :chartData="productsStatusChartData" chartId="productsStatusChart" chartType="pie" />
+                </div>
+              </div>
+
+              <div class="row mt-4">
+                <!-- إحصائيات الديكور -->
+                <div class="col-md-6">
+                  <h6>طلبات الديكور حسب الحالة</h6>
+                  <Chart :chartData="decorationOrdersChartData" chartId="decorationOrdersChart" chartType="pie" />
+                </div>
+                
+                <!-- تدفق البيع الشهري -->
+                <div class="col-md-6">
+                  <h6>تدفق البيع الشهري</h6>
+                  <Chart :chartData="monthlySalesChartData" chartId="monthlySalesChart" chartType="bar" />
                 </div>
               </div>
             </div>
-            <!-- End Rules Card -->
-          </div>
-        </div>
-        <!-- End Left side columns -->
-      </div>
-
-
-      <div class="col-12">
-        <div class="card">
-
-          <div class="card-body">
-            <h5 class="card-title">{{ translations.statistics }} </h5>
-
-
-            <div class="row canv_row">
-              <div class="col-md-6">
-                <h1>{{ translations.users_by_role }} </h1>
-                <Chart :chartData="UserPerRolechartData" chartId="chart" chartType="bar" />
-
-              </div>
-              <div class="col-md-6">
-                <h2>{{ translations.users_by_status }} </h2>
-                <Chart :chartData="statusChartData" chartId="statusChart" chartType="pie" />
-              </div>
-            </div>
-
-
-      <div class="row canv_row">
-        <div class="col-md-6">
-          <h2>{{ translations.logs_by_module }} </h2>
-          <Chart :chartData="modulesChartData" chartId="modulesChart" chartType="bar" />
-        </div>
-        <div class="col-md-6">
-          <h2>{{ translations.logs_by_user }} </h2>
-          <Chart :chartData="usersChartData" chartId="usersChar" chartType="bar" />
-        </div>
-      </div>
-
-
-        <div class="row canv_row">
-          <div class="col-md-6">
-            <h2>{{ translations.logs_by_action}} </h2>
-            <Chart :chartData="actionsChartData" chartId="actionsChart" chartType="pie" />
-          </div>
-          <div class="col-md-6">
-            <h2>طلبات الديكور حسب الحالة</h2>
-            <Chart :chartData="decorationOrdersChartData" chartId="decorationOrdersChart" chartType="pie" />
           </div>
         </div>
       </div>
-
-          </div>
-
-        </div>
 
 
 
@@ -255,23 +284,29 @@ import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Chart from '@/Components/Chart.vue';
 
 defineProps({
-  userCount: Number,
-  orderCount:Number,
-  customerCount:Number,
-  orderDueCount:Number,
-  orderCompletCount:Number,
-  rolesCount: Number,
-  translations: Array,
-  UserPerRolechartData: Object,
-  actionsChartData: Object,
-  modulesChartData: Object,
-  usersChartData: Object,
-  statusChartData: Object,
+  // Basic counts
+  orderCount: Number,
+  customerCount: Number,
+  orderDueCount: Number,
+  orderCompletCount: Number,
   productCount: Number,
-  decorationOrdersChartData: Object,
+  activeProductCount: Number,
+  lowStockCount: Number,
+  boxBalance: Number,
+  
+  // Decoration orders
   decorationOrderCount: Number,
   decorationOrderPendingCount: Number,
   decorationOrderCompletedCount: Number,
   decorationOrderPaidCount: Number,
+  
+  // Chart data
+  ordersStatusChartData: Object,
+  productsStatusChartData: Object,
+  decorationOrdersChartData: Object,
+  monthlySalesChartData: Object,
+  
+  // Translations
+  translations: Object,
 });
 </script>

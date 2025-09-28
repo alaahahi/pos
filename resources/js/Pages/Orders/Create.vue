@@ -123,7 +123,7 @@
       <div class="pos-cart-panel">
         <!-- Customer Selection -->
         <div class="pos-customer-section">
-          <label class="form-label">{{ translations.client }}</label>
+          <label class="form-label text-center w-100">{{ translations.client }}</label>
                     <vue-select
                       v-model="selectedCustomer"
                       :options="customers"
@@ -140,7 +140,7 @@
         <!-- Cart Items -->
         <div class="pos-cart-section">
           <div class="cart-header">
-            <h5>
+            <h5 class="text-center w-100">
               <i class="bi bi-cart3"></i>
               عربة التسوق
               <span class="cart-count" v-if="invoiceItems.length">{{ invoiceItems.length }}</span>
@@ -217,8 +217,8 @@
           <!-- Empty Cart Message -->
           <div v-if="invoiceItems.length === 0" class="empty-cart">
             <i class="bi bi-cart-x"></i>
-            <p>عربة التسوق فارغة</p>
-            <small>اضغط على المنتجات لإضافتها</small>
+            <p class="text-center">عربة التسوق فارغة</p>
+            <small class="text-center">اضغط على المنتجات لإضافتها</small>
           </div>
         </div>
 
@@ -525,6 +525,8 @@ const saveInvoice = async (event) => {
     customer_id: form.customer_id,
     date: event.date,
     notes: event.notes,
+    discount_amount: event.discount_amount ?? 0,
+    discount_rate: event.discount_rate ?? 0,
     items: invoiceItems.map(i => ({
       product_id: i.product_id,
       quantity: i.quantity,
@@ -547,8 +549,11 @@ const saveInvoice = async (event) => {
         window.open(`/api/getIndexAccountsSelas?print=2&transactions_id=${id}&order_id=${order_id}`, '_blank');
       }
       
-      // Clear form after successful save
-      clearAll();
+      // Clear form after successful save but keep customer
+      clearCart();
+      searchQuery.value = "";
+      barcode.value = "";
+      filteredProducts.value = [...props.products];
     }
   } catch (error) {
      toast.error("خطأ أثناء حفظ الفاتورة", {
@@ -895,7 +900,7 @@ onUnmounted(() => {
 .pos-cart-panel {
   background: white;
   border-radius: 15px;
-  padding: 1.5rem;
+  padding: 0.5rem;
   box-shadow: 0 4px 20px rgba(0,0,0,0.08);
   display: flex;
   flex-direction: column;
@@ -928,7 +933,6 @@ onUnmounted(() => {
 
 .cart-header h5 {
   margin: 0;
-  color: #2c3e50;
 }
 
 .cart-count {
@@ -961,7 +965,6 @@ onUnmounted(() => {
 .item-name {
   font-weight: 600;
   margin-bottom: 0.25rem;
-  color: #2c3e50;
   font-size: 0.9rem;
 }
 
@@ -990,6 +993,16 @@ onUnmounted(() => {
   border-radius: 5px;
   border: 1px solid #ced4da;
   padding: 0.25rem;
+  color: #212529;
+  background-color: #fff;
+}
+
+.quantity-input:focus {
+  color: #212529;
+  background-color: #fff;
+  border-color: #667eea;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
 .price-input {
@@ -997,6 +1010,16 @@ onUnmounted(() => {
   border: 1px solid #ced4da;
   padding: 0.25rem;
   text-align: center;
+  color: #212529;
+  background-color: #fff;
+}
+
+.price-input:focus {
+  color: #212529;
+  background-color: #fff;
+  border-color: #667eea;
+  outline: 0;
+  box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
 }
 
 .item-total {
@@ -1033,12 +1056,16 @@ onUnmounted(() => {
   border-radius: 10px;
   padding: 1rem;
   margin-bottom: 1rem;
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .summary-row {
   display: flex;
   justify-content: space-between;
   margin-bottom: 0.5rem;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .total-row {
@@ -1201,23 +1228,159 @@ onUnmounted(() => {
 @media (prefers-color-scheme: dark) {
   .pos-products-panel,
   .pos-cart-panel {
-    background: #2c3e50;
-    color: white;
+    background: #1a1a1a;
+    color: #e0e0e0;
+    border: 1px solid #333;
   }
   
   .product-card {
-    background: #34495e;
-    border-color: #495057;
-    color: white;
+    background: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
+  }
+  
+  .product-card:hover {
+    border-color: #667eea;
+    background: #3a3a3a;
   }
   
   .cart-item {
-    background: #34495e;
-    border-color: #495057;
+    background: #2d2d2d;
+    border-color: #444;
+    color: #e0e0e0;
   }
   
   .pos-summary-section {
-    background: #34495e;
+    background: #2d2d2d;
+    border: 1px solid #444;
+  }
+  
+  .summary-row {
+    color: #e0e0e0;
+  }
+  
+  .total-row {
+    border-top-color: #555;
+  }
+  
+  .total-amount {
+    color: #4ade80;
+  }
+  
+  .pos-search-input,
+  .barcode-input {
+    background: #2d2d2d;
+    border-color: #555;
+  }
+  
+  .pos-search-input:focus,
+  .barcode-input:focus {
+    background: #3a3a3a;
+    border-color: #667eea;
+  }
+  
+  .category-btn {
+    background: #2d2d2d;
+    border-color: #555;
+    color: #e0e0e0;
+  }
+  
+  .category-btn.active,
+  .category-btn:hover {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+  }
+  
+  .quantity-input,
+  .price-input {
+    background: #2d2d2d;
+  }
+  
+  .empty-cart,
+  .no-products {
+    color: #999;
+  }
+}
+
+/* Light Mode Enhancements */
+@media (prefers-color-scheme: light) {
+  .pos-products-panel,
+  .pos-cart-panel {
+    background: #ffffff;
+    border: 1px solid #e5e7eb;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+  }
+  
+  .product-card {
+    background: #ffffff;
+    border-color: #e5e7eb;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1);
+  }
+  
+  .product-card:hover {
+    border-color: #667eea;
+    box-shadow: 0 4px 12px 0 rgba(102, 126, 234, 0.15);
+  }
+  
+  .cart-item {
+    background: #f9fafb;
+    border-color: #e5e7eb;
+  }
+  
+  .pos-summary-section {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+  }
+  
+  .summary-row {
+    color: #374151;
+  }
+  
+  .total-row {
+    border-top-color: #d1d5db;
+  }
+  
+  .total-amount {
+    color: #059669;
+  }
+  
+  .pos-search-input,
+  .barcode-input {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #374151;
+  }
+  
+  .pos-search-input:focus,
+  .barcode-input:focus {
+    background: #ffffff;
+    border-color: #667eea;
+    box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+  }
+  
+  .category-btn {
+    background: #ffffff;
+    border-color: #d1d5db;
+    color: #6b7280;
+  }
+  
+  .category-btn.active,
+  .category-btn:hover {
+    background: #667eea;
+    border-color: #667eea;
+    color: white;
+  }
+  
+  .quantity-input,
+  .price-input {
+    background: #ffffff;
+    border-color: #d1d5db;
+  }
+  
+  .empty-cart,
+  .no-products {
+    color: #6b7280;
   }
 }
 
@@ -1236,5 +1399,8 @@ onUnmounted(() => {
 
 .slide-up-enter-from, .slide-up-leave-to {
   transform: translateY(100%);
+}
+.vs__selected {
+  color: #fff !important;
 }
 </style>

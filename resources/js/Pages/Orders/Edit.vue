@@ -235,6 +235,8 @@ const saveInvoice = async (event) => {
     customer_id: form.customer_id,
     date: event.date,
     notes: event.notes,
+    discount_amount: event.discount_amount ?? 0,
+    discount_rate: event.discount_rate ?? 0,
     items: orderItems.map(i => ({
       product_id: i.product_id,
       quantity: i.quantity,

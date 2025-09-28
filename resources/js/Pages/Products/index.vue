@@ -36,22 +36,7 @@
           </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
-          <div class="card info-card revenue-card">
-        <div class="card-body">
-              <h5 class="card-title">{{ translations.low_stock }} <span>| {{ translations.warning }}</span></h5>
-              <div class="d-flex align-items-center">
-                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                  <i class="bi bi-exclamation-triangle"></i>
-              </div>
-                <div class="ps-3">
-                  <h6>{{ getLowStockCount() }}</h6>
-                  <span class="text-warning small pt-1 fw-bold">{{ translations.items }}</span>
-              </div>
-              </div>
-            </div>
-          </div>
-        </div>
+
 
         <div class="col-xl-3 col-md-6">
           <div class="card info-card customers-card">
@@ -73,13 +58,30 @@
         <div class="col-xl-3 col-md-6">
           <div class="card info-card revenue-card">
             <div class="card-body">
-              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.inventory }}</span></h5>
+              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.dollar }}</span></h5>
               <div class="d-flex align-items-center">
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
                   <i class="bi bi-currency-dollar"></i>
                 </div>
                 <div class="ps-3">
-                  <h6>{{ getTotalValue() }}</h6>
+                  <h6>{{ getTotalValueDollar() }} $</h6>
+                  <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card revenue-card">
+            <div class="card-body">
+              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.dinar }}</span></h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-currency-exchange"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ getTotalValueDinar() }} IQD</h6>
                   <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
                 </div>
               </div>
@@ -212,7 +214,7 @@
                   </td>
                     <td>
                       <div class="price-info">
-                        <span class="price-amount">{{ formatPrice(product.price) }}</span>
+                        <span class="price-amount">{{ formatPrice(product.price, product.currency) }}</span>
                         <small class="d-block text-muted">{{ translations.selling_price }}</small>
                       </div>
                   </td>
@@ -326,7 +328,7 @@
                     </div>
                     <div class="col-6">
                       <small class="text-muted d-block">{{ translations.price }}</small>
-                      <span class="fw-bold text-primary">{{ formatPrice(product.price) }}</span>
+                      <span class="fw-bold text-primary">{{ formatPrice(product.price, product.currency) }}</span>
                     </div>
                   </div>
                   
@@ -522,8 +524,8 @@ const getStockClass = (quantity) => {
 };
 
 // Format price
-const formatPrice = (price) => {
-  return parseFloat(price || 0).toFixed(2);
+const formatPrice = (price, currency = 'IQD') => {
+  return parseFloat(price || 0).toFixed(2) + ' ' + currency;
 };
 
 // Format date
@@ -544,12 +546,25 @@ const getActiveCount = () => {
   return props.products.data.filter(product => product.is_active).length;
 };
 
-// Get total value
-const getTotalValue = () => {
+// Get total value in Dollar (only products with USD currency)
+const getTotalValueDollar = () => {
   if (!props.products?.data) return '0.00';
-  const total = props.products.data.reduce((sum, product) => {
-    return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
-  }, 0);
+  const total = props.products.data
+    .filter(product => product.currency === 'USD')
+    .reduce((sum, product) => {
+      return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
+    }, 0);
+  return total.toFixed(2);
+};
+
+// Get total value in Dinar (only products with IQD currency)
+const getTotalValueDinar = () => {
+  if (!props.products?.data) return '0.00';
+  const total = props.products.data
+    .filter(product => product.currency === 'IQD')
+    .reduce((sum, product) => {
+      return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
+    }, 0);
   return total.toFixed(2);
 };
 

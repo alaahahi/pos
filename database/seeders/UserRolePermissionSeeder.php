@@ -72,6 +72,16 @@ class UserRolePermissionSeeder extends Seeder
         // Migration management permissions
         Permission::firstOrCreate(['name' => 'manage migrations']);
 
+        // System config permissions
+        Permission::firstOrCreate(['name' => 'read system_config']);
+        Permission::firstOrCreate(['name' => 'update system_config']);
+
+        // Expenses permissions
+        Permission::firstOrCreate(['name' => 'create expenses']);
+        Permission::firstOrCreate(['name' => 'read expenses']);
+        Permission::firstOrCreate(['name' => 'update expenses']);
+        Permission::firstOrCreate(['name' => 'delete expenses']);
+
         // Customer permissions
         Permission::firstOrCreate(['name' => 'create customer']);
         Permission::firstOrCreate(['name' => 'read customers']);
@@ -127,6 +137,8 @@ class UserRolePermissionSeeder extends Seeder
          $adminRole->givePermissionTo(['create payment', 'read payment', 'view payment', 'update payment', 'delete payment']);
          $adminRole->givePermissionTo(['create monthly_accounting', 'read monthly_accounting', 'view monthly_accounting', 'update monthly_accounting', 'delete monthly_accounting']);
          $adminRole->givePermissionTo(['manage migrations']);
+         $adminRole->givePermissionTo(['read system_config', 'update system_config']);
+         $adminRole->givePermissionTo(['create expenses', 'read expenses', 'update expenses', 'delete expenses']);
          
          // Add missing permissions for admin role
          $adminRole->givePermissionTo(['create customer', 'read customers', 'update customer', 'delete customer', 'view customer']);

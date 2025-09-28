@@ -84,12 +84,16 @@ class OrderController extends Controller
             ];
         });
         $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
-        $products = Product::select('id', 'name','price','quantity')->get()->map(function ($product) {
+        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')->get()->map(function ($product) {
             return [
                 'id' => $product->id,
                 'name' => $product->name,
+                'model' => $product->model,
                 'price' => $product->price,
-                'max_quantity'=> $product->quantity,
+                'quantity' => $product->quantity,
+                'max_quantity' => $product->quantity,
+                'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                'barcode' => $product->barcode,
             ];
         });
 
@@ -119,19 +123,35 @@ class OrderController extends Controller
              'items.*.product_id' => 'required|exists:products,id',
              'items.*.quantity' => 'required|integer|min:1',
              'items.*.price' => 'required|numeric|min:0',
+             'discount_amount' => 'nullable|numeric|min:0',
+             'discount_rate' => 'nullable|numeric|min:0|max:100',
          ]);
      
          DB::beginTransaction();
          try {
+             // حساب الخصم والمبلغ النهائي
+             $discountAmount = $validated['discount_amount'] ?? 0;
+             $discountRate = $validated['discount_rate'] ?? 0;
+             
+             // إذا كان الخصم كنسبة مئوية
+             if ($discountRate > 0) {
+                 $discountAmount = ($validated['total_amount'] * $discountRate) / 100;
+             }
+             
+             $finalAmount = $validated['total_amount'] - $discountAmount;
+             
              // إنشاء الطلب
              $order = Order::create([
                  'customer_id' => $validated['customer_id'],
                  'payment_method' => 'cash',
-                 'status' =>  $validated['total_amount']==$validated['total_paid'] ?  'paid' : 'due',
+                 'status' =>  $finalAmount == $validated['total_paid'] ?  'paid' : 'due',
                  'total_amount' => $validated['total_amount'],
                  'total_paid' => $validated['total_paid'] ?? 0,
                  'date' => $request->date  ?? Carbon::now()->format('Y-m-d'),
                  'notes' => $validated['notes'] ?? '',
+                 'discount_amount' => $discountAmount,
+                 'discount_rate' => $discountRate,
+                 'final_amount' => $finalAmount,
              ]);
      
              // إرفاق المنتجات مع الكميات
@@ -157,62 +177,26 @@ class OrderController extends Controller
                  }
              }
      
-             // تسجيل العملية في السجلات
-             Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
-     
-             DB::commit();
-     
-                        // المبلغ السابق
-                $oldPaid = $order->total_paid;
+            // إنشاء المعاملات المالية إذا كان هناك مبلغ مدفوع
+            $transaction = null;
+            if ($validated['total_paid'] > 0) {
+                $transaction = $this->accountingController->increaseWallet(
+                    $validated['total_paid'], // المبلغ المدفوع
+                    'دفع نقدي فاتورة رقم ' . $order->id,
+                    $this->mainBox->first()->id, // الصندوق الرئيسي
+                    $this->mainBox->first()->id, // صندوق النظام
+                    'App\Models\User',
+                    0,
+                    0,
+                    $this->defaultCurrency,
+                    $order->date
+                );
+            }
 
-                // المبلغ الجديد
-                $newPaid = $validated['total_paid'];
-
-                // الفرق بين المدفوع الجديد والقديم
-                $diff = $newPaid - $oldPaid;
-
-                if ($diff > 0) {
-                    // العميل دفع مبلغ إضافي
-                    $transaction = $this->accountingController->increaseWallet(
-                        $diff, // الفرق فقط
-                        'دفعة إضافية فاتورة رقم ' . $order->id,
-                        $this->mainBox->first()->id, // الصندوق الرئيسي
-                        $this->mainBox->first()->id, // صندوق النظام
-                        'App\Models\User',
-                        0,
-                        0,
-                        $this->defaultCurrency,
-                        $order->date
-                    );
-                } elseif ($diff < 0) {
-                    // العميل دفع سابقاً أكثر (أو تم خصم على الفاتورة)
-                    $transaction = $this->accountingController->decreaseWallet(
-                        abs($diff), // المبلغ المسترجع
-                        'استرجاع/خصم فاتورة رقم ' . $order->id,
-                        $this->mainBox->first()->id, // الصندوق الرئيسي
-                        $this->mainBox->first()->id, // صندوق النظام
-                        'App\Models\User',
-                        0,
-                        0,
-                        $this->defaultCurrency,
-                        $order->date
-                    );
-                } else {
-                    // لا تغيير بالمبلغ (مافي داعي لأي حركة مالية)
-                    $transaction = null;
-                }
-
-                // تحديث حالة الفاتورة
-                if ($validated['total_amount'] == $newPaid) {
-                    $order->update(['status' => 'paid']);
-                } elseif ($validated['total_amount'] > $newPaid) {
-                    $order->update(['status' => 'due']); // باقي مبلغ
-                } elseif ($validated['total_amount'] < $newPaid) {
-                    $order->update(['status' => 'overpaid']); // مدفوع أكثر من المطلوب
-                }
-
-                // تحديث المبلغ المدفوع بالفاتورة
-                $order->update(['total_paid' => $newPaid]);
+            // تسجيل العملية في السجلات
+            Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
+    
+            DB::commit();
      
              // إذا كان الطلب من API، أرجع JSON
              if ($request->expectsJson()) {
@@ -265,23 +249,31 @@ class OrderController extends Controller
         $orderedProductIds = $order->products->pluck('id')->toArray();
 
         // Fetch products that are not in the order
-        $products = Product::select('id', 'name', 'price', 'quantity')
+        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')
             ->whereNotIn('id', $orderedProductIds)
             ->get()
             ->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'model' => $product->model,
                     'price' => $product->price,
+                    'quantity' => $product->quantity,
                     'max_quantity' => $product->quantity,
+                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'barcode' => $product->barcode,
                 ];
             });
-            $all_products = Product::select('id', 'name','price','quantity')->get()->map(function ($product) {
+            $all_products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')->get()->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
+                    'model' => $product->model,
                     'price' => $product->price,
-                    'max_quantity'=> $product->quantity,
+                    'quantity' => $product->quantity,
+                    'max_quantity' => $product->quantity,
+                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'barcode' => $product->barcode,
                 ];
             });
         return Inertia::render('Orders/Edit', [
@@ -313,19 +305,35 @@ class OrderController extends Controller
             'items.*.product_id' => 'required|exists:products,id',
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.price' => 'required|numeric|min:0',
+            'discount_amount' => 'nullable|numeric|min:0',
+            'discount_rate' => 'nullable|numeric|min:0|max:100',
         ]);
     
         DB::beginTransaction();
     
         try {
+            // حساب الخصم والمبلغ النهائي
+            $discountAmount = $validated['discount_amount'] ?? 0;
+            $discountRate = $validated['discount_rate'] ?? 0;
+            
+            // إذا كان الخصم كنسبة مئوية
+            if ($discountRate > 0) {
+                $discountAmount = ($validated['total_amount'] * $discountRate) / 100;
+            }
+            
+            $finalAmount = $validated['total_amount'] - $discountAmount;
+            
             // تحديث تفاصيل الفاتورة
             $order->update([
-                'status' => $validated['total_amount'] == $validated['total_paid'] ? 'paid' : 'due',
+                'status' => $finalAmount == $validated['total_paid'] ? 'paid' : 'due',
                 'total_paid' => $validated['total_paid'] ?? 0,
                 'customer_id' => $validated['customer_id'],
                 'total_amount' => $validated['total_amount'],
                 'date' => $request->date ?? Carbon::now()->format('Y-m-d'),
                 'notes' => $validated['notes'] ?? '',
+                'discount_amount' => $discountAmount,
+                'discount_rate' => $discountRate,
+                'final_amount' => $finalAmount,
             ]);
     
             // العناصر القديمة (قبل التعديل)

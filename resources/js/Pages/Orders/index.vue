@@ -52,10 +52,11 @@
                 <tr>
                   <th scope="col">#</th>
                   <th scope="col">{{ translations.client }}</th> <!-- اسم العميل -->
-                  <th scope="col">{{ translations.total }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
-
-                  <th scope="col">{{ translations.paid_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
-                  <th scope="col">{{ translations.due_order }} {{ translations.dollar }}</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.total }} IQD</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">الخصم IQD</th> <!-- الخصم -->
+                  <th scope="col">المبلغ النهائي IQD</th> <!-- المبلغ النهائي -->
+                  <th scope="col">{{ translations.paid_order }} IQD</th> <!-- إجمالي المبلغ -->
+                  <th scope="col">{{ translations.due_order }} IQD</th> <!-- إجمالي المبلغ -->
 
                   <!-- <th scope="col">{{ translations.paid_order }} {{ translations.dinar }}</th>  
                   <th scope="col">{{ translations.due_order }} {{ translations.dinar }}</th>  -->
@@ -73,8 +74,10 @@
                   <th scope="row">{{ index + 1 }}</th>
                   <td>{{ order.customer?.name }}</td> <!-- اسم العميل -->
                   <td>{{ order.total_amount }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ order.discount_amount || 0 }}</td> <!-- الخصم -->
+                  <td>{{ order.final_amount || order.total_amount }}</td> <!-- المبلغ النهائي -->
                   <td>{{ order.total_paid }}</td> <!-- إجمالي المبلغ -->
-                  <td>{{ order.total_amount - order.total_paid }}</td> <!-- إجمالي المبلغ -->
+                  <td>{{ (order.final_amount || order.total_amount) - order.total_paid }}</td> <!-- إجمالي المبلغ -->
                   <!-- <td>{{ order.total_paid_dinar }}</td>
                   <td>{{ order.total_amount_dinar	 - order.total_paid_dinar }}</td> -->
                   <td>{{ order.status }}</td> <!-- الحالة -->

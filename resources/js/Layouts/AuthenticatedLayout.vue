@@ -24,9 +24,9 @@
                 <!-- End Search Icon-->
                 <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
                     <select class="form-control changeLang" @change="changeLanguage">
-                        <option value="" selected> {{ translations.language || 'Language' }} 🌍 </option>
+                        <option value="" selected> {{ translations.language || 'اللغة' }} 🌍 </option>
                         <option value="en"> English</option>
-                        <option value="ar">Arabic</option>
+                        <option value="ar">العربية</option>
                     </select>
                 </li>
                 <li class="nav-item text-gray-600 dark:text-gray-400">
@@ -182,7 +182,7 @@
                 <li class="nav-item dropdown pe-3 text-gray-600 dark:text-gray-400">
 
                     <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
-                        <img :src="user.avatar" alt="Profile" class="rounded-circle">
+                        <img :src="user.avatar_url || '/dashboard-assets/img/profile-img.jpg'" alt="Profile" class="rounded-circle" style="width: 32px; height: 32px; object-fit: cover;">
                         <span class="d-none d-md-block dropdown-toggle ps-2 dark:text-white">{{ user.name }}</span>
                     </a>
                     <!-- End Profile Iamge Icon -->
@@ -199,7 +199,7 @@
                         <li>
                             <a class="dropdown-item d-flex align-items-center dark:text-white" :href="route('profile.edit')">
                                 <i class="bi bi-person"></i>
-                                <span>{{translations.my_profile }} </span>
+                                <span>{{translations.my_profile || 'حسابي الشخصي'}} </span>
                             </a>
                         </li>
 
@@ -211,7 +211,7 @@
                             <Link :href="route('logout')" method="post" as="button"
                                 class="dropdown-item d-flex align-items-center">
                             <i class="bi bi-box-arrow-right"></i>
-                            <span>{{translations.log_out  }}</span>
+                            <span>{{translations.log_out || 'تسجيل خروج'}}</span>
                             </Link>
 
 

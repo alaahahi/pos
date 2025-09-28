@@ -10,6 +10,10 @@ class Box extends Model
 {
     use HasFactory,SoftDeletes;
     protected $fillable = [
+        'name',
+        'balance',
+        'balance_usd',
+        'is_active',
         'amount',
         'type',
         'description',

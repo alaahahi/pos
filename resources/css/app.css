@@ -1,9 +1,9 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Import POS Enhancements */
 @import './pos-enhancements.css';
 
 /* Import Products Enhancements */
 @import './products-enhancements.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;

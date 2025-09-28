@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Services\LogService;
 
 class Product extends Model
 {
@@ -22,6 +23,7 @@ class Product extends Model
         'price_cost',
         'quantity',
         'price',
+        'currency',
         'balen',
         'notes',
         'image',
@@ -37,7 +39,7 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->attributes['image'] 
+        return isset($this->attributes['image']) && $this->attributes['image'] 
             ? asset("storage/{$this->attributes['image']}") 
             : null;
     }
@@ -48,5 +50,25 @@ class Product extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(\App\Models\Log::class, 'by_user_id');
+    }
+
+    /**
+     * Boot method to add model events
+     */
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::created(function ($product) {
+            LogService::logProductCreated($product);
+        });
+
+        static::updated(function ($product) {
+            LogService::logProductUpdated($product, $product->getOriginal());
+        });
+
+        static::deleted(function ($product) {
+            LogService::logProductDeleted($product);
+        });
     }
 }

@@ -7,6 +7,7 @@ return [
     'my_profile' => 'حسـابي الشخصي ',
     'log_out' => 'تسجيـل خـروج ',
     'dashboard' => 'لوحة التحكم',
+    'system_settings' => 'إعدادات النظام',
     'roles' => 'الأدوار',
     'roles_control' => 'إدارة الأدوار',
     'permissions' => 'الصلاحيـات',

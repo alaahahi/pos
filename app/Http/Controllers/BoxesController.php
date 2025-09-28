@@ -65,11 +65,13 @@ class BoxesController extends Controller
         // Paginate the filtered boxes
         $transactions = $transactionsQuery->paginate(10);
 
+        $box = Box::where('is_active', true)->first();
+        
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'transactions' => $transactions,
-            'mainBox' => $this->mainBox->first(),
+            'mainBox' => $box,
         ]);
     }
 

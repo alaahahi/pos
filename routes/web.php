@@ -17,6 +17,7 @@ use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
 use App\Http\Controllers\ExportController;
 use App\Http\Controllers\MigrationController;
+use App\Http\Controllers\SystemConfigController;
 use Illuminate\Support\Facades\Artisan;
 
 
@@ -127,6 +128,7 @@ Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class,
   Route::get('logs', [LogController::class, 'index'])->name('logs');
   Route::get('logs/{log}', [LogController::class, 'view'])->name('logs.view');
   Route::post('logs/undo/{log}', [LogController::class, 'undo'])->name('logs.undo');
+  Route::post('logs/clean', [LogController::class, 'cleanOldLogs'])->name('logs.clean');
 
   Route::get('lang/change', [LangController::class, 'change'])->name('changeLang');
 
@@ -136,7 +138,14 @@ Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class,
 
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
-  Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update'); 
+  Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update');
+
+  // System Config routes
+  Route::get('system-config', [SystemConfigController::class, 'index'])->name('system-config.index');
+  Route::put('system-config', [SystemConfigController::class, 'update'])->name('system-config.update');
+
+  // Expenses routes
+  Route::resource('expenses', App\Http\Controllers\ExpenseController::class); 
 
   // Barcode routes (with authentication)
   Route::prefix('barcode')->name('barcode.')->group(function () {

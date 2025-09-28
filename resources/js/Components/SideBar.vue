@@ -133,6 +133,20 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read system_config')">
+    <Link  class="nav-link "  :href="route('system-config.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/system-config') }" >
+            <i class="bi bi-gear-fill"></i>
+            <span>{{translations.system_settings}}</span>
+               </Link>
+    </li>
+
+    <li class="nav-item" v-if="hasPermission('read expenses')">
+    <Link  class="nav-link "  :href="route('expenses.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/expenses') }" >
+            <i class="bi bi-receipt"></i>
+            <span>المصاريف</span>
+               </Link>
+    </li>
+
 
 
 </ul>

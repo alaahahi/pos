@@ -19,6 +19,7 @@ class SystemConfig extends Model
         'second_title_kr',
         'third_title_ar',
         'third_title_kr',
+        'exchange_rate',
     ];
     protected $casts = [
         'default_price_s' => 'array',

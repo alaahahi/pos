@@ -4,11 +4,13 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 
 class Order extends Model
 {
-    use HasFactory;
+    use HasFactory, SoftDeletes;
 
     protected $fillable = [
         'customer_id',
@@ -18,30 +20,23 @@ class Order extends Model
         'payment_method',
         'notes',
         'date',
+        'discount_amount',
+        'discount_rate',
+        'final_amount',
     ];
 
     protected static function booted()
     {
-        static::created(function ($invoice) {
-            // Log the invoice creation with detailed information
-            Log::info('Invoice created', [
-                'invoice_id' => $invoice->id,
-                'customer_id' => $invoice->customer_id,
-                'total_amount' => $invoice->total_amount,
-                'status' => $invoice->status,
-                // You can add more fields here depending on what you want to log
-            ]);
-            
-            // Create a log record in the Log model
-            \App\Models\Log::create([
-                'module_name' => 'Invoice',
-                'action' => 'Created',
-                'badge' => 'success',
-                'affected_record_id' => $invoice->id,
-                'original_data' => json_encode($invoice->getOriginal()),
-                'updated_data' => json_encode($invoice->getAttributes()),
-                'by_user_id' => auth()->user()->id ?? 1, // Assuming the user is authenticated
-            ]);
+        static::created(function ($order) {
+            LogService::logOrderCreated($order);
+        });
+
+        static::updated(function ($order) {
+            LogService::logOrderUpdated($order, $order->getOriginal());
+        });
+
+        static::deleted(function ($order) {
+            LogService::logOrderDeleted($order);
         });
     }
 

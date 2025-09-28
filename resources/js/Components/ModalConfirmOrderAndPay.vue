@@ -515,7 +515,6 @@ onMounted(() => {
 .form-label {
   font-weight: 600;
   margin-bottom: 0.2rem;
-  color: #2c3e50;
   font-size: 0.8rem;
 }
 
@@ -525,12 +524,16 @@ onMounted(() => {
   padding: 0.4rem 0.6rem;
   font-size: 0.85rem;
   transition: all 0.3s ease;
+  color: #212529 !important;
+  background-color: #fff;
 }
 
 .form-control:focus {
   border-color: #667eea;
   box-shadow: 0 0 0 0.2rem rgba(102, 126, 234, 0.25);
   outline: none;
+  color: #212529;
+  background-color: #fff;
 }
 
 /* Payment Method - Cash Only */
@@ -568,6 +571,13 @@ onMounted(() => {
   font-size: 1.2rem;
   font-weight: 600;
   text-align: center;
+  color: #212529;
+  background-color: #fff;
+}
+
+.amount-input:focus {
+  color: #212529;
+  background-color: #fff;
 }
 
 .exact-btn {

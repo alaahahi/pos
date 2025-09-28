@@ -32,23 +32,28 @@ class DashboardController extends Controller
 
     return Inertia::render('Dashboard', [
         'translations' => __('messages'),
-        'UserPerRolechartData' => $UserPerRolechartData,
-        'actionsChartData' => $actionsChartData,
-        'modulesChartData' => $modulesChartData,
-        'usersChartData' => $usersChartData,
-        'statusChartData' => $statusChartData, 
-        'productCount'=> Product::where('is_active', 1)->where('quantity', '>', 0)->count(),
-        'customerCount'=> Customer::count(),
-        'userCount' => User::count(),
-        'orderCount'=> Order::count(),
-        'orderDueCount'=> Order::where('status', 'due')->count(),
-        'orderCompletCount'=> Order::where('status', 'paid')->count(),
-        'rolesCount' => Role::count(),
-        'decorationOrdersChartData' => $decorationOrdersChartData,
+        
+        // Basic counts
+        'productCount' => Product::count(),
+        'activeProductCount' => Product::where('is_active', 1)->count(),
+        'lowStockCount' => Product::where('quantity', '<=', 5)->count(),
+        'customerCount' => Customer::count(),
+        'orderCount' => Order::count(),
+        'orderDueCount' => Order::where('status', 'due')->count(),
+        'orderCompletCount' => Order::where('status', 'paid')->count(),
+        'boxBalance' => 0, // TODO: Get from box/wallet system
+        
+        // Decoration orders
         'decorationOrderCount' => DecorationOrder::count(),
         'decorationOrderPendingCount' => DecorationOrder::where('status', 'created')->count(),
         'decorationOrderCompletedCount' => DecorationOrder::where('status', 'completed')->count(),
         'decorationOrderPaidCount' => DecorationOrder::where('status', 'full_payment')->count(),
+        
+        // Chart data
+        'ordersStatusChartData' => $this->getOrdersStatusChartData(),
+        'productsStatusChartData' => $this->getProductsStatusChartData(),
+        'decorationOrdersChartData' => $decorationOrdersChartData,
+        'monthlySalesChartData' => $this->getMonthlySalesChartData(),
     ]);
 }
 
@@ -131,6 +136,79 @@ class DashboardController extends Controller
         });
     }
     
+    private function getOrdersStatusChartData()
+    {
+        return Cache::remember('orders_status_chart_data', 60, function () {
+            $ordersByStatus = Order::select('status', \DB::raw('count(*) as total'))
+                ->groupBy('status')
+                ->get();
+    
+            return [
+                'labels' => ['مدفوعة', 'معلقة', 'مكتملة'],
+                'datasets' => [
+                    [
+                        'label' => 'حالة الفواتير',
+                        'backgroundColor' => ['#28a745', '#ffc107', '#17a2b8'],
+                        'data' => [
+                            $ordersByStatus->where('status', 'paid')->first()->total ?? 0,
+                            $ordersByStatus->where('status', 'due')->first()->total ?? 0,
+                            $ordersByStatus->where('status', 'completed')->first()->total ?? 0,
+                        ],
+                    ],
+                ],
+            ];
+        });
+    }
+
+    private function getProductsStatusChartData()
+    {
+        return Cache::remember('products_status_chart_data', 60, function () {
+            $activeProducts = Product::where('is_active', 1)->count();
+            $inactiveProducts = Product::where('is_active', 0)->count();
+            $lowStockProducts = Product::where('quantity', '<=', 5)->count();
+    
+            return [
+                'labels' => ['نشطة', 'غير نشطة', 'منخفضة المخزون'],
+                'datasets' => [
+                    [
+                        'label' => 'حالة المنتجات',
+                        'backgroundColor' => ['#28a745', '#6c757d', '#dc3545'],
+                        'data' => [$activeProducts, $inactiveProducts, $lowStockProducts],
+                    ],
+                ],
+            ];
+        });
+    }
+
+    private function getMonthlySalesChartData()
+    {
+        return Cache::remember('monthly_sales_chart_data', 60, function () {
+            $monthlySales = Order::selectRaw('MONTH(created_at) as month, SUM(total_amount) as total')
+                ->whereYear('created_at', now()->year)
+                ->groupBy('month')
+                ->get();
+    
+            $months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 
+                     'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
+            
+            $data = array_fill(0, 12, 0);
+            foreach ($monthlySales as $sale) {
+                $data[$sale->month - 1] = $sale->total;
+            }
+    
+            return [
+                'labels' => $months,
+                'datasets' => [
+                    [
+                        'label' => 'مبيعات الشهرية (IQD)',
+                        'backgroundColor' => '#007bff',
+                        'data' => $data,
+                    ],
+                ],
+            ];
+        });
+    }
+
     private function getUsersChartDataByStatus()
     {
         return Cache::remember('users_by_status_chart_data', 60, function () {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 use App\Models\Log;
 use App\Models\User;
+use App\Services\LogService;
 use Illuminate\Http\Request;
 
 class LogController extends Controller
@@ -37,16 +38,20 @@ class LogController extends Controller
     
         // Retrieve users, modules, and actions for the filter dropdowns
         $users = User::latest()->get();
-        $modules = ['User', 'Role', 'Permission'];
-        $actions = ['Create', 'Update', 'Delete'];
+        $modules = Log::distinct()->pluck('module_name')->filter()->values()->toArray();
+        $actions = Log::distinct()->pluck('action')->filter()->values()->toArray();
+        
+        // Get log statistics
+        $statistics = LogService::getLogStatistics();
     
         return Inertia('Logs/index', [
             'translations' => __('messages'),
-             'filters' => $filters,
+            'filters' => $filters,
             'logs' => $logs,
             'users' => $users,
             'modules' => $modules,
             'actions' => $actions,
+            'statistics' => $statistics,
         ]);
     }
 
@@ -77,7 +82,19 @@ class LogController extends Controller
         }
         return redirect()->route('logs')
         ->with('success', 'Action Undoed successfully!');
-   
+    }
+
+    /**
+     * Clean old logs manually
+     */
+    public function cleanOldLogs(Request $request)
+    {
+        $days = $request->input('days', 30);
+        $cutoffDate = now()->subDays($days);
+        
+        $deletedCount = Log::where('created_at', '<', $cutoffDate)->delete();
+        
+        return redirect()->back()->with('success', "تم حذف {$deletedCount} سجل قديم بنجاح.");
     }
     
 
