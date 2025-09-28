@@ -36,7 +36,7 @@
      <input type="checkbox" id="${i.checkbox}" />
      <span class="${i.label}"></span>
    </label>
-   <input  class="${i.textarea}" id="${i.textarea}"> 
+   <textarea class="${i.textarea}" id="${i.textarea}"></textarea>
    <div class="${i["validation-message"]}" id="${i["validation-message"]}"></div>
    <div class="${i.actions}">
      <div class="${i.loader}"></div>
