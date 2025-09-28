@@ -8,6 +8,10 @@
           {{ translations.invoice }}
         </h2>
         <div class="pos-actions">
+          <button @click="showCashModal = true" class="btn btn-outline-info">
+            <i class="bi bi-cash-coin"></i>
+            إدارة الكاش
+          </button>
           <button @click="clearAll" class="btn btn-outline-danger">
             <i class="bi bi-trash"></i>
             مسح الكل
@@ -54,6 +58,24 @@
             />
             <i class="bi bi-upc-scan barcode-icon"></i>
           </div>
+        </div>
+
+        <!-- Product Filters -->
+        <div class="pos-filters">
+          <button 
+            @click="filterByType('featured')"
+            :class="['btn', 'filter-btn', { 'active': selectedFilter === 'featured' }]"
+          >
+            <i class="bi bi-star-fill"></i>
+            المميزة
+          </button>
+          <button 
+            @click="filterByType('best_selling')"
+            :class="['btn', 'filter-btn', { 'active': selectedFilter === 'best_selling' }]"
+          >
+            <i class="bi bi-trophy-fill"></i>
+            الأكثر مبيعاً
+          </button>
         </div>
 
         <!-- Product Categories (if available) -->
@@ -293,6 +315,101 @@
         </div>
       </div>
     </div>
+
+    <!-- Cash Management Modal -->
+    <div v-if="showCashModal" class="modal-overlay" @click="showCashModal = false">
+      <div class="modal-content cash-modal" @click.stop>
+        <div class="modal-header">
+          <h5 class="modal-title">
+            <i class="bi bi-cash-coin"></i>
+            إدارة الكاش
+          </h5>
+          <button type="button" class="btn-close" @click="showCashModal = false">
+            <i class="bi bi-x"></i>
+          </button>
+        </div>
+        
+        <div class="modal-body">
+          <!-- Cash Summary -->
+          <div class="cash-summary mb-4">
+            <div class="row">
+              <div class="col-md-6">
+                <div class="cash-stat-card">
+                  <div class="stat-icon">
+                    <i class="bi bi-box-seam"></i>
+                  </div>
+                  <div class="stat-info">
+                    <h6>إجمالي المنتجات</h6>
+                    <span class="stat-value">{{ cashInfo.totalProducts }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-6">
+                <div class="cash-stat-card">
+                  <div class="stat-icon">
+                    <i class="bi bi-currency-dollar"></i>
+                  </div>
+                  <div class="stat-info">
+                    <h6>إجمالي القيمة</h6>
+                    <span class="stat-value">{{ formatPrice(cashInfo.totalValue) }}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Products List -->
+          <div class="cash-products">
+            <h6 class="mb-3">
+              <i class="bi bi-list-ul"></i>
+              المنتجات في الكاش
+            </h6>
+            
+            <div v-if="cashInfo.products.length === 0" class="empty-cash">
+              <i class="bi bi-inbox"></i>
+              <p>لا توجد منتجات في الكاش</p>
+            </div>
+            
+            <div v-else class="cash-products-list">
+              <div 
+                v-for="item in cashInfo.products" 
+                :key="item.product_id"
+                class="cash-product-item"
+              >
+                <div class="product-info">
+                  <h6 class="product-name">{{ getProductName(item.product_id) }}</h6>
+                  <small class="text-muted">الكمية: {{ item.quantity }} × {{ formatPrice(item.price) }}</small>
+                </div>
+                <div class="product-actions">
+                  <button 
+                    class="btn btn-sm btn-outline-danger"
+                    @click="removeProductFromCart(item.product_id)"
+                    title="حذف المنتج"
+                  >
+                    <i class="bi bi-trash"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" @click="showCashModal = false">
+            إغلاق
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-danger" 
+            @click="clearAllCash"
+            :disabled="cashInfo.products.length === 0"
+          >
+            <i class="bi bi-trash"></i>
+            مسح الكاش بالكامل
+          </button>
+        </div>
+      </div>
+    </div>
   </AuthenticatedLayout>
 </template>
 
@@ -307,6 +424,7 @@ import axios from "axios";
 import ModalConfirmOrderAndPay from '@/Components/ModalConfirmOrderAndPay.vue';
 import debounce from 'lodash/debounce';
 import { useToast } from "vue-toastification";
+import Swal from 'sweetalert2';
 
 let toast = useToast();
 
@@ -317,7 +435,14 @@ let searchQuery = ref("");
 let ShowModalConfirmOrderAndPay = ref(false);
 let loadingProducts = ref(false);
 let selectedCategory = ref(null);
+let selectedFilter = ref('featured');
 let showShortcuts = ref(false);
+let showCashModal = ref(false);
+let cashInfo = ref({
+  totalProducts: 0,
+  totalValue: 0,
+  products: []
+});
 
 // Template refs
 const searchInput = ref(null);
@@ -339,7 +464,7 @@ const form = useForm({
 });
 
 const invoiceItems = reactive([]);
-const filteredProducts = ref([...props.products]);
+const filteredProducts = ref(props.products.filter(product => product.is_featured));
 
 // Computed Properties
 const totalAmount = computed(() => {
@@ -355,9 +480,14 @@ watch(totalAmount, (newTotal) => {
   form.total_amount = newTotal;
 });
 
-watch(searchQuery, debounce(() => {
-  searchProducts();
-}, 300));
+watch(invoiceItems, () => {
+  updateCashInfo();
+}, { deep: true });
+
+// Remove the watcher to avoid conflicts with @input
+// watch(searchQuery, debounce(() => {
+//   searchProducts();
+// }, 300));
 
 // Methods
 const selectCustomer = (value) => {
@@ -400,6 +530,54 @@ const removeItem = (index) => {
   invoiceItems.splice(index, 1);
 };
 
+const removeProductFromCart = (productId) => {
+  const index = invoiceItems.findIndex(item => item.product_id === productId);
+  if (index !== -1) {
+    invoiceItems.splice(index, 1);
+    toast.success("تم حذف المنتج من الكاش", {
+      timeout: 2000,
+      position: "bottom-right",
+      rtl: true
+    });
+  }
+};
+
+const clearAllCash = () => {
+  if (invoiceItems.length === 0) return;
+  
+  Swal.fire({
+    title: 'تأكيد الحذف',
+    text: 'هل أنت متأكد من حذف جميع المنتجات من الكاش؟',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#3085d6',
+    confirmButtonText: 'نعم، احذف الكل',
+    cancelButtonText: 'إلغاء'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      clearCart();
+      toast.success("تم حذف جميع المنتجات من الكاش", {
+        timeout: 2000,
+        position: "bottom-right",
+        rtl: true
+      });
+    }
+  });
+};
+
+const updateCashInfo = () => {
+  cashInfo.value = {
+    totalProducts: invoiceItems.reduce((total, item) => total + item.quantity, 0),
+    totalValue: invoiceItems.reduce((total, item) => total + (item.quantity * item.price), 0),
+    products: [...invoiceItems]
+  };
+};
+
+const formatPrice = (price, currency = 'IQD') => {
+  return parseFloat(price || 0).toFixed(2) + ' ' + currency;
+};
+
 const increaseQuantity = (index) => {
   const item = invoiceItems[index];
   const product = props.products.find(p => p.id === item.product_id);
@@ -432,28 +610,56 @@ const clearAll = () => {
   form.customer_id = null;
   searchQuery.value = "";
   barcode.value = "";
-  filteredProducts.value = [...props.products];
+  selectedFilter.value = 'featured';
+  selectedCategory.value = null;
+  filteredProducts.value = props.products.filter(product => product.is_featured);
 };
 
 const searchProducts = () => {
+  console.log('Search query:', searchQuery.value);
+  console.log('Available products:', props.products.length);
+  
   if (!searchQuery.value.trim()) {
-    filteredProducts.value = [...props.products];
+    // Apply current filter when search is cleared
+    filterByType(selectedFilter.value);
     return;
   }
 
   const query = searchQuery.value.toLowerCase();
-  filteredProducts.value = props.products.filter(product => 
-    product.name.toLowerCase().includes(query) ||
-    product.model.toLowerCase().includes(query) ||
-    (product.barcode && product.barcode.toLowerCase().includes(query))
-  );
+  let baseProducts = [];
+  
+  // Apply current filter first
+  if (selectedFilter.value === 'featured') {
+    baseProducts = props.products.filter(product => product.is_featured);
+  } else if (selectedFilter.value === 'best_selling') {
+    baseProducts = props.products.filter(product => product.is_best_selling);
+  } else {
+    // If no filter is selected, search in all products
+    baseProducts = [...props.products];
+  }
+  
+  console.log('Base products after filter:', baseProducts.length);
+  
+  // Then apply search
+  const searchResults = baseProducts.filter(product => {
+    const nameMatch = product.name && product.name.toLowerCase().includes(query);
+    const modelMatch = product.model && product.model.toLowerCase().includes(query);
+    const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(query);
+    
+    console.log(`Product: ${product.name}, Name match: ${nameMatch}, Model match: ${modelMatch}, Barcode match: ${barcodeMatch}`);
+    
+    return nameMatch || modelMatch || barcodeMatch;
+  });
+  
+  console.log('Search results:', searchResults.length);
+  filteredProducts.value = searchResults;
 };
 
 const handleSearchEnter = () => {
   if (filteredProducts.value.length === 1) {
     addProductToCart(filteredProducts.value[0]);
     searchQuery.value = "";
-    filteredProducts.value = [...props.products];
+    filterByType(selectedFilter.value);
   }
 };
 
@@ -465,7 +671,17 @@ const filterByCategory = (categoryId) => {
 
 const clearCategoryFilter = () => {
   selectedCategory.value = null;
-  filteredProducts.value = [...props.products];
+  filterByType(selectedFilter.value);
+};
+
+const filterByType = (type) => {
+  selectedFilter.value = type;
+  
+  if (type === 'featured') {
+    filteredProducts.value = props.products.filter(product => product.is_featured);
+  } else if (type === 'best_selling') {
+    filteredProducts.value = props.products.filter(product => product.is_best_selling);
+  }
 };
 
 const getProductName = (productId) => {
@@ -567,58 +783,21 @@ const saveInvoice = async (event) => {
   }
 };
 
-const findBarcode = debounce(async () => {
+const findBarcode = debounce(() => {
   if (!barcode.value) return;
 
-  try {
-    const response = await axios.get(`/api/products/${barcode.value}`);
-
-    if (response.data.id) {
-      const stockResponse = await axios.get(`/api/check-stock/${response.data.id}`);
-
-      if (stockResponse.data.available_quantity > 0) {
-        const existingItem = invoiceItems.find(i => i.product_id === response.data.id);
-
-        if (existingItem) {
-          if (existingItem.quantity + 1 <= stockResponse.data.available_quantity) {
-            existingItem.quantity += 1;
-          } else {
-             toast.warning("لا توجد كمية كافية في المخزون", {
-              timeout: 3000,
-              position: "bottom-right",
-              rtl: true
-            });
-          }
-        } else {
-          invoiceItems.push({
-            product_id: response.data.id,
-            quantity: 1,
-            price: response.data.price,
-          });
-        }
-
-        barcode.value = '';
-        
-        // Focus back to barcode input
-        nextTick(() => {
-          barcodeInput.value?.focus();
-        });
-      } else {
-         toast.warning("المادة غير متوفرة في المخزون", {
-          timeout: 3000,
-          position: "bottom-right",
-          rtl: true 
-        });
-      }
-    } else {
-      toast.error("تعذر العثور على المنتج", {
-        timeout: 3000,
-              position: "bottom-right",
-              rtl: true
-            });
-    }
-  } catch (error) {
-    toast.warning("المادة غير متوفرة في المخزون", {
+  // Search only in current products
+  const product = props.products.find(p => p.barcode === barcode.value);
+  if (product) {
+    addProductToCart(product);
+    barcode.value = "";
+    
+    // Focus back to barcode input
+    nextTick(() => {
+      barcodeInput.value?.focus();
+    });
+  } else {
+    toast.warning("المنتج غير موجود في القائمة الحالية", {
       timeout: 3000,
       position: "bottom-right",
       rtl: true
@@ -778,6 +957,42 @@ onUnmounted(() => {
   transform: translateY(-50%);
   color: #28a745;
   font-size: 1.2rem;
+}
+
+.pos-filters {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+  flex-wrap: wrap;
+}
+
+.filter-btn {
+  border-radius: 20px;
+  padding: 0.5rem 1rem;
+  border: 2px solid #e9ecef;
+  background: white;
+  color: #6c757d;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 500;
+}
+
+.filter-btn:hover {
+  background: #e9ecef;
+  border-color: #adb5bd;
+  color: #495057;
+}
+
+.filter-btn.active {
+  background: #007bff;
+  border-color: #007bff;
+  color: white;
+}
+
+.filter-btn i {
+  font-size: 1rem;
 }
 
 .pos-categories {
@@ -1402,5 +1617,158 @@ onUnmounted(() => {
 }
 .vs__selected {
   color: #fff !important;
+}
+
+/* Cash Management Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+}
+
+.cash-modal {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  max-width: 600px;
+  width: 90%;
+  max-height: 80vh;
+  overflow: hidden;
+}
+
+.modal-header {
+  padding: 1.5rem;
+  border-bottom: 1px solid #e9ecef;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: #f8f9fa;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  color: #6c757d;
+  cursor: pointer;
+  padding: 0;
+  width: 30px;
+  height: 30px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  color: #495057;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  max-height: 60vh;
+  overflow-y: auto;
+}
+
+.cash-stat-card {
+  display: flex;
+  align-items: center;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 1.5rem;
+  margin-left: 1rem;
+}
+
+.stat-info h6 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.875rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #495057;
+}
+
+.cash-products h6 {
+  color: #495057;
+  font-weight: 600;
+  margin-bottom: 1rem;
+}
+
+.empty-cash {
+  text-align: center;
+  padding: 2rem;
+  color: #6c757d;
+}
+
+.empty-cash i {
+  font-size: 3rem;
+  margin-bottom: 1rem;
+  opacity: 0.5;
+}
+
+.cash-products-list {
+  max-height: 300px;
+  overflow-y: auto;
+}
+
+.cash-product-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem;
+  border: 1px solid #e9ecef;
+  border-radius: 6px;
+  margin-bottom: 0.5rem;
+  background: #f8f9fa;
+}
+
+.product-name {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: #495057;
+}
+
+.product-actions {
+  margin-left: 1rem;
+}
+
+.modal-footer {
+  padding: 1rem 1.5rem;
+  border-top: 1px solid #e9ecef;
+  background: #f8f9fa;
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
 }
 </style>

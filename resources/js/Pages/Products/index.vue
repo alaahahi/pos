@@ -232,6 +232,38 @@
                           {{ product.is_active ? translations.active : translations.inactive }}
                         </small>
                       </div>
+                      
+                      <!-- Featured Toggle -->
+                      <div class="featured-toggle mt-2">
+                        <label class="switch">
+                          <input 
+                            type="checkbox" 
+                            :checked="product.is_featured == 1"
+                            @change="toggleFeatured(product.id)"
+                          >
+                          <span class="slider round featured-slider"></span>
+                        </label>
+                        <small class="d-block mt-1" :class="product.is_featured ? 'text-warning' : 'text-muted'">
+                          <i class="bi bi-star-fill" v-if="product.is_featured"></i>
+                          {{ product.is_featured ? 'مميز' : 'عادي' }}
+                        </small>
+                      </div>
+                      
+                      <!-- Best Selling Toggle -->
+                      <div class="best-selling-toggle mt-2">
+                        <label class="switch">
+                          <input 
+                            type="checkbox" 
+                            :checked="product.is_best_selling == 1"
+                            @change="toggleBestSelling(product.id)"
+                          >
+                          <span class="slider round best-selling-slider"></span>
+                        </label>
+                        <small class="d-block mt-1" :class="product.is_best_selling ? 'text-info' : 'text-muted'">
+                          <i class="bi bi-trophy-fill" v-if="product.is_best_selling"></i>
+                          {{ product.is_best_selling ? 'الأكثر مبيعاً' : 'عادي' }}
+                        </small>
+                      </div>
                   </td>
                   <td>
                       <div class="action-buttons">
@@ -928,6 +960,37 @@ const Activate = (id) => {
     }
   });
 }
+
+const toggleFeatured = (id) => {
+  router.post(`/products/${id}/toggle-featured`, {
+    onSuccess: () => {
+      // Success message will be shown by the redirect
+    },
+    onError: () => {
+      Swal.fire(
+        'خطأ!',
+        'حدث خطأ أثناء تحديث حالة المنتج المميز.',
+        'error'
+      );
+    }
+  });
+};
+
+const toggleBestSelling = (id) => {
+  router.post(`/products/${id}/toggle-best-selling`, {
+    onSuccess: () => {
+      // Success message will be shown by the redirect
+    },
+    onError: () => {
+      Swal.fire(
+        'خطأ!',
+        'حدث خطأ أثناء تحديث حالة المنتج الأكثر مبيعاً.',
+        'error'
+      );
+    }
+  });
+};
+
 const Delete = (id) => {
   Swal.fire({
     title: props.translations.are_you_sure,
@@ -1060,6 +1123,32 @@ const Delete = (id) => {
   transform: translateY(-4px);
   box-shadow: 0 8px 25px rgba(0, 0, 0, 0.1);
   border-color: #3b82f6;
+}
+
+/* Featured and Best Selling Toggles */
+.featured-toggle .featured-slider {
+  background: #f59e0b;
+}
+
+.featured-toggle input:checked + .featured-slider {
+  background: #f59e0b;
+}
+
+.best-selling-toggle .best-selling-slider {
+  background: #3b82f6;
+}
+
+.best-selling-toggle input:checked + .best-selling-slider {
+  background: #3b82f6;
+}
+
+.featured-toggle, .best-selling-toggle {
+  margin-top: 8px;
+}
+
+.featured-toggle small, .best-selling-toggle small {
+  font-size: 0.75rem;
+  font-weight: 500;
 }
 
 .product-card .card-title {

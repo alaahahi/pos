@@ -30,6 +30,9 @@ class Product extends Model
         'created',
         'barcode',
         'is_active',
+        'is_featured',
+        'is_best_selling',
+        'sales_count',
     ];
 
     /**
@@ -51,6 +54,17 @@ class Product extends Model
     {
         return $this->hasMany(\App\Models\Log::class, 'by_user_id');
     }
+
+    /**
+     * The attributes that should be cast.
+     */
+    protected $casts = [
+        'is_active' => 'boolean',
+        'is_featured' => 'boolean',
+        'is_best_selling' => 'boolean',
+        'sales_count' => 'integer',
+        'created_at' => 'date:Y-m-d',
+    ];
 
     /**
      * Boot method to add model events

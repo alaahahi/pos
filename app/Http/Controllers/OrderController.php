@@ -84,18 +84,29 @@ class OrderController extends Controller
             ];
         });
         $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
-        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')->get()->map(function ($product) {
-            return [
-                'id' => $product->id,
-                'name' => $product->name,
-                'model' => $product->model,
-                'price' => $product->price,
-                'quantity' => $product->quantity,
-                'max_quantity' => $product->quantity,
-                'image_url' => $product->image ? asset("storage/{$product->image}") : null,
-                'barcode' => $product->barcode,
-            ];
-        });
+        // Get featured and best-selling products only
+        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode', 'is_featured', 'is_best_selling', 'sales_count')
+            ->where('is_active', true)
+            ->where(function($query) {
+                $query->where('is_featured', true)
+                      ->orWhere('is_best_selling', true);
+            })
+            ->get()
+            ->map(function ($product) {
+                return [
+                    'id' => $product->id,
+                    'name' => $product->name,
+                    'model' => $product->model,
+                    'price' => $product->price,
+                    'quantity' => $product->quantity,
+                    'max_quantity' => $product->quantity,
+                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'barcode' => $product->barcode,
+                    'is_featured' => $product->is_featured,
+                    'is_best_selling' => $product->is_best_selling,
+                    'sales_count' => $product->sales_count,
+                ];
+            });
 
         return Inertia::render('Orders/Create', [
             'translations' => __('messages'),

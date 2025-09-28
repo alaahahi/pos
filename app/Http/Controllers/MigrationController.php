@@ -54,6 +54,8 @@ class MigrationController extends Controller
                 'no_executed_migrations' => 'لا توجد مايكريشنات منفذة',
                 'confirm_rollback' => 'هل أنت متأكد من تراجع آخر دفعة من المايكريشنات؟',
                 'confirm_refresh' => 'هل أنت متأكد من إعادة تشغيل جميع المايكريشنات؟ سيتم حذف جميع البيانات!',
+                'run_seeders' => 'تشغيل الـ Seeders',
+                'confirm_seeders' => 'هل أنت متأكد من تشغيل الـ seeders؟ سيتم إضافة البيانات التجريبية.',
             ]
         ]);
     }
@@ -136,6 +138,39 @@ class MigrationController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء تراجع المايكريشنات: ' . $e->getMessage(),
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Run seeders only
+     */
+    public function runSeeders(Request $request)
+    {
+        try {
+            $output = [];
+            
+            // Run all seeders
+            Artisan::call('db:seed', ['--force' => true]);
+            $output[] = 'Seeding completed: ' . Artisan::output();
+            
+            // Get updated status
+            $migrations = $this->getMigrationsStatus();
+            $tables = $this->getTablesInfo();
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تشغيل الـ seeders بنجاح',
+                'output' => $output,
+                'migrations' => $migrations,
+                'tables' => $tables
+            ]);
+            
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تشغيل الـ seeders: ' . $e->getMessage(),
                 'error' => $e->getMessage()
             ], 500);
         }

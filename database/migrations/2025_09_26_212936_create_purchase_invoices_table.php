@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('purchase_invoices', function (Blueprint $table) {
             $table->id();
-            $table->foreignId('supplier_id')->nullable()->constrained('customers')->onDelete('set null'); // Assuming suppliers are also in customers table
+            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->onDelete('set null');
             $table->decimal('total_amount', 10, 2);
             $table->date('invoice_date');
             $table->text('notes')->nullable();

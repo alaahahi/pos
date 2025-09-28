@@ -2,6 +2,7 @@
 import { ref, watch } from 'vue';
 import axios from 'axios';  
 
+const emit = defineEmits(['close', 'a']);
 
 const props = defineProps({
   show: Boolean,
@@ -21,17 +22,23 @@ function getTodayDate() {
   const day = String(today.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
 }
-const restform =()=>{
+const restform = () => {
   form.value = {
-  date:getTodayDate(),
-};
+    date: getTodayDate(),
+    amountDollar: 0,
+    amountDinar: 0,
+    amountNote: '',
+  };
 }
 const submit = (form) => {
   axios.post('/api/add-to-box', form)
   .then(response => {
+    emit('a');
+    emit('close');
+    restform();
    })
   .catch(error => {
-    $emit('close');
+    emit('close');
   });
 }
 </script>
@@ -99,7 +106,7 @@ const submit = (form) => {
                 <div class="px-2 flex-fill">
                   <button
                     class="btn btn-secondary w-100  text-center"
-                    @click="$emit('close');"
+                    @click="emit('close')"
                   >
                     تراجع
                   </button>
@@ -109,7 +116,7 @@ const submit = (form) => {
                 <div class="px-2 flex-fill">
                   <button
                     class="btn btn-danger w-100 text-center"
-                    @click="submit(form);$emit('a'); restform();"
+                    @click="submit(form)"
                     :disabled="!form.amountDollar && !form.amountDinar"
                   >
                     نعم

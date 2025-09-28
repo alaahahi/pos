@@ -80,16 +80,13 @@ Route::get('/decoration-monthly-accounting/report', [DecorationController::class
 Route::put('/decoration-monthly-accounting/{monthlyAccount}', [DecorationController::class, 'updateMonthlyAccount'])->name('decoration.monthly.update');
 Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [DecorationController::class, 'recalculateMonthlyData'])->name('decoration.monthly.recalculate');
 
-// Public Gallery Routes (No Authentication Required)
-Route::get('/gallery', [App\Http\Controllers\PublicGalleryController::class, 'index'])->name('public.gallery');
-Route::get('/gallery/{decoration}', [App\Http\Controllers\PublicGalleryController::class, 'show'])->name('public.decoration.show');
-Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class, 'api'])->name('public.gallery.api');
-    Route::get('/decoration-orders/{order}', [DecorationController::class, 'showOrder'])->name('decoration.orders.show');
-    Route::get('/my-decoration-orders', [DecorationController::class, 'myOrders'])->name('decoration.orders.my');
+
 
   // Products routes
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
+  Route::post('products/{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');
+  Route::post('products/{product}/toggle-best-selling', [ProductController::class, 'toggleBestSelling'])->name('toggle-best-selling');
   Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update'); 
   Route::get('products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
   Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
@@ -165,8 +162,14 @@ Route::middleware(['auth'])->prefix('admin')->group(function () {
     Route::post('/migrations/run', [MigrationController::class, 'runMigrations'])->name('admin.migrations.run');
     Route::post('/migrations/rollback', [MigrationController::class, 'rollbackMigrations'])->name('admin.migrations.rollback');
     Route::post('/migrations/refresh', [MigrationController::class, 'refreshMigrations'])->name('admin.migrations.refresh');
+    Route::post('/migrations/seeders', [MigrationController::class, 'runSeeders'])->name('admin.migrations.seeders');
 });
-
+// Public Gallery Routes (No Authentication Required)
+Route::get('/gallery', [App\Http\Controllers\PublicGalleryController::class, 'index'])->name('public.gallery');
+Route::get('/gallery/{decoration}', [App\Http\Controllers\PublicGalleryController::class, 'show'])->name('public.decoration.show');
+Route::get('/api/gallery', [App\Http\Controllers\PublicGalleryController::class, 'api'])->name('public.gallery.api');
+    Route::get('/decoration-orders/{order}', [DecorationController::class, 'showOrder'])->name('decoration.orders.show');
+    Route::get('/my-decoration-orders', [DecorationController::class, 'myOrders'])->name('decoration.orders.my');
 // Public barcode routes (no authentication required)
 Route::get('/barcode/preview', [BarcodeController::class, 'preview'])->name('barcode.preview');
 Route::get('/barcode/download/{product}', [BarcodeController::class, 'download'])->name('barcode.download');

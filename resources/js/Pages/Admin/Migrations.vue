@@ -19,7 +19,7 @@
           </div>
           <div class="card-body">
             <div class="row g-3">
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <button 
                   @click="runMigrations" 
                   :disabled="loading || migrations.pending.length === 0"
@@ -33,7 +33,7 @@
                   </span>
                 </button>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <button 
                   @click="rollbackMigrations" 
                   :disabled="loading || migrations.executed.length === 0"
@@ -44,7 +44,7 @@
                   {{ translations.rollback_last }}
                 </button>
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <button 
                   @click="refreshMigrations" 
                   :disabled="loading"
@@ -53,6 +53,17 @@
                   <i class="bi bi-arrow-repeat" v-if="!loading"></i>
                   <span class="spinner-border spinner-border-sm me-2" v-if="loading"></span>
                   {{ translations.refresh_all }}
+                </button>
+              </div>
+              <div class="col-md-3">
+                <button 
+                  @click="runSeeders" 
+                  :disabled="loading"
+                  class="btn btn-info w-100"
+                >
+                  <i class="bi bi-database-add" v-if="!loading"></i>
+                  <span class="spinner-border spinner-border-sm me-2" v-if="loading"></span>
+                  {{ translations.run_seeders }}
                 </button>
               </div>
               <div class="col-md-3">
@@ -314,6 +325,42 @@ const refreshMigrations = async () => {
     loading.value = true
     try {
       const response = await fetch('/admin/migrations/refresh', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+      })
+      
+      const data = await response.json()
+      
+      outputMessage.value = data.message
+      outputText.value = data.output ? data.output.join('\n') : ''
+      outputSuccess.value = data.success
+      outputSuggestion.value = data.suggestion || ''
+      showOutputModal.value = true
+      
+      if (data.success) {
+        // Refresh the page data
+        router.reload()
+      }
+    } catch (error) {
+      outputMessage.value = 'حدث خطأ في الاتصال'
+      outputText.value = error.message
+      outputSuccess.value = false
+      outputSuggestion.value = 'تحقق من اتصال الإنترنت وحاول مرة أخرى'
+      showOutputModal.value = true
+    } finally {
+      loading.value = false
+    }
+  }
+}
+
+const runSeeders = async () => {
+  if (confirm(props.translations.confirm_seeders)) {
+    loading.value = true
+    try {
+      const response = await fetch('/admin/migrations/seeders', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

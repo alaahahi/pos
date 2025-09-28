@@ -40,7 +40,7 @@ class ProductController extends Controller
             'is_active' => $request->is_active,
         ];
         // Start the Product query
-        $ProductQuery = Product::with('roles')->latest();
+        $ProductQuery = Product::with('roles')->select('*')->latest();
 
         // Apply the filters if they exist
         $ProductQuery->when($filters['name'], function ($query, $name) {
@@ -220,6 +220,24 @@ class ProductController extends Controller
         );
         return redirect()->route('products.index')
             ->with('success', 'product Status Updated successfully!');
+    }
+
+    public function toggleFeatured(Product $product)
+    {
+        $product->update([
+            'is_featured' => !$product->is_featured
+        ]);
+        
+        return redirect()->back()->with('success', 'تم تحديث حالة المنتج المميز بنجاح');
+    }
+
+    public function toggleBestSelling(Product $product)
+    {
+        $product->update([
+            'is_best_selling' => !$product->is_best_selling
+        ]);
+        
+        return redirect()->back()->with('success', 'تم تحديث حالة المنتج الأكثر مبيعاً بنجاح');
     }
     /**
      * Remove the specified resource from storage.
