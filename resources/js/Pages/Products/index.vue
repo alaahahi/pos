@@ -537,7 +537,7 @@ const clearFilters = () => {
 
 // Get product image
 const getProductImage = (product) => {
-  if (product.image && product.image !== 'products/default_product.png') {
+  if (product.image && product.image.trim() !== '') {
     return `/storage/${product.image}`;
   }
   return '/dashboard-assets/img/product-placeholder.svg';
