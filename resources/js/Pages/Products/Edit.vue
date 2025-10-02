@@ -461,7 +461,7 @@ const props = defineProps({
 
 // Current image for display
 const currentImage = computed(() => {
-  if (props.product?.image && props.product.image !== 'products/default_product.png') {
+  if (props.product?.image && props.product.image.trim() !== '') {
     return `/storage/${props.product.image}`;
   }
   return null;
