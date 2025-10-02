@@ -17,6 +17,21 @@ $app = new Illuminate\Foundation\Application(
 
 /*
 |--------------------------------------------------------------------------
+| Bind Paths In The Container
+|--------------------------------------------------------------------------
+|
+| Next to the application binding, we need to set up the public path as well.
+| We'll set the public path to the public folder inside the application.
+|
+*/
+$app->bind(Illuminate\Contracts\Foundation\Application::class, function ($app) {
+    return $app;
+});
+
+$app->usePublicPath(realpath(dirname(__DIR__) . '/public'));
+
+/*
+|--------------------------------------------------------------------------
 | Bind Important Interfaces
 |--------------------------------------------------------------------------
 |
