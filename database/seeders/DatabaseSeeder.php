@@ -17,6 +17,7 @@ class DatabaseSeeder extends Seeder
             DefaultDataSeeder::class,
             SupplierSeeder::class,
             ProductsSeeder::class,
+            MainBoxUserSeeder::class,
             WalletSeeder::class,
             TransactionSeeder::class,
             PurchaseInvoiceSeeder::class,

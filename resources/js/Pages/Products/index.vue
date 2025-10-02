@@ -462,7 +462,7 @@ const filterForm = reactive({
   search: '',
   status: '',
   stock: '',
-  sort: 'name'
+  sort: 'created'
 });
 
 // View mode (table or grid)
@@ -531,7 +531,7 @@ const clearFilters = () => {
   filterForm.search = '';
   filterForm.status = '';
   filterForm.stock = '';
-  filterForm.sort = 'name';
+  filterForm.sort = 'created';
   Filter();
 };
 

@@ -1,0 +1,36 @@
+<svg width="200" height="200" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#f8f9fa;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#e9ecef;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  
+  <!-- Background -->
+  <rect width="200" height="200" fill="url(#grad1)" stroke="#dee2e6" stroke-width="2" rx="10"/>
+  
+  <!-- Box Icon -->
+  <g transform="translate(100,100)">
+    <!-- Box base -->
+    <rect x="-30" y="-15" width="60" height="30" fill="#6c757d" rx="3"/>
+    
+    <!-- Box top -->
+    <polygon points="-30,-15 0,-35 60,-35 30,-15" fill="#495057"/>
+    
+    <!-- Box side -->
+    <polygon points="30,-15 60,-35 60,15 30,15" fill="#5a6268"/>
+    
+    <!-- Box lines -->
+    <line x1="-30" y1="-15" x2="0" y2="-35" stroke="#343a40" stroke-width="1"/>
+    <line x1="0" y1="-35" x2="0" y2="15" stroke="#343a40" stroke-width="1"/>
+  </g>
+  
+  <!-- Text -->
+  <text x="100" y="140" text-anchor="middle" font-family="Arial, sans-serif" font-size="12" fill="#6c757d">
+    لا توجد صورة
+  </text>
+  
+  <text x="100" y="155" text-anchor="middle" font-family="Arial, sans-serif" font-size="10" fill="#adb5bd">
+    Product Image
+  </text>
+</svg>

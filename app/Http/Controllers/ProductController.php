@@ -30,37 +30,65 @@ class ProductController extends Controller
      */
     public function index(Request $request)
     {
-        
-
         // Define the filters
         $filters = [
-            'name' => $request->name,
-            'model' => $request->model,
             'search' => $request->search,
-            'is_active' => $request->is_active,
+            'status' => $request->status,
+            'stock' => $request->stock,
+            'sort' => $request->sort ?? 'created',
         ];
+        
         // Start the Product query
-        $ProductQuery = Product::with('roles')->select('*')->latest();
+        $ProductQuery = Product::with('roles')->select('*');
 
-        // Apply the filters if they exist
-        $ProductQuery->when($filters['name'], function ($query, $name) {
-            return $query->where('name', 'LIKE', "%{$name}%");
-        });
-
-        $ProductQuery->when($filters['model'], function ($query, $model) {
-            return $query->where('model', 'LIKE', "%{$model}%");
-        });
-
-        // Search by name or barcode
+        // Apply search filter
         $ProductQuery->when($filters['search'], function ($query, $search) {
-            return $query->where('name', 'LIKE', "%{$search}%")
-                        ->orWhere('barcode', 'LIKE', "%{$search}%");
+            return $query->where(function ($q) use ($search) {
+                $q->where('name', 'LIKE', "%{$search}%")
+                  ->orWhere('barcode', 'LIKE', "%{$search}%")
+                  ->orWhere('model', 'LIKE', "%{$search}%");
+            });
         });
 
+        // Apply status filter
+        $ProductQuery->when($filters['status'], function ($query, $status) {
+            if ($status === 'active') {
+                return $query->where('is_active', 1);
+            } elseif ($status === 'inactive') {
+                return $query->where('is_active', 0);
+            }
+            return $query;
+        });
 
-        if (isset($filters['is_active'])) {
-            $ProductQuery->where('is_active', $filters['is_active']);
+        // Apply stock filter
+        $ProductQuery->when($filters['stock'], function ($query, $stock) {
+            if ($stock === 'low') {
+                return $query->where('quantity', '<=', 5)->where('quantity', '>', 0);
+            } elseif ($stock === 'out') {
+                return $query->where('quantity', 0);
+            } elseif ($stock === 'available') {
+                return $query->where('quantity', '>', 5);
+            }
+            return $query;
+        });
+
+        // Apply sorting
+        switch ($filters['sort']) {
+            case 'name':
+                $ProductQuery->orderBy('name', 'asc');
+                break;
+            case 'price':
+                $ProductQuery->orderBy('price', 'desc');
+                break;
+            case 'quantity':
+                $ProductQuery->orderBy('quantity', 'desc');
+                break;
+            case 'created':
+            default:
+                $ProductQuery->latest();
+                break;
         }
+
         // Paginate the filtered product
         $product = $ProductQuery->paginate(10);
 

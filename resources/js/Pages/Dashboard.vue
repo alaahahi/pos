@@ -211,7 +211,7 @@
             </div>
 
             <!-- طلبات الديكور المدفوعة -->
-            <div class="col-xxl-3 col-md-6">
+            <!-- <div class="col-xxl-3 col-md-6">
               <div class="card info-card customers-card">
                 <div class="card-body">
                   <h5 class="card-title">طلبات الديكور المدفوعة</h5>
@@ -225,7 +225,7 @@
                   </div>
                 </div>
               </div>
-            </div>
+            </div> -->
           </div>
         </div>
       </div>

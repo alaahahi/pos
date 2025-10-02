@@ -28,8 +28,8 @@ class OrderController extends Controller
         $this->middleware('permission:create order', ['only' => ['create', 'store']]);
         $this->middleware('permission:update order', ['only' => ['edit', 'update']]);
         $this->middleware('permission:delete order', ['only' => ['destroy']]);
-        $this->userAccount =  UserType::where('name', 'account')->first()?->id;
-        $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
+        $this->userAccount = UserType::where('name', 'account')->first()?->id;
+        $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com')->first();
         $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
 
     }
@@ -191,11 +191,14 @@ class OrderController extends Controller
             // إنشاء المعاملات المالية إذا كان هناك مبلغ مدفوع
             $transaction = null;
             if ($validated['total_paid'] > 0) {
+                if (!$this->mainBox) {
+                    throw new \Exception("الصندوق الرئيسي غير موجود، يرجى إضافة المستخدم الأساسي");
+                }
                 $transaction = $this->accountingController->increaseWallet(
                     $validated['total_paid'], // المبلغ المدفوع
                     'دفع نقدي فاتورة رقم ' . $order->id,
-                    $this->mainBox->first()->id, // الصندوق الرئيسي
-                    $this->mainBox->first()->id, // صندوق النظام
+                    $this->mainBox->id, // الصندوق الرئيسي
+                    $this->mainBox->id, // صندوق النظام
                     'App\Models\User',
                     0,
                     0,
@@ -388,11 +391,14 @@ class OrderController extends Controller
             }
 
               if($validated['total_paid']>0){
+                 if (!$this->mainBox) {
+                     throw new \Exception("الصندوق الرئيسي غير موجود، يرجى إضافة المستخدم الأساسي");
+                 }
                  $transaction = $this->accountingController->increaseWallet(
                      $validated['total_paid'], // المبلغ المدفوع
                      'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
-                     $this->mainBox->first()->id, // الصندوق الرئيسي للعميل
-                     $this->mainBox->first()->id, // صندوق النظام أو المستخدم الأساسي
+                     $this->mainBox->id, // الصندوق الرئيسي للعميل
+                     $this->mainBox->id, // صندوق النظام أو المستخدم الأساسي
                      'App\Models\User',
                      0,
                      0,
@@ -464,11 +470,14 @@ class OrderController extends Controller
 
             // إذا كان هناك مبلغ مدفوع → نرجعه من الصندوق
             if ($order->total_paid > 0) {
+                if (!$this->mainBox) {
+                    throw new \Exception("الصندوق الرئيسي غير موجود، لا يمكن استرجاع المبلغ");
+                }
                 $this->accountingController->decreaseWallet(
                     $order->total_paid, // كل المبلغ المدفوع
                     'استرجاع دفعة بعد حذف فاتورة رقم ' . $order->id,
-                    $this->mainBox->first()->id, // الصندوق الرئيسي
-                    $this->mainBox->first()->id, // صندوق النظام
+                    $this->mainBox->id, // الصندوق الرئيسي
+                    $this->mainBox->id, // صندوق النظام
                     'App\Models\User',
                     0,
                     0,
