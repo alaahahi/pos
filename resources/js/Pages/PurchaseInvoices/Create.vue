@@ -597,9 +597,9 @@ const addSupplier = async () => {
 
 const getProductImage = (product) => {
   if (product.image && product.image !== 'products/default_product.png') {
-    return `/storage/${product.image}`;
+    return `/public/storage/${product.image}`;
   }
-  return '/dashboard-assets/img/product-placeholder.svg';
+  return '/public/dashboard-assets/img/product-placeholder.svg';
 };
 
 const handleImageError = (event) => {

@@ -462,9 +462,9 @@ const props = defineProps({
 // Current image for display
 const currentImage = computed(() => {
   if (props.product?.image && props.product.image.trim() !== '') {
-    return `/storage/${props.product.image}`;
+    return `/public/storage/${props.product.image}`;
   }
-  return null;
+  return '/public/dashboard-assets/img/product-placeholder.svg';
 });
 
 const form = useForm({

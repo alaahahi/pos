@@ -538,9 +538,9 @@ const clearFilters = () => {
 // Get product image
 const getProductImage = (product) => {
   if (product.image && product.image.trim() !== '') {
-    return `/storage/${product.image}`;
+    return `/public/storage/${product.image}`;
   }
-  return '/dashboard-assets/img/product-placeholder.svg';
+  return '/public/dashboard-assets/img/product-placeholder.svg';
 };
 
 // Handle image error
