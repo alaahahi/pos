@@ -80,7 +80,7 @@ class Decoration extends Model
     // Accessors
     public function getImageUrlAttribute()
     {
-        return $this->image ? asset("storage/{$this->image}") : null;
+        return $this->image ? asset("/public/storage/{$this->image}") : null;
     }
 
     public function getImagesUrlsAttribute()
@@ -90,13 +90,13 @@ class Decoration extends Model
         }
         
         return collect($this->images)->map(function ($image) {
-            return asset("storage/{$image}");
+            return asset("/public/storage/{$image}");
         })->toArray();
     }
 
     public function getThumbnailUrlAttribute()
     {
-        return $this->thumbnail ? asset("storage/{$this->thumbnail}") : $this->image_url;
+        return $this->thumbnail ? asset("/public/storage/{$this->thumbnail}") : $this->image_url;
     }
 
     public function getTypeNameAttribute()

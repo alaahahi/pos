@@ -78,8 +78,8 @@
           <!-- Image -->
           <div class="card-img-top position-relative" style="height: 200px; overflow: hidden;">
             <img 
-              v-if="decoration.image_url" 
-              :src="decoration.image_url" 
+              v-if="decoration.thumbnail_url || decoration.image_url" 
+              :src="decoration.thumbnail_url || decoration.image_url" 
               :alt="decoration.name"
               class="w-100 h-100 object-cover"
             >
