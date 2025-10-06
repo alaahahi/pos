@@ -106,7 +106,7 @@
           >
             <div class="product-image">
               <img 
-                :src="product.image_url || '/dashboard-assets/img/product-placeholder.svg'" 
+                :src="product.image ?`/public/storage/${product.image}` : '/dashboard-assets/img/product-placeholder.svg'" 
                 :alt="product.name"
                 @error="handleImageError"
               />
