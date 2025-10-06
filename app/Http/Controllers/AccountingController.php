@@ -46,6 +46,22 @@ class AccountingController extends Controller
 {
     public function __construct(){
         $this->url = env('FRONTEND_URL');
+        
+        // التحقق من وجود قاعدة البيانات قبل المحاولة
+        try {
+            \DB::connection()->getPdo();
+            // قاعدة البيانات متوفرة
+            $this->initializeDatabaseConnections();
+        } catch (\Exception $e) {
+            // قاعدة البيانات غير متوفرة
+            $this->initializeNullValues();
+        }
+
+        $this->currentDate = Carbon::now()->format('Y-m-d');
+    }
+    
+    private function initializeDatabaseConnections()
+    {
         $this->userAdmin =  UserType::where('name', 'admin')->first()?->id;
         $this->userClient =  UserType::where('name', 'client')->first()?->id;
         $this->userAccount =  UserType::where('name', 'account')->first()?->id;
@@ -60,10 +76,25 @@ class AccountingController extends Controller
         $this->border= User::with('wallet')->where('type_id', $this->userAccount)->where('email','border')->first();
         $this->iran= User::with('wallet')->where('type_id', $this->userAccount)->where('email','iran')->first();
         $this->dubai= User::with('wallet')->where('type_id', $this->userAccount)->where('email','dubai')->first();
-    
         $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com');
-
-        $this->currentDate = Carbon::now()->format('Y-m-d');
+    }
+    
+    private function initializeNullValues()
+    {
+        $this->userAdmin = null;
+        $this->userClient = null;
+        $this->userAccount = null;
+        $this->mainAccount = null;
+        $this->onlineContracts = null;
+        $this->onlineContractsDinar = null;
+        $this->debtOnlineContracts = null;
+        $this->debtOnlineContractsDinar = null;
+        $this->howler = null;
+        $this->shippingCoc = null;
+        $this->border = null;
+        $this->iran = null;
+        $this->dubai = null;
+        $this->mainBox = null;
     }
 
     public function TransactionsUpload(Request $request)

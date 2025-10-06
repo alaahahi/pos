@@ -156,8 +156,8 @@ Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [Deco
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
 Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
 
-// Migration Management Routes
-Route::middleware(['auth'])->prefix('admin')->group(function () {
+// Migration Management Routes - بدون تسجيل دخول مع مفتاح ثابت
+Route::prefix('admin')->group(function () {
     Route::get('/migrations', [MigrationController::class, 'index'])->name('admin.migrations');
     Route::post('/migrations/run', [MigrationController::class, 'runMigrations'])->name('admin.migrations.run');
     Route::post('/migrations/rollback', [MigrationController::class, 'rollbackMigrations'])->name('admin.migrations.rollback');

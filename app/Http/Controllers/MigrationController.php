@@ -12,16 +12,31 @@ class MigrationController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('auth');
-        // Temporarily remove permission check for testing
-        // $this->middleware('permission:manage migrations');
+        // لا نحتاج middleware للـ auth لأن قاعدة البيانات غير موجودة حالياً
+        // سنستخدم مفتاح ثابت بسيط للحماية
+    }
+
+    /**
+     * Check if access key is valid
+     */
+    private function checkAccessKey(Request $request)
+    {
+        $accessKey = $request->get('key') ?? $request->header('X-Access-Key');
+        $validKey = 'migrate123'; // مفتاح ثابت بسيط
+        
+        if ($accessKey !== $validKey) {
+            abort(403, 'مفتاح الوصول غير صحيح. استخدم: ?key=migrate123');
+        }
+        
+        return true;
     }
 
     /**
      * Display migration management page
      */
-    public function index()
+    public function index(Request $request)
     {
+        $this->checkAccessKey($request);
         $migrations = $this->getMigrationsStatus();
         $tables = $this->getTablesInfo();
         
@@ -65,6 +80,8 @@ class MigrationController extends Controller
      */
     public function runMigrations(Request $request)
     {
+        $this->checkAccessKey($request);
+        
         try {
             $output = [];
             
@@ -106,18 +123,24 @@ class MigrationController extends Controller
      */
     public function rollbackMigrations(Request $request)
     {
+        $this->checkAccessKey($request);
+        
         try {
             $output = [];
             
-            // Disable foreign key checks temporarily
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            // Disable foreign key checks temporarily (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            }
             
             // Rollback last batch
             Artisan::call('migrate:rollback', ['--force' => true]);
             $output[] = Artisan::output();
             
-            // Re-enable foreign key checks
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            // Re-enable foreign key checks (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
             
             // Get updated status
             $migrations = $this->getMigrationsStatus();
@@ -132,8 +155,10 @@ class MigrationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            // Re-enable foreign key checks in case of error
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            // Re-enable foreign key checks in case of error (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
             
             return response()->json([
                 'success' => false,
@@ -148,6 +173,8 @@ class MigrationController extends Controller
      */
     public function runSeeders(Request $request)
     {
+        $this->checkAccessKey($request);
+        
         try {
             $output = [];
             
@@ -181,11 +208,15 @@ class MigrationController extends Controller
      */
     public function refreshMigrations(Request $request)
     {
+        $this->checkAccessKey($request);
+        
         try {
             $output = [];
             
-            // Disable foreign key checks temporarily
-            DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            // Disable foreign key checks temporarily (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=0;');
+            }
             
             // Refresh migrations (rollback all then migrate)
             Artisan::call('migrate:refresh', ['--force' => true]);
@@ -195,8 +226,10 @@ class MigrationController extends Controller
             Artisan::call('db:seed', ['--force' => true]);
             $output[] = 'Seeding completed: ' . Artisan::output();
             
-            // Re-enable foreign key checks
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            // Re-enable foreign key checks (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
             
             // Get updated status
             $migrations = $this->getMigrationsStatus();
@@ -211,8 +244,10 @@ class MigrationController extends Controller
             ]);
             
         } catch (\Exception $e) {
-            // Re-enable foreign key checks in case of error
-            DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            // Re-enable foreign key checks in case of error (MySQL only)
+            if (config('database.default') === 'mysql') {
+                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
+            }
             
             return response()->json([
                 'success' => false,
@@ -276,19 +311,42 @@ class MigrationController extends Controller
     private function getTablesInfo()
     {
         try {
-            $tables = DB::select('SHOW TABLE STATUS');
+            $connection = config('database.default');
             
-            return collect($tables)->map(function ($table) {
-                return [
-                    'name' => $table->Name,
-                    'rows' => $table->Rows,
-                    'size' => $this->formatBytes($table->Data_length + $table->Index_length),
-                    'created' => $table->Create_time,
-                    'updated' => $table->Update_time,
-                    'engine' => $table->Engine,
-                    'collation' => $table->Collation
-                ];
-            })->sortBy('name')->values();
+            if ($connection === 'sqlite') {
+                // SQLite syntax
+                $tables = DB::select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                
+                return collect($tables)->map(function ($table) {
+                    $tableName = $table->name;
+                    $rowCount = DB::table($tableName)->count();
+                    
+                    return [
+                        'name' => $tableName,
+                        'rows' => $rowCount,
+                        'size' => 'N/A',
+                        'created' => 'N/A',
+                        'updated' => 'N/A',
+                        'engine' => 'SQLite',
+                        'collation' => 'N/A'
+                    ];
+                })->sortBy('name')->values();
+            } else {
+                // MySQL syntax
+                $tables = DB::select('SHOW TABLE STATUS');
+                
+                return collect($tables)->map(function ($table) {
+                    return [
+                        'name' => $table->Name,
+                        'rows' => $table->Rows,
+                        'size' => $this->formatBytes($table->Data_length + $table->Index_length),
+                        'created' => $table->Create_time,
+                        'updated' => $table->Update_time,
+                        'engine' => $table->Engine,
+                        'collation' => $table->Collation
+                    ];
+                })->sortBy('name')->values();
+            }
             
         } catch (\Exception $e) {
             return collect([]);

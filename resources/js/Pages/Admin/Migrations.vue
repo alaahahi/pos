@@ -1,13 +1,5 @@
+ 
 <template>
-  <AuthenticatedLayout :translations="translations">
-    <template #header>
-      <div class="d-flex justify-content-between align-items-center">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-          {{ translations.migration_management }}
-        </h2>
-      </div>
-    </template>
-
     <div class="py-12">
       <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <!-- Action Buttons -->
@@ -225,14 +217,12 @@
         </div>
       </div>
     </div>
-  </AuthenticatedLayout>
-</template>
+ </template>
 
 <script setup>
 import { ref, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
-
+ 
 const props = defineProps({
   migrations: Object,
   tables: Array,
@@ -252,7 +242,7 @@ const runMigrations = async () => {
   if (confirm('هل أنت متأكد من تشغيل المايكريشنات المعلقة؟')) {
     loading.value = true
     try {
-      const response = await fetch('/admin/migrations/run', {
+      const response = await fetch('/admin/migrations/run?key=migrate123', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -288,7 +278,7 @@ const rollbackMigrations = async () => {
   if (confirm(props.translations.confirm_rollback)) {
     loading.value = true
     try {
-      const response = await fetch('/admin/migrations/rollback', {
+      const response = await fetch('/admin/migrations/rollback?key=migrate123', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -324,7 +314,7 @@ const refreshMigrations = async () => {
   if (confirm(props.translations.confirm_refresh)) {
     loading.value = true
     try {
-      const response = await fetch('/admin/migrations/refresh', {
+      const response = await fetch('/admin/migrations/refresh?key=migrate123', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -360,7 +350,7 @@ const runSeeders = async () => {
   if (confirm(props.translations.confirm_seeders)) {
     loading.value = true
     try {
-      const response = await fetch('/admin/migrations/seeders', {
+      const response = await fetch('/admin/migrations/seeders?key=migrate123', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
