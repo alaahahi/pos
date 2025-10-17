@@ -37,8 +37,21 @@ class MigrationController extends Controller
     public function index(Request $request)
     {
         $this->checkAccessKey($request);
-        $migrations = $this->getMigrationsStatus();
-        $tables = $this->getTablesInfo();
+        
+        try {
+            $migrations = $this->getMigrationsStatus();
+            $tables = $this->getTablesInfo();
+        } catch (\Exception $e) {
+            // إذا كانت قاعدة البيانات فارغة
+            $migrations = [
+                'executed' => [],
+                'pending' => [],
+                'total' => 0,
+                'executed_count' => 0,
+                'pending_count' => 0,
+            ];
+            $tables = [];
+        }
         
         return Inertia::render('Admin/Migrations', [
             'migrations' => $migrations,
@@ -270,6 +283,23 @@ class MigrationController extends Controller
                 return basename($file, '.php');
             })->sort()->values();
 
+            // Check if migrations table exists
+            if (!Schema::hasTable('migrations')) {
+                return [
+                    'executed' => [],
+                    'pending' => $migrationNames->map(function ($migration) {
+                        return [
+                            'migration' => $migration,
+                            'status' => 'Pending',
+                            'batch' => 'N/A'
+                        ];
+                    }),
+                    'total' => $migrationNames->count(),
+                    'executed_count' => 0,
+                    'pending_count' => $migrationNames->count(),
+                ];
+            }
+
             // Get ran migrations from database
             $ranMigrations = collect(DB::select('SELECT migration, batch FROM migrations ORDER BY id DESC'))
                 ->keyBy('migration')
@@ -311,6 +341,11 @@ class MigrationController extends Controller
     private function getTablesInfo()
     {
         try {
+            // Check if database is accessible
+            if (!Schema::hasTable('migrations')) {
+                return [];
+            }
+            
             $connection = config('database.default');
             
             if ($connection === 'sqlite') {

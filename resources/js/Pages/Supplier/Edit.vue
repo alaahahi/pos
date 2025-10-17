@@ -1,7 +1,6 @@
 <template>
-
   <AuthenticatedLayout :translations="translations">
-
+    <div dir="rtl" lang="ar">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
       <h1 class="dark:text-white">{{ translations.suppliers }}</h1>
@@ -88,7 +87,7 @@
 
       </div>
     </section>
-
+    </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
 

@@ -18,11 +18,12 @@ return new class extends Migration {
             $table->unsignedBigInteger(column: 'affected_record_id');
             $table->json('original_data')->nullable();
             $table->json('updated_data')->nullable();
-            $table->foreignIdFor(
-                \App\Models\User::class,
-                'by_user_id'
-                )->constrained('users');
-                $table->timestamps();
+            $table->unsignedBigInteger('by_user_id')->nullable();
+            $table->foreign('by_user_id')
+                ->references('id')
+                ->on('users')
+                ->onDelete('set null');
+            $table->timestamps();
         });
     }
 
