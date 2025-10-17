@@ -19,3 +19,70 @@ input[type="number"] {
     -moz-appearance: textfield;
     appearance: textfield;
 }
+
+input {
+    direction: rtl;
+}
+
+/* Vue Select Styles - Global */
+.vs__dropdown-toggle {
+    background: #ffffff !important;
+    border: 2px solid #d1d5db !important;
+    border-radius: 6px;
+    padding: 8px 12px;
+}
+
+.vs__dropdown-menu {
+    background: #ffffff !important;
+    border: 2px solid #667eea !important;
+    border-radius: 6px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.vs__dropdown-option {
+    background: #6b7280 !important;
+    color: #ffffff !important;
+    padding: 10px 15px;
+    border-bottom: 1px solid #9ca3af;
+}
+
+.vs__dropdown-option--highlight {
+    background: #667eea !important;
+    color: #ffffff !important;
+}
+
+.vs__dropdown-option--selected {
+    background: #9ca3af !important;
+    color: #ffffff !important;
+    border-left: 4px solid #ffffff;
+}
+
+.vs__selected {
+    color: #1f2937 !important;
+}
+
+.vs__search {
+    color: #1f2937 !important;
+}
+
+/* Force styles for all vue-select elements */
+.vs__dropdown-menu li,
+ul#vs1__listbox li {
+    background: #6b7280 !important;
+    color: #ffffff !important;
+    padding: 12px 16px !important;
+    border-bottom: 2px solid #9ca3af !important;
+}
+
+.vs__dropdown-menu li:hover,
+ul#vs1__listbox li:hover {
+    background: #4b5563 !important;
+    color: #ffffff !important;
+}
+
+.vs__dropdown-menu li.vs__dropdown-option--selected,
+ul#vs1__listbox li.vs__dropdown-option--selected {
+    background: #9ca3af !important;
+    color: #ffffff !important;
+    border-left: 4px solid #ffffff !important;
+}

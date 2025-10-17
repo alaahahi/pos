@@ -118,7 +118,7 @@
               <h6 class="product-name">{{ product.name }}</h6>
               <p class="product-model">{{ product.model }}</p>
               <div class="product-price">
-                {{ defaultCurrency }} {{ product.price }}
+                {{ defaultCurrency }} {{ Math.round(product.price) }}
               </div>
               <div class="product-stock">
                 المخزون: {{ product.quantity }}
@@ -150,9 +150,7 @@
                       v-model="selectedCustomer"
                       :options="customers"
                       label="name"
-                      track-by="id"
-                      :reduce="customer => customer"
-                      @input="selectCustomer"
+                      :reduce="customer => customer.id"
                       :placeholder="translations.select_customer"
             class="customer-select"
                     />
@@ -217,13 +215,14 @@
                     v-model.number="item.price" 
                               type="number" 
                               min="0" 
-                    step="0.01"
+                    step="1"
                     class="form-control price-input"
+                    style="min-width: 92px;"
                   />
                 </div>
                 
                 <div class="item-total">
-                  {{ defaultCurrency }} {{ (item.quantity * item.price).toFixed(2) }}
+                  {{ defaultCurrency }} {{ Math.round(item.quantity * item.price) }}
                 </div>
                 
                             <button 
@@ -256,7 +255,7 @@
                   </div>
           <div class="summary-row total-row">
             <span>الإجمالي:</span>
-            <span class="total-amount">{{ defaultCurrency }} {{ totalAmount.toFixed(2) }}</span>
+            <span class="total-amount">{{ defaultCurrency }} {{ Math.round(totalAmount) }}</span>
                   </div>
                 </div>
 
@@ -457,7 +456,7 @@ const props = defineProps({
   categories: Array,
 });
 
-const selectedCustomer = ref(props.defaultCustomer);
+const selectedCustomer = ref(props.defaultCustomer?.id || null);
 const form = useForm({
   customer_id: props.defaultCustomer?.id || null,
   total_amount: 0,
@@ -480,6 +479,10 @@ watch(totalAmount, (newTotal) => {
   form.total_amount = newTotal;
 });
 
+watch(selectedCustomer, (newCustomerId) => {
+  form.customer_id = newCustomerId;
+});
+
 watch(invoiceItems, () => {
   updateCashInfo();
 }, { deep: true });
@@ -490,11 +493,6 @@ watch(invoiceItems, () => {
 // }, 300));
 
 // Methods
-const selectCustomer = (value) => {
-  selectedCustomer.value = value;
-  form.customer_id = value ? value.id : null;
-};
-
 const addProductToCart = (product) => {
   if (product.quantity <= 0) {
     toast.warning("المنتج غير متوفر في المخزون", {
@@ -575,7 +573,7 @@ const updateCashInfo = () => {
 };
 
 const formatPrice = (price, currency = 'IQD') => {
-  return parseFloat(price || 0).toFixed(2) + ' ' + currency;
+  return Math.round(parseFloat(price || 0)) + ' ' + currency;
 };
 
 const increaseQuantity = (index) => {
@@ -1204,7 +1202,7 @@ onUnmounted(() => {
 }
 
 .quantity-input {
-  width: 60px;
+  width: 40px;
   text-align: center;
   border-radius: 5px;
   border: 1px solid #ced4da;
@@ -1609,8 +1607,131 @@ onUnmounted(() => {
 .slide-up-enter-from, .slide-up-leave-to {
   transform: translateY(100%);
 }
+
+/* ========================================
+   Vue Select Styles - Clear and Visible
+   ======================================== */
+
+/* Main dropdown container */
+.vs__dropdown-toggle {
+  background: #ffffff !important;
+  border: 2px solid #d1d5db !important;
+  border-radius: 6px;
+  padding: 8px 12px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Dropdown menu container */
+.vs__dropdown-menu {
+  background: #ffffff !important;
+  border: 2px solid #667eea !important;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  margin-top: 4px;
+  max-height: 250px;
+  overflow-y: auto;
+  z-index: 9999;
+}
+
+/* Each option in dropdown */
+.vs__dropdown-option {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+  padding: 10px 15px;
+  border-bottom: 1px solid #9ca3af;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+/* Hover state */
+.vs__dropdown-option--highlight {
+  background: #667eea !important;
+  color: #ffffff !important;
+  font-weight: 500;
+}
+
+/* Selected option */
+.vs__dropdown-option--selected {
+  background: #9ca3af !important;
+  color: #ffffff !important;
+  font-weight: 600;
+  border-left: 4px solid #ffffff;
+}
+
+/* Selected value display */
 .vs__selected {
-  color: #fff !important;
+  color: #1f2937 !important;
+  font-weight: 500;
+}
+
+/* Search input */
+.vs__search {
+  color: #1f2937 !important;
+  font-size: 14px;
+}
+
+.vs__search::placeholder {
+  color: #9ca3af !important;
+}
+
+/* Clear button */
+.vs__clear {
+  fill: #6b7280;
+}
+
+/* No options message */
+.vs__no-options {
+  color: #6b7280 !important;
+  background: #f9fafb !important;
+  padding: 15px;
+  text-align: center;
+}
+
+/* Dropdown arrow */
+.vs__open-indicator {
+  fill: #6b7280;
+}
+
+/* Focus state */
+.vs__dropdown-toggle:focus-within {
+  border-color: #667eea !important;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* Loading spinner */
+.vs__spinner {
+  border-left-color: #667eea !important;
+}
+
+/* Force styles for all vue-select elements */
+.vs__dropdown-menu > li,
+.vs__dropdown-menu li,
+ul#vs1__listbox li,
+ul#vs1__listbox > li,
+.vs__dropdown-menu .vs__dropdown-option,
+ul#vs1__listbox .vs__dropdown-option {
+  background: #6b7280 !important;
+  color: #ffffff !important;
+  padding: 12px 16px !important;
+  border-bottom: 2px solid #9ca3af !important;
+}
+
+/* Force hover styles */
+.vs__dropdown-menu > li:hover,
+.vs__dropdown-menu li:hover,
+ul#vs1__listbox li:hover,
+ul#vs1__listbox > li:hover {
+  background: #4b5563 !important;
+  color: #ffffff !important;
+}
+
+/* Force selected styles */
+.vs__dropdown-menu > li.vs__dropdown-option--selected,
+.vs__dropdown-menu li.vs__dropdown-option--selected,
+ul#vs1__listbox li.vs__dropdown-option--selected {
+  background: #9ca3af !important;
+  color: #ffffff !important;
+  border-left: 4px solid #ffffff !important;
 }
 
 /* Cash Management Modal Styles */

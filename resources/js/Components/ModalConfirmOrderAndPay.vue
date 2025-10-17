@@ -109,10 +109,7 @@ const setExactAmount = () => {
   form.value.amountDollar = finalTotal.value;
 };
 
-const addQuickAmount = (amount) => {
-  form.value.amountDollar = finalTotal.value + amount;
-};
-
+ 
 // Keyboard shortcuts for modal
 const handleKeydown = (event) => {
   if (!props.show) return;
@@ -267,18 +264,7 @@ onMounted(() => {
                         المبلغ الصحيح
                   </button>
                 </div>
-
-                    <!-- Quick Amount Buttons -->
-                    <div class="quick-amounts">
-                  <button
-                        v-for="amount in [5, 10, 20, 50, 100, 200]" 
-                        :key="amount"
-                        @click="addQuickAmount(amount)"
-                        class="btn btn-sm btn-outline-secondary quick-amount-btn"
-                      >
-                        +{{ amount }}
-                  </button>
-                    </div>
+ 
                 </div>
 
                   <!-- Change Amount -->
@@ -833,7 +819,7 @@ onMounted(() => {
   .form-control {
     background: #34495e;
     border-color: #495057;
-    color: white;
+    color: white !important;
   }
   
   .form-control:focus {
@@ -843,7 +829,7 @@ onMounted(() => {
   .payment-method-btn {
     background: #34495e;
     border-color: #495057;
-    color: white;
+    color: white !important;
   }
   
   .payment-method-btn:hover {
@@ -851,7 +837,8 @@ onMounted(() => {
   }
   
   .keyboard-info {
-    background: #34495e;
+    background: #34495e !important;
+    color: white !important;
   }
 }
 </style>
