@@ -110,12 +110,20 @@ class PaymentController extends Controller
         DB::beginTransaction();
 
         try {
+            // Get customer name
+            $customer = \App\Models\Customer::find($request->customer_id);
+            $customerName = $customer ? $customer->name : 'عميل';
+            
+            // Convert currency to 3-letter code
+            $currencyCode = $request->currency === 'dollar' ? 'USD' : 'IQD';
+            
             // Create payment record
             $payment = Box::create([
+                'name' => "{$request->type} - {$customerName}",
                 'amount' => $request->amount,
                 'type' => $request->type,
                 'description' => $request->description,
-                'currency' => $request->currency,
+                'currency' => $currencyCode,
                 'created' => now(),
                 'details' => [
                     'notes' => $request->notes,
@@ -124,6 +132,9 @@ class PaymentController extends Controller
                 ],
                 'morphed_id' => $request->customer_id,
                 'morphed_type' => Customer::class,
+                'is_active' => true,
+                'balance' => 0,
+                'balance_usd' => 0,
             ]);
 
             // Update customer balance

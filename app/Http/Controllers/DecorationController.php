@@ -7,6 +7,7 @@ use App\Models\DecorationOrder;
 use App\Models\Customer;
 use App\Models\CustomerBalance;
 use App\Models\Box;
+use App\Models\SystemConfig;
 use App\Models\MonthlyAccount;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -94,6 +95,9 @@ class DecorationController extends Controller
                 ->toArray()
         ];
 
+        // Get system config for exchange rate
+        $systemConfig = SystemConfig::first();
+        
         return Inertia::render('Decorations/Dashboard', [
             'translations' => __('messages'),
             'decorations' => $decorations,
@@ -102,6 +106,7 @@ class DecorationController extends Controller
             'employees' => $employees,
             'analytics' => $analytics,
             'activeTabProp' => $activeTab,
+            'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500,
             'filters' => $request->only(['search', 'type', 'currency', 'is_active', 'status', 'assigned_employee_id', 'event_date'])
         ]);
     }
@@ -143,6 +148,9 @@ class DecorationController extends Controller
      */
     public function create()
     {
+        // Get system config for exchange rate
+        $systemConfig = SystemConfig::first();
+        
         return Inertia::render('Decorations/Create', [
             'translations' => [
                 'decorations' => 'الديكورات',
@@ -166,7 +174,8 @@ class DecorationController extends Controller
                 'graduation' => 'تخرج',
                 'corporate' => 'شركات',
                 'religious' => 'ديني'
-            ]
+            ],
+            'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500
         ]);
     }
 
@@ -199,6 +208,20 @@ class DecorationController extends Controller
             'name', 'description', 'type', 'currency', 'base_price', 
             'duration_hours', 'team_size', 'video_url', 'is_active', 'is_featured'
         ]);
+
+        // Get exchange rate from system config
+        $systemConfig = SystemConfig::first();
+        $exchangeRate = $systemConfig ? $systemConfig->exchange_rate : 1500;
+        $basePrice = floatval($request->base_price);
+        
+        // Calculate prices in both currencies based on exchange rate
+        if ($request->currency === 'dinar') {
+            $data['base_price_dinar'] = $basePrice;
+            $data['base_price_dollar'] = round($basePrice / $exchangeRate, 2);
+        } else {
+            $data['base_price_dollar'] = $basePrice;
+            $data['base_price_dinar'] = round($basePrice * $exchangeRate, 2);
+        }
 
         // Handle main image
         if ($request->hasFile('main_image')) {
@@ -234,9 +257,20 @@ class DecorationController extends Controller
             'transportation' => $request->transportation_cost ?? 0
         ];
 
-        Decoration::create($data);
+        $decoration = Decoration::create($data);
 
-        return redirect()->route('decorations.index')
+        // Log the decoration creation
+        \App\Models\Log::create([
+            'module_name' => 'Decoration',
+            'action' => 'Created',
+            'badge' => 'success',
+            'affected_record_id' => $decoration->id,
+            'original_data' => json_encode([]),
+            'updated_data' => json_encode($decoration->toArray()),
+            'by_user_id' => auth()->user()->id,
+        ]);
+
+        return redirect()->route('decorations.dashboard')
             ->with('success', 'تم إنشاء الديكور بنجاح');
     }
 
@@ -352,7 +386,16 @@ class DecorationController extends Controller
                 'currency' => 'required|in:dinar,dollar'
             ]);
             
-            $decoration->update(['currency' => $request->currency]);
+            // Update currency and set base_price to match the selected currency
+            $newCurrency = $request->currency;
+            $basePrice = $newCurrency === 'dollar' 
+                ? $decoration->base_price_dollar 
+                : $decoration->base_price_dinar;
+            
+            $decoration->update([
+                'currency' => $newCurrency,
+                'base_price' => $basePrice
+            ]);
             
             // Return redirect for Inertia compatibility
             return redirect()->back()->with('success', 'تم تحديث العملة بنجاح');
@@ -481,7 +524,16 @@ class DecorationController extends Controller
                 'currency' => 'required|in:dinar,dollar'
             ]);
             
-            $decoration->update(['currency' => $request->currency]);
+            // Update currency and set base_price to match the selected currency
+            $newCurrency = $request->currency;
+            $basePrice = $newCurrency === 'dollar' 
+                ? $decoration->base_price_dollar 
+                : $decoration->base_price_dinar;
+            
+            $decoration->update([
+                'currency' => $newCurrency,
+                'base_price' => $basePrice
+            ]);
             
             // Return redirect for Inertia compatibility
             return redirect()->back()->with('success', 'تم تحديث العملة بنجاح');
@@ -591,7 +643,7 @@ class DecorationController extends Controller
      */
     public function orders(Request $request)
     {
-        $orders = DecorationOrder::with(['decoration', 'assignedTeam'])
+        $orders = DecorationOrder::with(['decoration', 'assignedEmployee', 'assignedTeam', 'customer'])
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
             })
@@ -602,9 +654,16 @@ class DecorationController extends Controller
             ->latest()
             ->paginate(15);
 
+        // Get employees list for assignment
+        $employees = \App\Models\User::where('is_active', true)
+            ->select('id', 'name', 'email')
+            ->orderBy('name')
+            ->get();
+
         return Inertia::render('Decorations/Orders', [
             'translations' => __('messages'),
             'orders' => $orders,
+            'employees' => $employees,
             'filters' => $request->only(['status', 'search'])
         ]);
     }
@@ -704,10 +763,18 @@ class DecorationController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Get all payments for this order
+        $payments = Box::where('morphed_type', DecorationOrder::class)
+            ->where('morphed_id', $order->id)
+            ->where('type', 'payment')
+            ->orderBy('created_at', 'desc')
+            ->get();
+
         return Inertia::render('Decorations/OrderShow', [
             'translations' => __('messages'),
             'order' => $order,
-            'employees' => $employees
+            'employees' => $employees,
+            'payments' => $payments
         ]);
     }
 
@@ -737,7 +804,7 @@ class DecorationController extends Controller
     public function updateOrderStatus(Request $request, DecorationOrder $order)
     {
         $request->validate([
-            'status' => 'required|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
+            'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
             'assigned_employee_id' => 'nullable|exists:users,id',
             'assigned_team_id' => 'nullable|exists:decoration_teams,id',
             'paid_amount' => 'nullable|numeric|min:0',
@@ -746,34 +813,59 @@ class DecorationController extends Controller
         ]);
 
         $originalData = $order->toArray();
-        $data = $request->only(['status', 'assigned_employee_id', 'assigned_team_id', 'paid_amount', 'scheduled_date', 'notes']);
-
-        // Set timestamp based on status
-        switch ($request->status) {
-            case 'received':
-                $data['received_at'] = now();
-                break;
-            case 'executing':
-                $data['executing_at'] = now();
-                break;
-            case 'partial_payment':
-                $data['partial_payment_at'] = now();
-                break;
-            case 'full_payment':
-                $data['full_payment_at'] = now();
-                $data['paid_at'] = now();
-                // Set paid amount to total price for full payment
-                $data['paid_amount'] = $order->total_price;
-                break;
-            case 'completed':
-            $data['completed_at'] = now();
-                break;
+        
+        // Only include fields that are provided in the request
+        $data = [];
+        if ($request->has('status') && $request->status) {
+            $data['status'] = $request->status;
+        }
+        if ($request->has('assigned_employee_id')) {
+            $data['assigned_employee_id'] = $request->assigned_employee_id;
+        }
+        if ($request->has('assigned_team_id')) {
+            $data['assigned_team_id'] = $request->assigned_team_id;
+        }
+        if ($request->has('paid_amount')) {
+            $data['paid_amount'] = $request->paid_amount;
+        }
+        if ($request->has('scheduled_date')) {
+            $data['scheduled_date'] = $request->scheduled_date;
+        }
+        if ($request->has('notes')) {
+            $data['notes'] = $request->notes;
         }
 
-        $order->update($data);
+        // Set timestamp based on status (only if status is being updated)
+        if ($request->has('status') && $request->status) {
+            switch ($request->status) {
+                case 'received':
+                    $data['received_at'] = now();
+                    break;
+                case 'executing':
+                    $data['executing_at'] = now();
+                    break;
+                case 'partial_payment':
+                    $data['partial_payment_at'] = now();
+                    break;
+                case 'full_payment':
+                    $data['full_payment_at'] = now();
+                    $data['paid_at'] = now();
+                    // Set paid amount to total price for full payment
+                    $data['paid_amount'] = $order->total_price;
+                    break;
+                case 'completed':
+                    $data['completed_at'] = now();
+                    break;
+            }
+        }
+
+        // Only update if there's data to update
+        if (!empty($data)) {
+            $order->update($data);
+        }
 
         // Create payment record if paid_amount is provided and greater than 0
-        if ($request->paid_amount && $request->paid_amount > 0) {
+        if ($request->has('paid_amount') && $request->paid_amount && $request->paid_amount > 0) {
             $this->createPaymentRecord($order, $request->paid_amount, $request->notes);
         }
 
@@ -796,12 +888,16 @@ class DecorationController extends Controller
      */
     private function createPaymentRecord(DecorationOrder $order, $amount, $notes = null)
     {
+        // Convert currency to 3-letter code
+        $currencyCode = $order->currency === 'dollar' ? 'USD' : 'IQD';
+        
         // Create payment record in Box model
         Box::create([
+            'name' => "دفعة ديكور #{$order->id}",
             'type' => 'payment',
             'amount' => $amount,
-            'currency' => $order->currency,
-            'description' => "دفعة لطلب ديكور #{$order->id}",
+            'currency' => $currencyCode,
+            'description' => "دفعة لطلب ديكور #{$order->id} - {$order->decoration->name}",
             'details' => json_encode([
                 'payment_method' => 'cash',
                 'notes' => $notes,
@@ -811,6 +907,9 @@ class DecorationController extends Controller
             'morphed_type' => DecorationOrder::class,
             'morphed_id' => $order->id,
             'created' => now(),
+            'is_active' => true,
+            'balance' => 0,
+            'balance_usd' => 0,
         ]);
 
         // Update order paid amount
@@ -898,6 +997,32 @@ class DecorationController extends Controller
     }
 
     /**
+     * Print payment receipt
+     */
+    public function printPaymentReceipt(Box $payment)
+    {
+        // Load related order
+        $order = null;
+        if ($payment->morphed_type === DecorationOrder::class && $payment->morphed_id) {
+            $order = DecorationOrder::with(['decoration', 'customer'])->find($payment->morphed_id);
+        }
+        
+        // Get company info
+        $companyInfo = [
+            'name' => env('COMPANY_NAME', 'نظام إدارة الديكورات'),
+            'phone' => env('COMPANY_PHONE', ''),
+            'email' => env('COMPANY_EMAIL', ''),
+            'address' => env('COMPANY_ADDRESS', ''),
+            'logo' => env('COMPANY_LOGO', 'dashboard-assets/img/logo.png')
+        ];
+        
+        // Get payment details
+        $details = is_string($payment->details) ? json_decode($payment->details, true) : $payment->details;
+        
+        return view('decorations.payment-receipt', compact('payment', 'order', 'companyInfo', 'details'));
+    }
+
+    /**
      * Display decoration payments management
      */
     public function payments(Request $request)
@@ -965,12 +1090,16 @@ class DecorationController extends Controller
             $order = DecorationOrder::findOrFail($request->order_id);
             $customer = $order->customer;
 
+            // Convert currency to 3-letter code
+            $currencyCode = $request->currency === 'dollar' ? 'USD' : 'IQD';
+            
             // Create payment record
             $payment = Box::create([
+                'name' => "دفعة ديكور #{$order->id}",
                 'amount' => $request->amount,
                 'type' => 'payment',
                 'description' => "دفعة لطلب ديكور #{$order->id} - {$order->decoration->name}",
-                'currency' => $request->currency,
+                'currency' => $currencyCode,
                 'created' => now(),
                 'details' => [
                     'notes' => $request->notes,
@@ -980,6 +1109,9 @@ class DecorationController extends Controller
                 ],
                 'morphed_id' => $order->id,
                 'morphed_type' => DecorationOrder::class,
+                'is_active' => true,
+                'balance' => 0,
+                'balance_usd' => 0,
             ]);
 
             // Update order payment
@@ -1065,12 +1197,16 @@ class DecorationController extends Controller
         try {
             $customer = Customer::findOrFail($request->customer_id);
 
+            // Convert currency to 3-letter code
+            $currencyCode = $request->currency === 'dollar' ? 'USD' : 'IQD';
+            
             // Create balance transaction record
             $balanceTransaction = Box::create([
+                'name' => "رصيد عميل - {$customer->name}",
                 'amount' => $request->amount,
                 'type' => 'deposit',
                 'description' => "إضافة رصيد للعميل {$customer->name}",
-                'currency' => $request->currency,
+                'currency' => $currencyCode,
                 'created' => now(),
                 'details' => [
                     'notes' => $request->notes,
@@ -1078,6 +1214,9 @@ class DecorationController extends Controller
                 ],
                 'morphed_id' => $customer->id,
                 'morphed_type' => Customer::class,
+                'is_active' => true,
+                'balance' => 0,
+                'balance_usd' => 0,
             ]);
 
             // Update customer balance
@@ -1163,12 +1302,16 @@ class DecorationController extends Controller
                 $customerBalance->balance_dinar -= $request->amount;
             }
 
+            // Convert currency to 3-letter code
+            $currencyCode = $request->currency === 'dollar' ? 'USD' : 'IQD';
+            
             // Create withdrawal transaction record
             $withdrawalTransaction = Box::create([
+                'name' => "سحب رصيد - {$customer->name}",
                 'amount' => $request->amount,
                 'type' => 'withdrawal',
                 'description' => "سحب رصيد من العميل {$customer->name}",
-                'currency' => $request->currency,
+                'currency' => $currencyCode,
                 'created' => now(),
                 'details' => [
                     'notes' => $request->notes,
@@ -1176,6 +1319,9 @@ class DecorationController extends Controller
                 ],
                 'morphed_id' => $customer->id,
                 'morphed_type' => Customer::class,
+                'is_active' => true,
+                'balance' => 0,
+                'balance_usd' => 0,
             ]);
 
             $customerBalance->last_transaction_date = now();

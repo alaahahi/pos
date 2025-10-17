@@ -159,6 +159,7 @@
     <ModalConvertDollarDinar 
             :show="showModalConvertDollarDinar ? true : false"
             :boxes="boxes"
+            :exchangeRate="exchangeRate"
             @a="confirmConvertDollarDinar($event)"
             @close="showModalConvertDollarDinar = false"
             >
@@ -170,6 +171,7 @@
       <ModalConvertDinarDollar 
             :show="showModalConvertDinarDollar ? true : false"
             :boxes="boxes"
+            :exchangeRate="exchangeRate"
             @a="confirmConvertDinarDollar ($event)"
             @close="showModalConvertDinarDollar = false"
             >
@@ -235,6 +237,10 @@ const props = defineProps({
   transactions: Array,
   translations: Array ,
   mainBox: Object,
+  exchangeRate: {
+    type: Number,
+    default: 1500
+  }
 });
 
 const page = usePage();

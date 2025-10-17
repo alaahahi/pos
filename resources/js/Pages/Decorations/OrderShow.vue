@@ -235,6 +235,81 @@
               </div>
             </div>
           </div>
+
+          <!-- Payments Section -->
+          <div class="col-12 mt-4" v-if="payments && payments.length > 0">
+            <div class="card">
+              <div class="card-header bg-success text-white">
+                <h5 class="mb-0">
+                  <i class="bi bi-cash-stack"></i>
+                  {{ translations.payments || 'الدفعات' }}
+                </h5>
+              </div>
+              <div class="card-body">
+                <div class="table-responsive">
+                  <table class="table table-hover">
+                    <thead>
+                      <tr>
+                        <th>#</th>
+                        <th>{{ translations.date || 'التاريخ' }}</th>
+                        <th>{{ translations.amount || 'المبلغ' }}</th>
+                        <th>{{ translations.currency || 'العملة' }}</th>
+                        <th>{{ translations.payment_method || 'طريقة الدفع' }}</th>
+                        <th>{{ translations.notes || 'ملاحظات' }}</th>
+                        <th>{{ translations.actions || 'إجراءات' }}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      <tr v-for="(payment, index) in payments" :key="payment.id">
+                        <td>{{ index + 1 }}</td>
+                        <td>{{ formatDateTime(payment.created_at) }}</td>
+                        <td>
+                          <span class="badge bg-success fs-6">
+                            {{ parseFloat(payment.amount).toFixed(2) }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge" :class="payment.currency === 'USD' ? 'bg-primary' : 'bg-info'">
+                            {{ payment.currency }}
+                          </span>
+                        </td>
+                        <td>
+                          <span class="badge bg-secondary">
+                            {{ getPaymentMethod(payment) }}
+                          </span>
+                        </td>
+                        <td>
+                          <small class="text-muted">
+                            {{ getPaymentNotes(payment) || '-' }}
+                          </small>
+                        </td>
+                        <td>
+                          <a 
+                            :href="route('decoration.payments.receipt', payment.id)" 
+                            target="_blank" 
+                            class="btn btn-sm btn-outline-primary"
+                          >
+                            <i class="bi bi-printer"></i>
+                            {{ translations.print || 'طباعة' }}
+                          </a>
+                        </td>
+                      </tr>
+                    </tbody>
+                    <tfoot>
+                      <tr class="table-light">
+                        <td colspan="2" class="text-end"><strong>{{ translations.total || 'المجموع' }}:</strong></td>
+                        <td colspan="5">
+                          <strong class="text-success">
+                            {{ getTotalPayments() }} {{ getCurrencySymbol(order.currency) }}
+                          </strong>
+                        </td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
     </div>
@@ -271,7 +346,8 @@ import PricingEditModal from '@/Components/Decorations/PricingEditModal.vue'
 const props = defineProps({
   order: Object,
   translations: Object,
-  employees: Array
+  employees: Array,
+  payments: Array
 })
 
 // Modal states
@@ -327,6 +403,28 @@ const formatDateTimeLocal = (date) => {
 const getCurrencySymbol = (currency) => {
   return currency === 'dollar' ? 'دولار' : 'دينار'
 }
+
+const getPaymentMethod = (payment) => {
+  const details = typeof payment.details === 'string' ? JSON.parse(payment.details) : payment.details
+  const method = details?.payment_method || 'cash'
+  const methods = {
+    'cash': 'نقدي',
+    'balance': 'رصيد',
+    'transfer': 'تحويل'
+  }
+  return methods[method] || method
+}
+
+const getPaymentNotes = (payment) => {
+  const details = typeof payment.details === 'string' ? JSON.parse(payment.details) : payment.details
+  return details?.notes || ''
+}
+
+const getTotalPayments = () => {
+  if (!props.payments || props.payments.length === 0) return '0.00'
+  const total = props.payments.reduce((sum, payment) => sum + parseFloat(payment.amount), 0)
+  return total.toFixed(2)
+}
 </script>
 
 <style scoped>
@@ -373,5 +471,31 @@ const getCurrencySymbol = (currency) => {
 .timeline-content p {
   margin-bottom: 0;
   font-size: 0.875rem;
+}
+
+/* Payments Table Styles */
+.table-hover tbody tr:hover {
+  background-color: #f8f9fa;
+  transition: background-color 0.3s ease;
+}
+
+.table thead th {
+  background-color: #28a745;
+  color: white;
+  font-weight: 600;
+  border: none;
+}
+
+.table tfoot {
+  background-color: #e9ecef;
+  font-weight: bold;
+}
+
+.fs-6 {
+  font-size: 1rem;
+}
+
+.bg-success.text-white h5 {
+  color: white !important;
 }
 </style>

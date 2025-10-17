@@ -31,7 +31,7 @@
     </li>
 
     <!-- Decorations Section -->
-    <li class="nav-item" v-if="hasPermission('read product')">
+    <li class="nav-item" v-if="hasPermission('read decoration')">
         <a class="nav-link " data-bs-target="#decorations-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations') && !$page.url.startsWith('/decoration-orders') && !$page.url.startsWith('/decoration-payments') && !$page.url.startsWith('/decoration-monthly-accounting') }" >
             <i class="bi bi-palette"></i><span>{{translations.decorations  }}</span><i class="bi bi-chevron-down ms-auto"></i>
         </a>
@@ -42,12 +42,7 @@
             <span>{{translations.decorations_dashboard  }}</span>
                </Link>
             </li>
-            <li>
-                <Link   :href="route('decorations.index')"  :class="{ 'collapsed':  $page.url.startsWith('/decorations') && !$page.url.startsWith('/decorations-dashboard') }" >
-            <i class="bi bi-circle"></i>
-            <span>{{translations.decorations_list  }}</span>
-               </Link>
-            </li>
+   
             <li>
                 <Link   :href="route('decorations.orders')"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations-orders') }" >
             <i class="bi bi-circle"></i>
@@ -314,56 +309,7 @@
 .dark .nav-link.collapsed i {
   color: #6b7280 !important;
 }
-
-/* تحسين التبويب الرئيسي "الديكورات" في الوضع الليلي */
-.dark .nav-link[data-bs-target="#decorations-nav"] {
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%) !important;
-  color: #dbeafe !important;
-  border: 2px solid #3b82f6 !important;
-  box-shadow: 
-    0 4px 12px rgba(59, 130, 246, 0.4),
-    0 0 0 1px rgba(59, 130, 246, 0.3),
-    inset 0 1px 0 rgba(255, 255, 255, 0.2);
-  position: relative;
-  overflow: hidden;
-}
-
-.dark .nav-link[data-bs-target="#decorations-nav"]::before {
-  content: '';
-  position: absolute;
-  top: 0;
-  left: -100%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-  transition: left 0.6s;
-}
-
-.dark .nav-link[data-bs-target="#decorations-nav"]:hover::before {
-  left: 100%;
-}
-
-.dark .nav-link[data-bs-target="#decorations-nav"]:hover {
-  background: linear-gradient(135deg, #2563eb 0%, #1d4ed8 100%) !important;
-  color: #ffffff !important;
-  transform: translateY(-2px);
-  box-shadow: 
-    0 6px 16px rgba(59, 130, 246, 0.5),
-    0 0 0 1px rgba(59, 130, 246, 0.4),
-    inset 0 1px 0 rgba(255, 255, 255, 0.3);
-}
-
-.dark .nav-link[data-bs-target="#decorations-nav"] i {
-  color: #dbeafe !important;
-  text-shadow: 0 0 8px rgba(219, 234, 254, 0.6);
-  transition: all 0.3s ease;
-}
-
-.dark .nav-link[data-bs-target="#decorations-nav"]:hover i {
-  color: #ffffff !important;
-  text-shadow: 0 0 12px rgba(255, 255, 255, 0.8);
-  transform: scale(1.1);
-}
+ 
 
 /* Chevron icon animation */
 .nav-link .bi-chevron-down {
@@ -395,22 +341,7 @@
   border-color: #d1d5db !important;
 }
 
-/* Special styling for main decoration link in light mode */
-.nav-link[data-bs-target="#decorations-nav"] {
-  background-color: #dbeafe !important;
-  color: #1e40af !important;
-  border-color: #3b82f6 !important;
-  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-}
-
-.nav-link[data-bs-target="#decorations-nav"]:hover {
-  background-color: #bfdbfe !important;
-  color: #1e3a8a !important;
-}
-
-.nav-link[data-bs-target="#decorations-nav"] i {
-  color: #1e40af !important;
-}
+ 
 
 /* تحسين ألوان التبويبات الفرعية */
 /* الوضع الليلي - أبيض مع تأثيرات إضافية */

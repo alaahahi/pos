@@ -104,8 +104,7 @@
 
 .cart-item:hover {
   background: #e3f2fd;
-  transform: translateX(5px);
-}
+ }
 
 /* Toast Notifications Styling */
 .Vue-Toastification__toast {

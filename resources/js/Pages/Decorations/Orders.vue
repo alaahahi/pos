@@ -167,12 +167,26 @@
             <button @click="showStatusModal = false" class="btn-close"></button>
           </div>
           <div class="modal-body">
+            <!-- Error Alert -->
+            <div v-if="Object.keys(errors).length > 0" class="alert alert-danger mb-3" role="alert">
+              <h6 class="alert-heading">
+                <i class="bi bi-exclamation-triangle"></i>
+                يرجى تصحيح الأخطاء التالية:
+              </h6>
+              <ul class="mb-0">
+                <li v-for="(error, field) in errors" :key="field">
+                  <strong>{{ getFieldLabel(field) }}:</strong> {{ Array.isArray(error) ? error[0] : error }}
+                </li>
+              </ul>
+            </div>
+
             <form @submit.prevent="updateOrderStatus">
               <div class="row">
                 <div class="col-md-6">
                   <div class="mb-3">
-                    <label class="form-label">{{ translations.status }} *</label>
-                    <select class="form-select" v-model="statusForm.status" required>
+                    <label class="form-label">{{ translations.status }}</label>
+                    <select class="form-select" v-model="statusForm.status" :class="{ 'is-invalid': errors.status }" @change="clearError('status')">
+                      <option value="">{{ translations.select_type }}</option>
                       <option value="created">{{ translations.created }}</option>
                       <option value="received">{{ translations.received }}</option>
                       <option value="executing">{{ translations.executing }}</option>
@@ -181,35 +195,51 @@
                       <option value="completed">{{ translations.completed }}</option>
                       <option value="cancelled">{{ translations.cancelled }}</option>
                     </select>
+                    <div class="invalid-feedback" v-if="errors.status">
+                      {{ Array.isArray(errors.status) ? errors.status[0] : errors.status }}
+                    </div>
+                    <small class="text-muted">اترك فارغاً للاحتفاظ بالحالة الحالية</small>
                   </div>
                 </div>
                 <div class="col-md-6">
                   <div class="mb-3">
                     <label class="form-label">{{ translations.assign_employee }}</label>
-                    <select class="form-select" v-model="statusForm.assigned_employee_id">
+                    <select class="form-select" v-model="statusForm.assigned_employee_id" :class="{ 'is-invalid': errors.assigned_employee_id }" @change="clearError('assigned_employee_id')">
                       <option value="">{{ translations.select_employee }}</option>
                       <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                         {{ employee.name }}
                       </option>
                     </select>
+                    <div class="invalid-feedback" v-if="errors.assigned_employee_id">
+                      {{ Array.isArray(errors.assigned_employee_id) ? errors.assigned_employee_id[0] : errors.assigned_employee_id }}
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-6" v-if="statusForm.status === 'partial_payment' || statusForm.status === 'full_payment'">
                   <div class="mb-3">
                     <label class="form-label">{{ translations.paid_amount }}</label>
-                    <input type="number" step="0.01" class="form-control" v-model="statusForm.paid_amount">
+                    <input type="number" step="0.01" class="form-control" v-model="statusForm.paid_amount" :class="{ 'is-invalid': errors.paid_amount }" @input="clearError('paid_amount')">
+                    <div class="invalid-feedback" v-if="errors.paid_amount">
+                      {{ Array.isArray(errors.paid_amount) ? errors.paid_amount[0] : errors.paid_amount }}
+                    </div>
                   </div>
                 </div>
                 <div class="col-md-6">
                   <div class="mb-3">
                     <label class="form-label">{{ translations.scheduled_date }}</label>
-                    <input type="datetime-local" class="form-control" v-model="statusForm.scheduled_date">
+                    <input type="datetime-local" class="form-control" v-model="statusForm.scheduled_date" :class="{ 'is-invalid': errors.scheduled_date }" @input="clearError('scheduled_date')">
+                    <div class="invalid-feedback" v-if="errors.scheduled_date">
+                      {{ Array.isArray(errors.scheduled_date) ? errors.scheduled_date[0] : errors.scheduled_date }}
+                    </div>
                   </div>
                 </div>
                 <div class="col-12">
                   <div class="mb-3">
                     <label class="form-label">{{ translations.notes }}</label>
-                    <input  class="form-control" type="text" v-model="statusForm.notes"> 
+                    <textarea class="form-control" v-model="statusForm.notes" :class="{ 'is-invalid': errors.notes }" rows="3" @input="clearError('notes')"></textarea>
+                    <div class="invalid-feedback" v-if="errors.notes">
+                      {{ Array.isArray(errors.notes) ? errors.notes[0] : errors.notes }}
+                    </div>
                   </div>
                 </div>
               </div>
@@ -259,6 +289,7 @@ const showStatusModal = ref(false)
 const showPricingModal = ref(false)
 const processing = ref(false)
 const selectedOrder = ref(null)
+const errors = ref({})
 
 // Search form
 const searchForm = reactive({
@@ -285,11 +316,12 @@ const searchOrders = () => {
 
 const openStatusModal = (order) => {
   selectedOrder.value = order
-  statusForm.status = order.status
+  statusForm.status = order.status || ''
   statusForm.assigned_employee_id = order.assigned_employee_id || ''
   statusForm.paid_amount = order.paid_amount || ''
   statusForm.scheduled_date = order.scheduled_date ? formatDateTimeLocal(order.scheduled_date) : ''
   statusForm.notes = order.notes || ''
+  errors.value = {}
   showStatusModal.value = true
 }
 
@@ -305,14 +337,41 @@ const getCurrencySymbol = (currency) => {
 
 const updateOrderStatus = () => {
   processing.value = true
+  errors.value = {}
   
-  router.patch(route('decoration.orders.status', selectedOrder.value.id), statusForm, {
+  // Build data object with only filled fields
+  const dataToSend = {}
+  
+  if (statusForm.status && statusForm.status !== '') {
+    dataToSend.status = statusForm.status
+  }
+  
+  if (statusForm.assigned_employee_id && statusForm.assigned_employee_id !== '') {
+    dataToSend.assigned_employee_id = statusForm.assigned_employee_id
+  }
+  
+  if (statusForm.paid_amount && statusForm.paid_amount !== '') {
+    dataToSend.paid_amount = statusForm.paid_amount
+  }
+  
+  if (statusForm.scheduled_date && statusForm.scheduled_date !== '') {
+    dataToSend.scheduled_date = statusForm.scheduled_date
+  }
+  
+  if (statusForm.notes && statusForm.notes !== '') {
+    dataToSend.notes = statusForm.notes
+  }
+  
+  router.patch(route('decoration.orders.status', selectedOrder.value.id), dataToSend, {
     onSuccess: () => {
       processing.value = false
       showStatusModal.value = false
+      errors.value = {}
     },
-    onError: () => {
+    onError: (errs) => {
       processing.value = false
+      errors.value = errs
+      console.error('Update status errors:', errs)
     }
   })
 }
@@ -324,6 +383,23 @@ const formatDate = (date) => {
 const formatDateTimeLocal = (date) => {
   const d = new Date(date)
   return d.toISOString().slice(0, 16)
+}
+
+const clearError = (field) => {
+  if (errors.value[field]) {
+    delete errors.value[field]
+  }
+}
+
+const getFieldLabel = (field) => {
+  const labels = {
+    'status': props.translations.status || 'الحالة',
+    'assigned_employee_id': props.translations.assign_employee || 'تعيين موظف',
+    'paid_amount': props.translations.paid_amount || 'المبلغ المدفوع',
+    'scheduled_date': props.translations.scheduled_date || 'التاريخ المجدول',
+    'notes': props.translations.notes || 'ملاحظات'
+  }
+  return labels[field] || field
 }
 </script>
 
@@ -398,5 +474,31 @@ const formatDateTimeLocal = (date) => {
 
 .btn-close:hover {
   color: #666;
+}
+
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+  display: block;
+  color: #dc3545;
+  font-size: 0.875em;
+  margin-top: 0.25rem;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border-color: #f5c2c7;
+  color: #842029;
+}
+
+.alert-danger .alert-heading {
+  margin-bottom: 0.5rem;
+}
+
+.alert-danger ul {
+  padding-left: 1.5rem;
+  margin-bottom: 0;
 }
 </style>

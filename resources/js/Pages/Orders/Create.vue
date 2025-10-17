@@ -1019,6 +1019,7 @@ onUnmounted(() => {
 }
 
 .pos-products-grid {
+  padding:5px;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   gap: 1rem;
@@ -1481,16 +1482,10 @@ onUnmounted(() => {
   .total-amount {
     color: #4ade80;
   }
-  
-  .pos-search-input,
-  .barcode-input {
-    background: #2d2d2d;
-    border-color: #555;
-  }
-  
+
   .pos-search-input:focus,
   .barcode-input:focus {
-    background: #3a3a3a;
+    background: #c3c0c0;
     border-color: #667eea;
   }
   
@@ -1507,10 +1502,7 @@ onUnmounted(() => {
     color: white;
   }
   
-  .quantity-input,
-  .price-input {
-    background: #2d2d2d;
-  }
+ 
   
   .empty-cart,
   .no-products {
@@ -1559,7 +1551,9 @@ onUnmounted(() => {
   .total-amount {
     color: #059669;
   }
-  
+  #vs1__listbox > div {
+    background: #000;
+  }
   .pos-search-input,
   .barcode-input {
     background: #ffffff;

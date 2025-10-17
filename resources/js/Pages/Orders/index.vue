@@ -41,7 +41,7 @@
               </div>
               <div class="col-md-3">
                 <Link v-if="hasPermission('create order')" class="btn btn-primary" :href="route('orders.create')">
-                  {{ translations.create_invoice }}  {{ translations.dollar }} &nbsp; <i class="bi bi-plus-circle"></i>
+                  {{ translations.create_invoice }}    <i class="bi bi-plus-circle"></i>
                 </Link>
               </div>
             </div>

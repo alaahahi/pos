@@ -67,11 +67,15 @@ class BoxesController extends Controller
 
         $box = Box::where('is_active', true)->first();
         
+        // Get system config for exchange rate
+        $systemConfig = \App\Models\SystemConfig::first();
+        
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'transactions' => $transactions,
             'mainBox' => $box,
+            'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500,
         ]);
     }
 

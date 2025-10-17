@@ -65,6 +65,7 @@ Route::middleware(['auth', 'active.session'])->group(function () {
     Route::patch('/decoration-orders/{order}/pricing', [DecorationController::class, 'updateOrderPricing'])->name('decoration.orders.pricing');
     Route::get('/decoration-orders/{order}/print', [DecorationController::class, 'printOrder'])->name('decoration.orders.print');
     Route::get('/decoration-orders/{order}/verify', [DecorationController::class, 'verifyOrder'])->name('decoration.orders.verify');
+    Route::get('/decoration-payments/{payment}/receipt', [DecorationController::class, 'printPaymentReceipt'])->name('decoration.payments.receipt');
 
 // Decoration Payments and Accounting Routes
 Route::get('/decoration-payments', [DecorationController::class, 'payments'])->name('decoration.payments');

@@ -536,7 +536,11 @@ import { router } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 
 const props = defineProps({
-  translations: Object
+  translations: Object,
+  exchangeRate: {
+    type: Number,
+    default: 1500
+  }
 })
 
 // State
@@ -574,9 +578,6 @@ const form = reactive({
   labor_cost: '',
   transportation_cost: ''
 })
-
-// Exchange rate
-const exchangeRate = ref(1500) // 1 USD = 1500 IQD
 
 // Computed properties
 const isFormValid = computed(() => {
@@ -621,13 +622,13 @@ const formatCurrentPrice = () => {
 
 const formatPriceInDinar = () => {
   if (!form.base_price) return '0.00 د.ع'
-  const price = form.currency === 'dinar' ? form.base_price : (form.base_price * exchangeRate.value)
+  const price = form.currency === 'dinar' ? form.base_price : (form.base_price * props.exchangeRate)
   return `${parseFloat(price).toFixed(2)} د.ع`
 }
 
 const formatPriceInDollar = () => {
   if (!form.base_price) return '0.00 $'
-  const price = form.currency === 'dollar' ? form.base_price : (form.base_price / exchangeRate.value)
+  const price = form.currency === 'dollar' ? form.base_price : (form.base_price / props.exchangeRate)
   return `${parseFloat(price).toFixed(2)} $`
 }
 

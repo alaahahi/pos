@@ -104,6 +104,7 @@
           <div class="modal-body">
             <CreateDecorationForm 
               :translations="translations"
+              :exchangeRate="exchangeRate"
               @success="handleCreateSuccess"
               @cancel="showCreateModal = false"
             />
@@ -132,6 +133,10 @@ const props = defineProps({
   employees: Array,
   analytics: Object,
   translations: Object,
+  exchangeRate: {
+    type: Number,
+    default: 1500
+  },
   activeTabProp: {
     type: String,
     default: 'decorations'

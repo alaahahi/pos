@@ -7,6 +7,19 @@
           <button @click="$emit('close')" class="btn-close"></button>
         </div>
         <div class="modal-body">
+          <!-- Error Alert -->
+          <div v-if="Object.keys(errors).length > 0" class="alert alert-danger mb-3" role="alert">
+            <h6 class="alert-heading">
+              <i class="bi bi-exclamation-triangle"></i>
+              حدثت أخطاء:
+            </h6>
+            <ul class="mb-0">
+              <li v-for="(error, field) in errors" :key="field">
+                {{ Array.isArray(error) ? error[0] : error }}
+              </li>
+            </ul>
+          </div>
+
           <form @submit.prevent="updateStatus">
             <!-- Status Selection -->
             <div class="mb-4">
@@ -29,24 +42,33 @@
             <!-- Employee Assignment (only show if no employee assigned yet) -->
             <div class="mb-3" v-if="!order.assigned_employee_id">
               <label class="form-label">{{ translations.assign_employee }}</label>
-              <select class="form-select" v-model="form.assigned_employee_id">
+              <select class="form-select" v-model="form.assigned_employee_id" :class="{ 'is-invalid': errors.assigned_employee_id }">
                 <option value="">{{ translations.select_employee }}</option>
                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                   {{ employee.name }}
                 </option>
               </select>
+              <div class="invalid-feedback" v-if="errors.assigned_employee_id">
+                {{ Array.isArray(errors.assigned_employee_id) ? errors.assigned_employee_id[0] : errors.assigned_employee_id }}
+              </div>
             </div>
 
             <!-- Paid Amount (only for payment statuses and not full payment) -->
             <div class="mb-3" v-if="(form.status === 'partial_payment') && form.status !== 'full_payment'">
               <label class="form-label">{{ translations.paid_amount }}</label>
-              <input type="number" step="0.01" class="form-control" v-model="form.paid_amount">
+              <input type="number" step="0.01" class="form-control" v-model="form.paid_amount" :class="{ 'is-invalid': errors.paid_amount }">
+              <div class="invalid-feedback" v-if="errors.paid_amount">
+                {{ Array.isArray(errors.paid_amount) ? errors.paid_amount[0] : errors.paid_amount }}
+              </div>
             </div>
 
             <!-- Notes -->
             <div class="mb-3">
               <label class="form-label">{{ translations.notes }}</label>
-              <textarea class="form-control" rows="3" v-model="form.notes" :placeholder="translations.add_notes"></textarea>
+              <textarea class="form-control" rows="3" v-model="form.notes" :placeholder="translations.add_notes" :class="{ 'is-invalid': errors.notes }"></textarea>
+              <div class="invalid-feedback" v-if="errors.notes">
+                {{ Array.isArray(errors.notes) ? errors.notes[0] : errors.notes }}
+              </div>
             </div>
 
             <!-- Action Buttons -->
@@ -79,6 +101,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'success'])
 
 const processing = ref(false)
+const errors = ref({})
 
 const form = reactive({
   status: props.order.status,
@@ -100,26 +123,38 @@ const statusOptions = [
 
 const updateStatus = () => {
   processing.value = true
+  errors.value = {}
   
-  // Prepare form data
-  const formData = {
-    status: form.status,
-    assigned_employee_id: form.assigned_employee_id,
-    notes: form.notes
+  // Prepare form data - only send fields that are provided
+  const formData = {}
+  
+  if (form.status && form.status !== '') {
+    formData.status = form.status
+  }
+  
+  if (form.assigned_employee_id && form.assigned_employee_id !== '') {
+    formData.assigned_employee_id = form.assigned_employee_id
+  }
+  
+  if (form.notes && form.notes !== '') {
+    formData.notes = form.notes
   }
   
   // Only include paid_amount for partial payment
-  if (form.status === 'partial_payment') {
+  if (form.status === 'partial_payment' && form.paid_amount) {
     formData.paid_amount = form.paid_amount
   }
   
   router.patch(route('decoration.orders.status', props.order.id), formData, {
     onSuccess: () => {
       processing.value = false
+      errors.value = {}
       emit('success')
     },
-    onError: () => {
+    onError: (errs) => {
       processing.value = false
+      errors.value = errs
+      console.error('Status update errors:', errs)
     }
   })
 }
@@ -212,5 +247,31 @@ const updateStatus = () => {
   display: block;
   font-size: 1.2rem;
   margin-bottom: 0.25rem;
+}
+
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+  display: block;
+  color: #dc3545;
+  font-size: 0.875em;
+  margin-top: 0.25rem;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border-color: #f5c2c7;
+  color: #842029;
+}
+
+.alert-danger .alert-heading {
+  margin-bottom: 0.5rem;
+}
+
+.alert-danger ul {
+  padding-left: 1.5rem;
+  margin-bottom: 0;
 }
 </style>

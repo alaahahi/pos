@@ -542,7 +542,11 @@ import { ref, reactive, computed } from 'vue'
 import { router } from '@inertiajs/vue3'
 
 const props = defineProps({
-  translations: Object
+  translations: Object,
+  exchangeRate: {
+    type: Number,
+    default: 1500
+  }
 })
 
 const emit = defineEmits(['success', 'cancel'])
@@ -585,15 +589,12 @@ const form = reactive({
   video_url: ''
 })
 
-// Currency conversion rate (يمكن تغييرها من .env)
-const EXCHANGE_RATE = 1500 // 1 دولار = 1500 دينار
-
 // Computed
 const isFormValid = computed(() => {
   if (currentStep.value === 1) {
     return form.name && form.type
   } else if (currentStep.value === 2) {
-    return form.base_price_dinar && form.base_price_dollar && form.duration_hours && form.team_size
+    return form.base_price && form.duration_hours && form.team_size
   }
   return true
 })
@@ -629,10 +630,10 @@ const onBasePriceChange = () => {
   
   if (form.currency === 'dinar') {
     form.base_price_dinar = price
-    form.base_price_dollar = (price / EXCHANGE_RATE).toFixed(2)
+    form.base_price_dollar = (price / props.exchangeRate).toFixed(2)
   } else {
     form.base_price_dollar = price
-    form.base_price_dinar = (price * EXCHANGE_RATE).toFixed(0)
+    form.base_price_dinar = (price * props.exchangeRate).toFixed(0)
   }
 }
 
@@ -789,16 +790,21 @@ const removeVideo = () => {
 const submitForm = () => {
   processing.value = true
   
+  // التأكد من حساب الأسعار قبل الإرسال
+  if (form.base_price && (!form.base_price_dinar || !form.base_price_dollar)) {
+    onBasePriceChange()
+  }
+  
   // إنشاء FormData لرفع الملفات
   const formData = new FormData()
   
   // إضافة البيانات الأساسية
   Object.keys(form).forEach(key => {
-    if (key !== 'video_url') {
+    if (key !== 'video_url' && form[key] !== null && form[key] !== undefined) {
       // Handle boolean values
       if (typeof form[key] === 'boolean') {
         formData.append(key, form[key] ? '1' : '0')
-      } else {
+      } else if (key !== 'base_price_dinar' && key !== 'base_price_dollar') {
         formData.append(key, form[key])
       }
     }
@@ -821,8 +827,8 @@ const submitForm = () => {
     formData.append('video_url', form.video_url)
   }
   
-  // إعداد البيانات للإرسال
-  formData.append('base_price', form.currency === 'dinar' ? form.base_price_dinar : form.base_price_dollar)
+  // إعداد البيانات للإرسال - استخدام base_price مباشرة
+  formData.append('base_price', parseFloat(form.base_price) || 0)
   formData.append('materials_cost', parseFloat(form.materials_cost) || 0)
   formData.append('labor_cost', parseFloat(form.labor_cost) || 0)
   formData.append('transportation_cost', parseFloat(form.transportation_cost) || 0)
@@ -834,8 +840,13 @@ const submitForm = () => {
     },
     onError: (errors) => {
       processing.value = false
-      // يمكن إضافة معالجة الأخطاء هنا
       console.error('Validation errors:', errors)
+      // عرض رسائل الأخطاء للمستخدم
+      if (errors) {
+        Object.keys(errors).forEach(key => {
+          console.error(`${key}: ${errors[key]}`)
+        })
+      }
     }
   })
 }

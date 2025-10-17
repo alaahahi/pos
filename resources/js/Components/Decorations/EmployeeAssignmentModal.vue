@@ -7,20 +7,39 @@
           <button @click="$emit('close')" class="btn-close"></button>
         </div>
         <div class="modal-body">
+          <!-- Error Alert -->
+          <div v-if="Object.keys(errors).length > 0" class="alert alert-danger mb-3" role="alert">
+            <h6 class="alert-heading">
+              <i class="bi bi-exclamation-triangle"></i>
+              حدثت أخطاء:
+            </h6>
+            <ul class="mb-0">
+              <li v-for="(error, field) in errors" :key="field">
+                {{ Array.isArray(error) ? error[0] : error }}
+              </li>
+            </ul>
+          </div>
+
           <form @submit.prevent="assignEmployee">
             <div class="mb-3">
               <label class="form-label">{{ translations.select_employee }}</label>
-              <select class="form-select" v-model="form.assigned_employee_id" required>
+              <select class="form-select" v-model="form.assigned_employee_id" :class="{ 'is-invalid': errors.assigned_employee_id }" required>
                 <option value="">{{ translations.select_employee }}</option>
                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
                   {{ employee.name }}
                 </option>
               </select>
+              <div class="invalid-feedback" v-if="errors.assigned_employee_id">
+                {{ Array.isArray(errors.assigned_employee_id) ? errors.assigned_employee_id[0] : errors.assigned_employee_id }}
+              </div>
             </div>
 
             <div class="mb-3">
               <label class="form-label">{{ translations.notes }}</label>
-              <input  class="form-control" type="text" v-model="form.notes"> 
+              <textarea class="form-control" v-model="form.notes" :class="{ 'is-invalid': errors.notes }" rows="3"></textarea>
+              <div class="invalid-feedback" v-if="errors.notes">
+                {{ Array.isArray(errors.notes) ? errors.notes[0] : errors.notes }}
+              </div>
             </div>
 
             <div class="d-flex justify-content-center gap-2">
@@ -52,6 +71,7 @@ const props = defineProps({
 const emit = defineEmits(['close', 'success'])
 
 const processing = ref(false)
+const errors = ref({})
 
 const form = reactive({
   assigned_employee_id: props.order.assigned_employee_id || '',
@@ -59,15 +79,23 @@ const form = reactive({
 })
 
 const assignEmployee = () => {
+  if (!form.assigned_employee_id) {
+    alert(props.translations.select_employee || 'يرجى اختيار موظف')
+    return
+  }
+  
   processing.value = true
+  errors.value = {}
   
   router.patch(route('decoration.orders.status', props.order.id), form, {
     onSuccess: () => {
       processing.value = false
       emit('success')
     },
-    onError: () => {
+    onError: (errs) => {
       processing.value = false
+      errors.value = errs
+      console.error('Assignment errors:', errs)
     }
   })
 }
@@ -126,5 +154,27 @@ const assignEmployee = () => {
 
 .btn-close:hover {
   color: #666;
+}
+
+.is-invalid {
+  border-color: #dc3545 !important;
+}
+
+.invalid-feedback {
+  display: block;
+  color: #dc3545;
+  font-size: 0.875em;
+  margin-top: 0.25rem;
+}
+
+.alert-danger {
+  background-color: #f8d7da;
+  border-color: #f5c2c7;
+  color: #842029;
+}
+
+.alert-danger ul {
+  padding-left: 1.5rem;
+  margin-bottom: 0;
 }
 </style>

@@ -7,13 +7,17 @@ let toast = useToast();
 const props = defineProps({
   show: Boolean,
   boxes: Array,
+  exchangeRate: {
+    type: Number,
+    default: 150000
+  }
 });
 const form = ref({
   user: {
     percentage:0,
   },
   amount: 0,
-  exchangeRate:1
+  exchangeRate: props.exchangeRate
 
 });
 
