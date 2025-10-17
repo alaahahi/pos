@@ -332,7 +332,7 @@
           <!-- Cash Summary -->
           <div class="cash-summary mb-4">
             <div class="row">
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <div class="cash-stat-card">
                   <div class="stat-icon">
                     <i class="bi bi-box-seam"></i>
@@ -343,7 +343,7 @@
                   </div>
                 </div>
               </div>
-              <div class="col-md-6">
+              <div class="col-md-4">
                 <div class="cash-stat-card">
                   <div class="stat-icon">
                     <i class="bi bi-currency-dollar"></i>
@@ -351,6 +351,17 @@
                   <div class="stat-info">
                     <h6>إجمالي القيمة</h6>
                     <span class="stat-value">{{ formatPrice(cashInfo.totalValue) }}</span>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="cash-stat-card">
+                  <div class="stat-icon">
+                    <i class="bi bi-database"></i>
+                  </div>
+                  <div class="stat-info">
+                    <h6>ذاكرة المنتجات</h6>
+                    <span class="stat-value">{{ cachedProducts.size }}</span>
                   </div>
                 </div>
               </div>
@@ -396,6 +407,15 @@
         <div class="modal-footer">
           <button type="button" class="btn btn-secondary" @click="showCashModal = false">
             إغلاق
+          </button>
+          <button 
+            type="button" 
+            class="btn btn-warning" 
+            @click="clearProductsCache"
+            :disabled="cachedProducts.size === 0"
+          >
+            <i class="bi bi-database-dash"></i>
+            إفراغ ذاكرة المنتجات
           </button>
           <button 
             type="button" 
@@ -464,6 +484,7 @@ const form = useForm({
 
 const invoiceItems = reactive([]);
 const filteredProducts = ref(props.products.filter(product => product.is_featured));
+const cachedProducts = ref(new Map()); // Cache للمنتجات المبحوث عنها
 
 // Computed Properties
 const totalAmount = computed(() => {
@@ -564,6 +585,28 @@ const clearAllCash = () => {
   });
 };
 
+const clearProductsCache = () => {
+  Swal.fire({
+    title: 'إفراغ ذاكرة التخزين المؤقت',
+    text: 'هل تريد إفراغ ذاكرة المنتجات المخزنة؟ (مفيد بعد تعديل المنتجات)',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#3085d6',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'نعم، إفراغ الكاش',
+    cancelButtonText: 'إلغاء'
+  }).then((result) => {
+    if (result.isConfirmed) {
+      cachedProducts.value.clear();
+      toast.success("تم إفراغ ذاكرة المنتجات المؤقتة", {
+        timeout: 2000,
+        position: "bottom-right",
+        rtl: true
+      });
+    }
+  });
+};
+
 const updateCashInfo = () => {
   cashInfo.value = {
     totalProducts: invoiceItems.reduce((total, item) => total + item.quantity, 0),
@@ -578,9 +621,19 @@ const formatPrice = (price, currency = 'IQD') => {
 
 const increaseQuantity = (index) => {
   const item = invoiceItems[index];
-  const product = props.products.find(p => p.id === item.product_id);
+  let product = props.products.find(p => p.id === item.product_id);
   
-  if (item.quantity < product.quantity) {
+  // البحث في الكاش إذا لم يوجد في المنتجات المحملة
+  if (!product) {
+    for (const cachedProduct of cachedProducts.value.values()) {
+      if (cachedProduct.id === item.product_id) {
+        product = cachedProduct;
+        break;
+      }
+    }
+  }
+  
+  if (product && item.quantity < product.quantity) {
     item.quantity += 1;
   } else {
     toast.warning("لا توجد كمية كافية في المخزون", {
@@ -683,12 +736,36 @@ const filterByType = (type) => {
 };
 
 const getProductName = (productId) => {
-  const product = props.products.find(p => p.id === productId);
+  // البحث في المنتجات المحملة
+  let product = props.products.find(p => p.id === productId);
+  
+  // البحث في الكاش
+  if (!product) {
+    for (const cachedProduct of cachedProducts.value.values()) {
+      if (cachedProduct.id === productId) {
+        product = cachedProduct;
+        break;
+      }
+    }
+  }
+  
   return product ? product.name : '';
 };
 
 const getProductModel = (productId) => {
-  const product = props.products.find(p => p.id === productId);
+  // البحث في المنتجات المحملة
+  let product = props.products.find(p => p.id === productId);
+  
+  // البحث في الكاش
+  if (!product) {
+    for (const cachedProduct of cachedProducts.value.values()) {
+      if (cachedProduct.id === productId) {
+        product = cachedProduct;
+        break;
+      }
+    }
+  }
+  
   return product ? product.model : '';
 };
 
@@ -720,8 +797,19 @@ const printReceipt = () => {
 
 // Existing methods (updated)
 const updatePrice = (item) => {
-  const selectedProduct = props.products.find(p => p.id === item.product_id);
-   if (selectedProduct) {
+  let selectedProduct = props.products.find(p => p.id === item.product_id);
+  
+  // البحث في الكاش إذا لم يوجد
+  if (!selectedProduct) {
+    for (const cachedProduct of cachedProducts.value.values()) {
+      if (cachedProduct.id === item.product_id) {
+        selectedProduct = cachedProduct;
+        break;
+      }
+    }
+  }
+  
+  if (selectedProduct) {
     item.price = selectedProduct.price;
   }
 };
@@ -781,11 +869,50 @@ const saveInvoice = async (event) => {
   }
 };
 
-const findBarcode = debounce(() => {
+const findBarcode = debounce(async () => {
   if (!barcode.value) return;
 
-  // Search only in current products
-  const product = props.products.find(p => p.barcode === barcode.value);
+  const barcodeValue = barcode.value.trim();
+  
+  // 1. البحث في المنتجات المحملة مسبقاً (أسرع)
+  let product = props.products.find(p => p.barcode === barcodeValue);
+  
+  // 2. البحث في الكاش
+  if (!product && cachedProducts.value.has(barcodeValue)) {
+    product = cachedProducts.value.get(barcodeValue);
+  }
+  
+  // 3. البحث في قاعدة البيانات عبر API
+  if (!product) {
+    try {
+      const response = await axios.get(`/api/products/${barcodeValue}`);
+      if (response.data && response.data.id) {
+        product = response.data;
+        // حفظ المنتج في الكاش للاستخدام المستقبلي
+        cachedProducts.value.set(barcodeValue, product);
+      }
+    } catch (error) {
+      if (error.response && error.response.status === 404) {
+        toast.warning("المنتج غير موجود", {
+          timeout: 3000,
+          position: "bottom-right",
+          rtl: true
+        });
+      } else {
+        toast.error("خطأ في البحث عن المنتج", {
+          timeout: 3000,
+          position: "bottom-right",
+          rtl: true
+        });
+      }
+      barcode.value = "";
+      nextTick(() => {
+        barcodeInput.value?.focus();
+      });
+      return;
+    }
+  }
+  
   if (product) {
     addProductToCart(product);
     barcode.value = "";
@@ -793,12 +920,6 @@ const findBarcode = debounce(() => {
     // Focus back to barcode input
     nextTick(() => {
       barcodeInput.value?.focus();
-    });
-  } else {
-    toast.warning("المنتج غير موجود في القائمة الحالية", {
-      timeout: 3000,
-      position: "bottom-right",
-      rtl: true
     });
   }
 }, 500);
