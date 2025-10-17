@@ -758,6 +758,12 @@ const calculateTotalOutIQD = () => {
 </script>
 
 <style scoped>
+/* RTL Support - دعم العربية */
+* {
+  direction: rtl;
+  text-align: right;
+}
+
 /* Page Header */
 .page-header {
   background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
@@ -766,6 +772,7 @@ const calculateTotalOutIQD = () => {
   margin-bottom: 1.5rem;
   border-radius: 12px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  direction: rtl;
 }
 
 .header-content {
@@ -793,12 +800,14 @@ const calculateTotalOutIQD = () => {
 /* Statistics Section */
 .statistics-section {
   margin-bottom: 1.5rem;
+  direction: rtl;
 }
 
 .stats-grid {
   display: grid;
   grid-template-columns: repeat(4, 1fr);
   gap: 1.5rem;
+  direction: rtl;
 }
 
 .stat-card {
@@ -1107,10 +1116,11 @@ const calculateTotalOutIQD = () => {
   font-size: 0.9rem;
   text-align: center;
   vertical-align: middle;
+  direction: rtl;
 }
 
 .transactions-table thead th i {
-  margin-left: 0.5rem;
+  margin-right: 0.5rem;
 }
 
 .transaction-row {
@@ -1136,6 +1146,7 @@ const calculateTotalOutIQD = () => {
   vertical-align: middle;
   padding: 1rem;
   text-align: center;
+  direction: rtl;
 }
 
 .index-cell .index-badge {
