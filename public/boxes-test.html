@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>🧪 اختبار صفحة Boxes</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            padding: 20px;
+        }
+        .test-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            padding: 30px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+        }
+        .test-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 3px solid #667eea;
+        }
+        .test-header h1 {
+            color: #667eea;
+            font-weight: bold;
+        }
+        .test-section {
+            margin-bottom: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 5px solid #667eea;
+        }
+        .test-section h3 {
+            color: #495057;
+            margin-bottom: 15px;
+        }
+        .test-item {
+            padding: 15px;
+            margin: 10px 0;
+            background: white;
+            border-radius: 8px;
+            border: 1px solid #dee2e6;
+            transition: all 0.3s ease;
+        }
+        .test-item:hover {
+            transform: translateX(-5px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        .test-btn {
+            width: 100%;
+            padding: 12px;
+            margin-top: 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            transition: all 0.3s ease;
+        }
+        .test-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+        .status-badge {
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9rem;
+            font-weight: 600;
+        }
+        .status-pending {
+            background: #ffc107;
+            color: #856404;
+        }
+        .status-pass {
+            background: #28a745;
+            color: white;
+        }
+        .status-fail {
+            background: #dc3545;
+            color: white;
+        }
+        .result-box {
+            margin-top: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            text-align: center;
+        }
+        .result-stats {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 20px;
+            margin-top: 20px;
+        }
+        .stat-card {
+            background: rgba(255,255,255,0.2);
+            padding: 15px;
+            border-radius: 8px;
+        }
+        .stat-number {
+            font-size: 2.5rem;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+        <div class="test-header">
+            <h1><i class="bi bi-clipboard-check"></i> دليل اختبار صفحة Boxes</h1>
+            <p class="text-muted">اتبع الخطوات أدناه لاختبار جميع وظائف الصفحة</p>
+        </div>
+
+        <!-- Section 1: Basic Tests -->
+        <div class="test-section">
+            <h3><i class="bi bi-1-circle"></i> الاختبارات الأساسية</h3>
+            
+            <div class="test-item">
+                <strong>1.1 - فتح صفحة Boxes</strong>
+                <p class="text-muted">تحقق من أن الصفحة تفتح بدون أخطاء</p>
+                <a href="http://127.0.0.1:8000/boxes" target="_blank" class="btn btn-primary test-btn">
+                    <i class="bi bi-box-arrow-up-right"></i>
+                    افتح صفحة Boxes
+                </a>
+                <div class="mt-2">
+                    <span class="status-badge status-pending">⏳ قيد الاختبار</span>
+                </div>
+            </div>
+
+            <div class="test-item">
+                <strong>1.2 - التحقق من البطاقات الإحصائية</strong>
+                <ul class="mt-2">
+                    <li>✅ بطاقة رصيد الدولار</li>
+                    <li>✅ بطاقة رصيد الدينار</li>
+                    <li>✅ بطاقة إجمالي الإضافات</li>
+                    <li>✅ بطاقة إجمالي السحوبات</li>
+                </ul>
+            </div>
+
+            <div class="test-item">
+                <strong>1.3 - التحقق من الجدول</strong>
+                <ul class="mt-2">
+                    <li>✅ يظهر الجدول مع البيانات</li>
+                    <li>✅ الصفوف الخضراء = إضافات</li>
+                    <li>✅ الصفوف الحمراء = سحوبات</li>
+                    <li>✅ الأزرار موجودة: حذف، طباعة، مرفقات</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Section 2: Search Tests -->
+        <div class="test-section">
+            <h3><i class="bi bi-2-circle"></i> اختبارات البحث</h3>
+            
+            <div class="test-item">
+                <strong>2.1 - البحث بالتاريخ</strong>
+                <ol class="mt-2">
+                    <li>اختر تاريخ البداية والنهاية</li>
+                    <li>اضغط على "بحث"</li>
+                    <li>تحقق من النتائج</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>2.2 - البحث بالاسم</strong>
+                <ol class="mt-2">
+                    <li>اكتب اسم في حقل "الاسم"</li>
+                    <li>اضغط على "بحث"</li>
+                    <li>تحقق من ظهور المعاملات المطابقة فقط</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>2.3 - البحث بالملاحظة</strong>
+                <ol class="mt-2">
+                    <li>اكتب نص في حقل "الملاحظة"</li>
+                    <li>اضغط على "بحث"</li>
+                    <li>تحقق من البيان في النتائج</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Section 3: Operations Tests -->
+        <div class="test-section">
+            <h3><i class="bi bi-3-circle"></i> اختبارات العمليات</h3>
+            
+            <div class="test-item">
+                <strong>3.1 - إضافة للصندوق</strong>
+                <ol class="mt-2">
+                    <li>اضغط على زر "إضافة للصندوق" (الأخضر)</li>
+                    <li>أدخل مبلغ: 100 USD</li>
+                    <li>اضغط "حفظ"</li>
+                    <li>✅ يجب أن يزيد رصيد USD بـ 100</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>3.2 - السحب من الصندوق</strong>
+                <ol class="mt-2">
+                    <li>اضغط على زر "سحب من الصندوق" (الأحمر)</li>
+                    <li>أدخل مبلغ: 50,000 IQD</li>
+                    <li>اضغط "حفظ"</li>
+                    <li>✅ يجب أن يقل رصيد IQD بـ 50,000</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>3.3 - تحويل دينار → دولار</strong>
+                <ol class="mt-2">
+                    <li>اضغط على زر "دينار → دولار"</li>
+                    <li>أدخل: 150,000 IQD</li>
+                    <li>تحقق من الحساب (150,000 ÷ سعر الصرف)</li>
+                    <li>اضغط "تحويل"</li>
+                    <li>✅ يجب أن يقل IQD ويزيد USD</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Section 4: Print Tests -->
+        <div class="test-section">
+            <h3><i class="bi bi-4-circle"></i> اختبارات الطباعة</h3>
+            
+            <div class="test-item">
+                <strong>4.1 - طباعة وصل قبض</strong>
+                <p class="text-muted">اختبر طباعة وصل لمعاملة إضافة (الصف الأخضر)</p>
+                <a href="http://127.0.0.1:8000/api/getIndexAccountsSelas?user_id=1&print=3&transactions_id=1" 
+                   target="_blank" 
+                   class="btn btn-success test-btn">
+                    <i class="bi bi-printer"></i>
+                    اختبر طباعة وصل قبض (ID=1)
+                </a>
+            </div>
+
+            <div class="test-item">
+                <strong>4.2 - طباعة وصل سحب</strong>
+                <p class="text-muted">اختبر طباعة وصل لمعاملة سحب (الصف الأحمر)</p>
+                <a href="http://127.0.0.1:8000/api/getIndexAccountsSelas?user_id=1&print=2&transactions_id=1" 
+                   target="_blank" 
+                   class="btn btn-danger test-btn">
+                    <i class="bi bi-printer"></i>
+                    اختبر طباعة وصل سحب (ID=1)
+                </a>
+            </div>
+        </div>
+
+        <!-- Section 5: UI Tests -->
+        <div class="test-section">
+            <h3><i class="bi bi-5-circle"></i> اختبارات واجهة المستخدم</h3>
+            
+            <div class="test-item">
+                <strong>5.1 - Responsive - الموبايل</strong>
+                <ol class="mt-2">
+                    <li>افتح DevTools (F12)</li>
+                    <li>فعّل وضع الموبايل</li>
+                    <li>اختر iPhone 12 Pro</li>
+                    <li>✅ تحقق من أن التصميم متجاوب</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>5.2 - زر التحديث</strong>
+                <ol class="mt-2">
+                    <li>اضغط على زر "تحديث" (الأزرق)</li>
+                    <li>✅ يجب أن تظهر أيقونة دوارة</li>
+                    <li>✅ يجب أن تظهر رسالة "تم تحديث البيانات بنجاح"</li>
+                </ol>
+            </div>
+
+            <div class="test-item">
+                <strong>5.3 - Loading States</strong>
+                <ol class="mt-2">
+                    <li>قم بأي عملية (إضافة/سحب/تحديث)</li>
+                    <li>✅ يجب أن تظهر overlay شفاف</li>
+                    <li>✅ يجب أن تُعطّل جميع الأزرار</li>
+                    <li>✅ يجب أن يظهر spinner</li>
+                </ol>
+            </div>
+        </div>
+
+        <!-- Result Summary -->
+        <div class="result-box">
+            <h2><i class="bi bi-bar-chart"></i> ملخص النتائج</h2>
+            <div class="result-stats">
+                <div class="stat-card">
+                    <div class="stat-number" id="passCount">0</div>
+                    <div>اختبار نجح</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="failCount">0</div>
+                    <div>اختبار فشل</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-number" id="successRate">0%</div>
+                    <div>معدل النجاح</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Access Links -->
+        <div class="mt-4 text-center">
+            <h4>🔗 روابط سريعة</h4>
+            <div class="row mt-3">
+                <div class="col-md-4 mb-2">
+                    <a href="http://127.0.0.1:8000/boxes" target="_blank" class="btn btn-primary w-100">
+                        <i class="bi bi-safe2"></i> صفحة Boxes
+                    </a>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <a href="http://127.0.0.1:8000/orders/create" target="_blank" class="btn btn-success w-100">
+                        <i class="bi bi-cart"></i> صفحة الطلبات
+                    </a>
+                </div>
+                <div class="col-md-4 mb-2">
+                    <a href="http://127.0.0.1:8000/dashboard" target="_blank" class="btn btn-info w-100">
+                        <i class="bi bi-speedometer2"></i> لوحة التحكم
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Testing Instructions -->
+        <div class="alert alert-info mt-4">
+            <h5><i class="bi bi-info-circle"></i> تعليمات الاستخدام</h5>
+            <ol>
+                <li>افتح صفحة Boxes من الرابط أعلاه</li>
+                <li>قم بتنفيذ كل اختبار في القائمة</li>
+                <li>سجل النتائج (نجح/فشل)</li>
+                <li>اكتب أي ملاحظات</li>
+                <li>راجع الملخص في النهاية</li>
+            </ol>
+        </div>
+
+        <!-- Documentation Links -->
+        <div class="alert alert-warning mt-4">
+            <h5><i class="bi bi-book"></i> الوثائق التفصيلية</h5>
+            <ul>
+                <li><strong>BOXES_TESTING_GUIDE.md</strong> - دليل الاختبار اليدوي الكامل</li>
+                <li><strong>TESTING_INSTRUCTIONS.md</strong> - تعليمات تشغيل الاختبارات الآلية</li>
+                <li><strong>BOXES_COMPLETION_SUMMARY.md</strong> - ملخص الإنجاز الكامل</li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        // Simple tracking
+        let passed = 0;
+        let failed = 0;
+        
+        function updateStats() {
+            document.getElementById('passCount').textContent = passed;
+            document.getElementById('failCount').textContent = failed;
+            const total = passed + failed;
+            const rate = total > 0 ? Math.round((passed / total) * 100) : 0;
+            document.getElementById('successRate').textContent = rate + '%';
+        }
+        
+        // Mark test as passed
+        function markPass(element) {
+            passed++;
+            element.querySelector('.status-badge').className = 'status-badge status-pass';
+            element.querySelector('.status-badge').textContent = '✅ نجح';
+            updateStats();
+        }
+        
+        // Mark test as failed
+        function markFail(element) {
+            failed++;
+            element.querySelector('.status-badge').className = 'status-badge status-fail';
+            element.querySelector('.status-badge').textContent = '❌ فشل';
+            updateStats();
+        }
+        
+        // Add click handlers to test items
+        document.querySelectorAll('.test-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                if (e.target.closest('.test-btn')) return;
+                
+                const badge = this.querySelector('.status-badge');
+                if (badge.classList.contains('status-pending')) {
+                    markPass(this);
+                } else if (badge.classList.contains('status-pass')) {
+                    markFail(this);
+                } else {
+                    badge.className = 'status-badge status-pending';
+                    badge.textContent = '⏳ قيد الاختبار';
+                    passed--;
+                    failed--;
+                    updateStats();
+                }
+            });
+        });
+        
+        // Auto-open first link on load (optional)
+        console.log('🧪 صفحة الاختبار جاهزة!');
+        console.log('📋 اضغط على الأزرار لاختبار كل ميزة');
+    </script>
+</body>
+</html>
+

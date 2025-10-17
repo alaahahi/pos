@@ -325,20 +325,41 @@ class AccountingController extends Controller
         $showComplatedCars=$_GET['showComplatedCars'] ?? 0;
         $transactions_id = $_GET['transactions_id'] ?? 0;
         $client = User::with('wallet')->where('id', $user_id)->first();
+        
+        // Get specific transaction if transactions_id is provided
+        $transaction = null;
+        if($transactions_id) {
+            $transaction = Transactions::with('TransactionsImages', 'morphed')
+                ->where('id', $transactions_id)
+                ->first();
+        }
+        
         if($from && $to ){
-              $transactions = Transactions ::where('wallet_id', $client?->wallet?->id)->whereBetween('created', [$from, $to]);
+              $transactions = Transactions::with('TransactionsImages', 'morphed')
+                  ->where('wallet_id', $client?->wallet?->id)
+                  ->whereBetween('created', [$from, $to])
+                  ->get();
        
         }else{
-             $transactions = Transactions ::where('wallet_id', $client?->wallet?->id);
+             $transactions = Transactions::with('TransactionsImages', 'morphed')
+                 ->where('wallet_id', $client?->wallet?->id)
+                 ->get();
         
         }
 
-        //$data = $transactions->paginate(10);
- 
+        // Prepare client data
+        $clientData = [
+            'user' => $client,
+            'transactions' => $transactions,
+            'transaction' => $transaction,
+        ];
+
         
-        $order = Order::with(['customer', 'products'])->findOrFail($order_id);
- 
-         if($print==2){
+        if($order_id) {
+            $order = Order::with(['customer', 'products'])->findOrFail($order_id);
+        }
+
+         if($print==2 && isset($order)){
             $config=SystemConfig::first();
 
             return view('orders.print-invoice',compact('order','config','transactions_id','owner_id'));
@@ -348,16 +369,16 @@ class AccountingController extends Controller
          if($print==3){
             $config=SystemConfig::first();
 
-            return view('receiptPayment',compact('clientData','config','transactions_id'));
+            return view('receiptPayment',compact('clientData','config','transactions_id','transaction'));
          }
          if($print==4){
             $config=SystemConfig::first();
-            return view('receiptPaymentTotal',compact('clientData','config','transactions_id'));
+            return view('receiptPaymentTotal',compact('clientData','config','transactions_id','transaction'));
          }
          if($print==5){
             $config=SystemConfig::first();
     
-            return view('receiptExpensesTotal',compact('clientData','config','transactions_id'));
+            return view('receiptExpensesTotal',compact('clientData','config','transactions_id','transaction'));
          }
 
         return Response::json($clientData, 200);
@@ -576,6 +597,10 @@ class AccountingController extends Controller
         $exchangeRate =$request->exchangeRate;
         $date=$request->date??0;
         $desc=' تحويل من الصندوق مبلغ بالدولار'.' '.($amountDollar).'  بسعر صرف '.' '.$exchangeRate.' المبلغ المضاف للصندوف بالدينار '.$amountResultDinar;
+        
+        $transactionDollar = null;
+        $transactionDinar = null;
+        
         if($amountDollar){
             $transactionDollar=$this->decreaseWallet($amountDollar,$desc,$this->mainBox->where('owner_id',$owner_id)->first()->id,$this->mainBox->where('owner_id',$owner_id)->first()->id,'App\Models\User',0,0,'$',$date);
           }
@@ -584,8 +609,11 @@ class AccountingController extends Controller
             $transactionDinar=$this->increaseWallet($amountResultDinar,$desc,$this->mainBox->where('owner_id',$owner_id)->first()->id,$this->mainBox->where('owner_id',$owner_id)->first()->id,'App\Models\User',0,0,'IQD',$date);
           }
           
-          $transactionDollar->update(['parent_id'=>$transactionDinar->id]);
-          $transactionDinar->update(['parent_id'=>$transactionDollar->id]);
+          if($transactionDollar && $transactionDinar) {
+              $transactionDollar->update(['parent_id'=>$transactionDinar->id]);
+              $transactionDinar->update(['parent_id'=>$transactionDollar->id]);
+          }
+          
           return Response::json($transactionDinar, 200);    
 
     }
@@ -596,6 +624,10 @@ class AccountingController extends Controller
         $exchangeRate =$request->exchangeRate;
         $date=$request->date??0;
         $desc=' تحويل من الصندوق مبلغ بالدينار'.' '.($amountDinar).'  بسعر صرف '.' '.$exchangeRate.' المبلغ المضاف للصندوف بالدولار '.$amountResultDollar;
+        
+        $transactionDollar = null;
+        $transactionDinar = null;
+        
         if($amountResultDollar){
             $transactionDollar= $this->increaseWallet($amountResultDollar,$desc,$this->mainBox->where('owner_id',$owner_id)->first()->id,$this->mainBox->where('owner_id',$owner_id)->first()->id,'App\Models\User',0,0,'$',$date);
           }
@@ -603,8 +635,12 @@ class AccountingController extends Controller
           {
             $transactionDinar= $transaction=$this->decreaseWallet($amountDinar,$desc,$this->mainBox->where('owner_id',$owner_id)->first()->id,$this->mainBox->where('owner_id',$owner_id)->first()->id,'App\Models\User',0,0,'IQD',$date);
           }
-          $transactionDollar->update(['parent_id'=>$transactionDinar->id]);
-          $transactionDinar->update(['parent_id'=>$transactionDollar->id]);
+          
+          if($transactionDollar && $transactionDinar) {
+              $transactionDollar->update(['parent_id'=>$transactionDinar->id]);
+              $transactionDinar->update(['parent_id'=>$transactionDollar->id]);
+          }
+          
           return Response::json($transactionDinar, 200);    
 
     }

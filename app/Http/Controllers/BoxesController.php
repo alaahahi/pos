@@ -35,37 +35,88 @@ class BoxesController extends Controller
         // Define the filters
         $filters = [
             'name' => $request->name,
-            'phone' => $request->phone,
-            'start_date' => $request->start_date,
-            'end_date' => $request->end_date,
-            'is_active' => $request->is_active,
+            'note' => $request->note,
+            'start_date' => $request->start_date ?? Carbon::today()->toDateString(),
+            'end_date' => $request->end_date ?? Carbon::today()->toDateString(),
         ];
 
         // Start the Box query
-        $transactionsQuery = transactions::with('morphed')->orderBy('created_at', 'desc');
+        $transactionsQuery = Transactions::with('morphed')->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
+        // Search by name in the morphed relationship
         $transactionsQuery->when($filters['name'], function ($query, $name) {
-            return $query->where('name', 'LIKE', "%{$name}%");
+            return $query->whereHasMorph('morphed', ['App\Models\User', 'App\Models\Customer'], function ($query) use ($name) {
+                $query->where('name', 'LIKE', "%{$name}%");
+            });
         });
 
-        $transactionsQuery->when($filters['phone'], function ($query, $phone) {
-            return $query->where('phone', 'LIKE', "%{$phone}%");
+        // Search by description/note
+        $transactionsQuery->when($filters['note'], function ($query, $note) {
+            return $query->where('description', 'LIKE', "%{$note}%");
         });
 
-        $transactionsQuery->when($filters['start_date']??Carbon::now()->subDays(1), function ($query, $start_date) {
-            return $query->where('created', '>=', $start_date);
+        // Filter by date range
+        $transactionsQuery->when($filters['start_date'], function ($query, $start_date) {
+            return $query->whereDate('created_at', '>=', $start_date);
         });
 
-        $transactionsQuery->when($filters['end_date']??Carbon::now(), function ($query, $end_date) {
-            return $query->where('created', '<=', $end_date);
+        $transactionsQuery->when($filters['end_date'], function ($query, $end_date) {
+            return $query->whereDate('created_at', '<=', $end_date);
         });
 
     
-        // Paginate the filtered boxes
-        $transactions = $transactionsQuery->paginate(10);
+        // Paginate the filtered transactions
+        $transactions = $transactionsQuery->paginate(10)->appends($filters);
 
-        $box = Box::where('is_active', true)->first();
+        // Get the main box user with wallet (this is what's actually updated)
+        $mainBoxUser = User::with('wallet')
+            ->where('type_id', $this->userAccount)
+            ->where('email', 'mainBox@account.com')
+            ->first();
+        
+        // Prepare mainBox data from the user's wallet
+        $mainBoxData = null;
+        if ($mainBoxUser && $mainBoxUser->wallet) {
+            $walletId = $mainBoxUser->wallet->id;
+            
+            // حساب الرصيد الفعلي من المعاملات (جمع وطرح)
+            $calculatedBalanceUSD = Transactions::where('wallet_id', $walletId)
+                ->where(function($query) {
+                    $query->where('currency', 'USD')
+                          ->orWhere('currency', '$');
+                })
+                ->sum('amount');
+            
+            $calculatedBalanceIQD = Transactions::where('wallet_id', $walletId)
+                ->where('currency', 'IQD')
+                ->sum('amount');
+            
+            // الرصيد المخزن في قاعدة البيانات
+            $storedBalanceUSD = $mainBoxUser->wallet->balance ?? 0;
+            $storedBalanceIQD = $mainBoxUser->wallet->balance_dinar ?? 0;
+            
+            // تصحيح الرصيد المخزن إذا كان هناك فرق
+            if (abs($calculatedBalanceUSD - $storedBalanceUSD) > 0.01) {
+                $mainBoxUser->wallet->update(['balance' => $calculatedBalanceUSD]);
+            }
+            
+            if (abs($calculatedBalanceIQD - $storedBalanceIQD) > 0.01) {
+                $mainBoxUser->wallet->update(['balance_dinar' => $calculatedBalanceIQD]);
+            }
+            
+            $mainBoxData = (object)[
+                'id' => $mainBoxUser->id,
+                'balance' => $calculatedBalanceIQD,  // IQD - المحسوب من المعاملات
+                'balance_usd' => $calculatedBalanceUSD, // USD - المحسوب من المعاملات
+            ];
+        } else {
+            // Fallback to Box model if mainBox user doesn't exist
+            $box = Box::where('is_active', true)->first();
+            if ($box) {
+                $mainBoxData = $box;
+            }
+        }
         
         // Get system config for exchange rate
         $systemConfig = \App\Models\SystemConfig::first();
@@ -74,7 +125,7 @@ class BoxesController extends Controller
             'translations' => __('messages'),
             'filters' => $filters,
             'transactions' => $transactions,
-            'mainBox' => $box,
+            'mainBox' => $mainBoxData,
             'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500,
         ]);
     }
