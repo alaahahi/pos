@@ -10,6 +10,8 @@ use Spatie\Permission\Models\Role;
 use App\Models\Product;
 use App\Models\Customer;
 use App\Models\DecorationOrder;
+use App\Models\UserType;
+use App\Models\Wallet;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Cache;
@@ -29,6 +31,9 @@ class DashboardController extends Controller
     
     // Decoration orders statistics
     $decorationOrdersChartData = $this->getDecorationOrdersChartData();
+    
+    // Get box balance
+    $boxBalance = $this->getBoxBalance();
 
     return Inertia::render('Dashboard', [
         'translations' => __('messages'),
@@ -41,7 +46,8 @@ class DashboardController extends Controller
         'orderCount' => Order::count(),
         'orderDueCount' => Order::where('status', 'due')->count(),
         'orderCompletCount' => Order::where('status', 'paid')->count(),
-        'boxBalance' => 0, // TODO: Get from box/wallet system
+        'boxBalanceUSD' => $boxBalance['usd'],
+        'boxBalanceIQD' => $boxBalance['iqd'],
         
         // Decoration orders
         'decorationOrderCount' => DecorationOrder::count(),
@@ -262,6 +268,34 @@ class DashboardController extends Controller
                 ],
             ];
         });
+    }
+    
+    private function getBoxBalance()
+    {
+        try {
+            // Get main box user
+            $userAccount = UserType::where('name', 'account')->first();
+            
+            if (!$userAccount) {
+                return ['usd' => 0, 'iqd' => 0];
+            }
+            
+            $mainBoxUser = User::with('wallet')
+                ->where('type_id', $userAccount->id)
+                ->where('email', 'mainBox@account.com')
+                ->first();
+            
+            if (!$mainBoxUser || !$mainBoxUser->wallet) {
+                return ['usd' => 0, 'iqd' => 0];
+            }
+            
+            return [
+                'usd' => round($mainBoxUser->wallet->balance ?? 0, 2),
+                'iqd' => round($mainBoxUser->wallet->balance_dinar ?? 0, 2),
+            ];
+        } catch (\Exception $e) {
+            return ['usd' => 0, 'iqd' => 0];
+        }
     }
     
 }    

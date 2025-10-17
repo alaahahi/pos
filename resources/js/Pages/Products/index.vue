@@ -144,6 +144,7 @@
                 <option value="name">{{ translations.sort_by_name }}</option>
                 <option value="price">{{ translations.sort_by_price }}</option>
                 <option value="quantity">{{ translations.sort_by_quantity }}</option>
+                <option value="best_selling">الأكثر مبيعاً</option>
                 <option value="created">{{ translations.sort_by_date }}</option>
               </select>
             </div>
@@ -249,19 +250,15 @@
                         </small>
                       </div>
                       
-                      <!-- Best Selling Toggle -->
-                      <div class="best-selling-toggle mt-2">
-                        <label class="switch">
-                          <input 
-                            type="checkbox" 
-                            :checked="product.is_best_selling == 1"
-                            @change="toggleBestSelling(product.id)"
-                          >
-                          <span class="slider round best-selling-slider"></span>
-                        </label>
-                        <small class="d-block mt-1" :class="product.is_best_selling ? 'text-info' : 'text-muted'">
-                          <i class="bi bi-trophy-fill" v-if="product.is_best_selling"></i>
-                          {{ product.is_best_selling ? 'الأكثر مبيعاً' : 'عادي' }}
+                      <!-- Best Selling Badge (based on actual sales) -->
+                      <div class="best-selling-badge mt-2" v-if="product.total_sales > 0">
+                        <div class="badge bg-warning text-dark">
+                          <i class="bi bi-trophy-fill me-1"></i>
+                          الأكثر مبيعاً
+                        </div>
+                        <small class="d-block mt-1 text-muted">
+                          <i class="bi bi-cart-fill me-1"></i>
+                          {{ product.total_sales }} مبيع
                         </small>
                       </div>
                   </td>
@@ -976,20 +973,8 @@ const toggleFeatured = (id) => {
   });
 };
 
-const toggleBestSelling = (id) => {
-  router.post(`/products/${id}/toggle-best-selling`, {
-    onSuccess: () => {
-      // Success message will be shown by the redirect
-    },
-    onError: () => {
-      Swal.fire(
-        'خطأ!',
-        'حدث خطأ أثناء تحديث حالة المنتج الأكثر مبيعاً.',
-        'error'
-      );
-    }
-  });
-};
+// Best selling is now calculated automatically based on sales
+// const toggleBestSelling = (id) => { ... }
 
 const Delete = (id) => {
   Swal.fire({

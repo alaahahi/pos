@@ -388,7 +388,7 @@ const refreshData = () => {
 
 const formatDate = (date) => {
   if (!date) return 'غير محدد'
-  return new Date(date).toLocaleString('ar-SA')
+  return new Date(date).toLocaleString('en-US')
 }
 
 const formatNumber = (number) => {

@@ -27,13 +27,20 @@
             <div class="col-xxl-3 col-md-6">
               <div class="card info-card revenue-card">
                 <div class="card-body">
-                  <h5 class="card-title">الصندوق</h5>
-                  <div class="d-flex align-items-center">
-                    <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
-                      <i class="bi bi-wallet2"></i>
+                  <h5 class="card-title">
+                    <i class="bi bi-wallet2 me-2"></i>
+                    الصندوق
+                  </h5>
+                  <div class="d-flex flex-column">
+                    <div class="d-flex align-items-center mb-2">
+                      <div class="badge bg-success me-2" style="width: 45px;">
+                        <i class="bi bi-currency-dollar"></i>
+                      </div>
+                      <h6 class="mb-0">{{ (boxBalanceUSD || 0).toLocaleString() }} $</h6>
                     </div>
-                    <div class="ps-3">
-                      <h6>{{ boxBalance || '0' }} IQD</h6>
+                    <div class="d-flex align-items-center">
+                      <div class="badge bg-primary me-2" style="width: 45px;">IQD</div>
+                      <h6 class="mb-0">{{ (boxBalanceIQD || 0).toLocaleString() }} دينار</h6>
                     </div>
                   </div>
                 </div>
@@ -292,7 +299,8 @@ defineProps({
   productCount: Number,
   activeProductCount: Number,
   lowStockCount: Number,
-  boxBalance: Number,
+  boxBalanceUSD: Number,
+  boxBalanceIQD: Number,
   
   // Decoration orders
   decorationOrderCount: Number,

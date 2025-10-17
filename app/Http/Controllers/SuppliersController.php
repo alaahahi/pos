@@ -92,6 +92,15 @@ class SuppliersController extends Controller
             'last_transaction_date' => now(), // Current date
         ]);
     
+        // Check if request expects JSON (AJAX)
+        if ($request->expectsJson()) {
+            return response()->json([
+                'success' => true,
+                'message' => __('messages.data_saved_successfully'),
+                'supplier' => $supplier,
+            ]);
+        }
+    
         return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_saved_successfully'));
     }

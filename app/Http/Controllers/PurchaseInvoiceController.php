@@ -224,6 +224,165 @@ class PurchaseInvoiceController extends Controller
     }
 
     /**
+     * Display the specified resource.
+     */
+    public function show(PurchaseInvoice $purchaseInvoice)
+    {
+        $purchaseInvoice->load(['supplier', 'creator', 'items.product']);
+        
+        return Inertia::render('PurchaseInvoices/Show', [
+            'invoice' => $purchaseInvoice,
+            'translations' => __('messages'),
+        ]);
+    }
+
+    /**
+     * Show the form for editing the specified resource.
+     */
+    public function edit(PurchaseInvoice $purchaseInvoice)
+    {
+        $suppliers = Supplier::where('is_active', true)
+            ->select('id', 'name', 'phone')
+            ->orderBy('name')
+            ->get();
+
+        $products = Product::where('is_active', true)
+            ->select('id', 'name', 'price', 'price_cost', 'quantity', 'barcode', 'image')
+            ->orderBy('name')
+            ->get();
+
+        $purchaseInvoice->load(['supplier', 'items.product']);
+
+        return Inertia::render('PurchaseInvoices/Edit', [
+            'invoice' => $purchaseInvoice,
+            'suppliers' => $suppliers,
+            'products' => $products,
+            'translations' => __('messages'),
+        ]);
+    }
+
+    /**
+     * Update the specified resource in storage.
+     */
+    public function update(Request $request, PurchaseInvoice $purchaseInvoice)
+    {
+        $request->validate([
+            'supplier_id' => 'nullable|exists:suppliers,id',
+            'invoice_date' => 'required|date',
+            'notes' => 'nullable|string',
+            'items' => 'required|array|min:1',
+            'items.*.product_id' => 'required|exists:products,id',
+            'items.*.quantity' => 'required|integer|min:1',
+            'items.*.cost_price' => 'required|numeric|min:0',
+            'items.*.sales_price' => 'required|numeric|min:0',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            // Update invoice
+            $purchaseInvoice->update([
+                'supplier_id' => $request->supplier_id,
+                'invoice_date' => $request->invoice_date,
+                'notes' => $request->notes,
+            ]);
+
+            // Revert old items quantities
+            foreach ($purchaseInvoice->items as $oldItem) {
+                $product = Product::find($oldItem->product_id);
+                if ($product) {
+                    $product->decrement('quantity', $oldItem->quantity);
+                }
+            }
+
+            // Delete old items
+            $purchaseInvoice->items()->delete();
+
+            $totalAmount = 0;
+
+            // Create new items and update products
+            foreach ($request->items as $item) {
+                $product = Product::findOrFail($item['product_id']);
+                
+                // Create invoice item
+                PurchaseInvoiceItem::create([
+                    'purchase_invoice_id' => $purchaseInvoice->id,
+                    'product_id' => $item['product_id'],
+                    'quantity' => $item['quantity'],
+                    'cost_price' => $item['cost_price'],
+                    'sales_price' => $item['sales_price'],
+                    'total' => $item['quantity'] * $item['cost_price'],
+                ]);
+
+                // Update product
+                $product->increment('quantity', $item['quantity']);
+                $product->update([
+                    'price_cost' => $item['cost_price'],
+                    'price' => $item['sales_price'],
+                ]);
+
+                $totalAmount += $item['quantity'] * $item['cost_price'];
+            }
+
+            // Update total amount
+            $purchaseInvoice->update(['total_amount' => $totalAmount]);
+
+            DB::commit();
+
+            return redirect()->route('purchase-invoices.index')
+                ->with('success', 'تم تحديث فاتورة المشتريات بنجاح');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->withErrors([
+                'error' => 'حدث خطأ أثناء تحديث الفاتورة: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
+     * Remove the specified resource from storage.
+     */
+    public function destroy(PurchaseInvoice $purchaseInvoice)
+    {
+        DB::beginTransaction();
+
+        try {
+            // Revert product quantities
+            foreach ($purchaseInvoice->items as $item) {
+                $product = Product::find($item->product_id);
+                if ($product) {
+                    $product->decrement('quantity', $item->quantity);
+                }
+            }
+
+            // Delete items
+            $purchaseInvoice->items()->delete();
+
+            // Delete related cashbox transactions if any
+            CashboxTransaction::where('reference_type', PurchaseInvoice::class)
+                ->where('reference_id', $purchaseInvoice->id)
+                ->delete();
+
+            // Delete invoice
+            $purchaseInvoice->delete();
+
+            DB::commit();
+
+            return redirect()->route('purchase-invoices.index')
+                ->with('success', 'تم حذف فاتورة المشتريات بنجاح');
+
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return back()->withErrors([
+                'error' => 'حدث خطأ أثناء حذف الفاتورة: ' . $e->getMessage()
+            ]);
+        }
+    }
+
+    /**
      * Create cashbox transaction for withdrawal
      */
     private function createCashboxTransaction(PurchaseInvoice $purchaseInvoice, $amount, $currency)
@@ -242,7 +401,7 @@ class PurchaseInvoiceController extends Controller
         // Create withdrawal transaction
         $accountingController = new AccountingController();
         $transaction = $accountingController->decreaseWallet(
-            $amount,
+            (int) round($amount), // Convert to integer
             "شراء منتجات - فاتورة رقم: {$purchaseInvoice->invoice_number}",
             $mainBox->id,
             $mainBox->id,
@@ -250,13 +409,13 @@ class PurchaseInvoiceController extends Controller
             0,
             0,
             $currency,
-            $purchaseInvoice->invoice_date
+            strtotime($purchaseInvoice->invoice_date)
         );
 
         // Create cashbox transaction record
         CashboxTransaction::create([
             'type' => 'withdrawal',
-            'amount' => $amount,
+            'amount' => round($amount, 2),
             'currency' => $currency,
             'description' => "شراء منتجات - فاتورة رقم: {$purchaseInvoice->invoice_number}",
             'reference_type' => PurchaseInvoice::class,
@@ -264,7 +423,7 @@ class PurchaseInvoiceController extends Controller
             'user_id' => auth()->id(),
             'from_wallet_id' => $mainBox->wallet->id,
             'to_wallet_id' => null,
-            'transaction_date' => $purchaseInvoice->invoice_date,
+            'transaction_date' => $purchaseInvoice->invoice_date->format('Y-m-d'),
         ]);
 
         return $transaction;

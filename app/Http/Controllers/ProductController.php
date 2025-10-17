@@ -38,8 +38,11 @@ class ProductController extends Controller
             'sort' => $request->sort ?? 'created',
         ];
         
-        // Start the Product query
-        $ProductQuery = Product::with('roles')->select('*');
+        // Start the Product query with sales count
+        $ProductQuery = Product::with('roles')
+            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
+            ->select('products.*', \DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sales'))
+            ->groupBy('products.id');
 
         // Apply search filter
         $ProductQuery->when($filters['search'], function ($query, $search) {
@@ -75,17 +78,20 @@ class ProductController extends Controller
         // Apply sorting
         switch ($filters['sort']) {
             case 'name':
-                $ProductQuery->orderBy('name', 'asc');
+                $ProductQuery->orderBy('products.name', 'asc');
                 break;
             case 'price':
-                $ProductQuery->orderBy('price', 'desc');
+                $ProductQuery->orderBy('products.price', 'desc');
                 break;
             case 'quantity':
-                $ProductQuery->orderBy('quantity', 'desc');
+                $ProductQuery->orderBy('products.quantity', 'desc');
+                break;
+            case 'best_selling':
+                $ProductQuery->orderBy('total_sales', 'desc');
                 break;
             case 'created':
             default:
-                $ProductQuery->latest();
+                $ProductQuery->orderBy('products.created_at', 'desc');
                 break;
         }
 

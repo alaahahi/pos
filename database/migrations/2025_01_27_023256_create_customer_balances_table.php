@@ -11,18 +11,20 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('customer_balances', function (Blueprint $table) {
-            $table->id();
-            $table->unsignedBigInteger('customer_id');
-            $table->decimal('balance_dollar', 15, 2)->default(0);
-            $table->decimal('balance_dinar', 15, 2)->default(0);
-            $table->date('last_transaction_date')->nullable();
-            $table->enum('currency_preference', ['dollar', 'dinar'])->default('dinar');
-            $table->timestamps();
-        
-            $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+        if (!Schema::hasTable('customer_balances')) {
+            Schema::create('customer_balances', function (Blueprint $table) {
+                $table->id();
+                $table->unsignedBigInteger('customer_id');
+                $table->decimal('balance_dollar', 15, 2)->default(0);
+                $table->decimal('balance_dinar', 15, 2)->default(0);
+                $table->date('last_transaction_date')->nullable();
+                $table->enum('currency_preference', ['dollar', 'dinar'])->default('dinar');
+                $table->timestamps();
             
-        });
+                $table->foreign('customer_id')->references('id')->on('customers')->onDelete('cascade');
+                
+            });
+        }
     }
 
     /**

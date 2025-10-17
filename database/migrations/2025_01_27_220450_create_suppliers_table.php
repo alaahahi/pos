@@ -11,17 +11,18 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('suppliers', function (Blueprint $table) {
-            $table->id();
-            $table->string('name'); // اسم المورد
-            $table->string('phone')->nullable(); // رقم الهاتف
-            $table->string('address')->nullable(); // عنوان المورد
-            $table->boolean('is_active')->default(true); // حالة النشاط
-            $table->text('notes')->nullable(); // ملاحظات
-            $table->timestamps();
-            $table->softDeletes();
-        });
-
+        if (!Schema::hasTable('suppliers')) {
+            Schema::create('suppliers', function (Blueprint $table) {
+                $table->id();
+                $table->string('name'); // اسم المورد
+                $table->string('phone')->nullable(); // رقم الهاتف
+                $table->string('address')->nullable(); // عنوان المورد
+                $table->boolean('is_active')->default(true); // حالة النشاط
+                $table->text('notes')->nullable(); // ملاحظات
+                $table->timestamps();
+                $table->softDeletes();
+            });
+        }
     }
 
     /**

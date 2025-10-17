@@ -290,12 +290,12 @@ const clearFilters = () => {
 
 const formatDate = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('ar-SA');
+    return new Date(date).toLocaleDateString('en-US');
 };
 
 const formatDateTime = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleString('ar-SA');
+  return new Date(date).toLocaleString('en-US');
 };
 
 const getMonthlyTotal = () => {

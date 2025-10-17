@@ -53,38 +53,10 @@ class MigrationController extends Controller
             $tables = [];
         }
         
-        return Inertia::render('Admin/Migrations', [
+        // استخدم Blade بدلاً من Inertia لتجنب مشاكل Auth
+        return view('admin.migrations', [
             'migrations' => $migrations,
             'tables' => $tables,
-            'translations' => [
-                'migration_management' => 'إدارة المايكريشنات',
-                'run_migrations' => 'تشغيل المايكريشنات',
-                'rollback_migrations' => 'تراجع المايكريشنات',
-                'refresh_migrations' => 'إعادة تشغيل المايكريشنات',
-                'migration_status' => 'حالة المايكريشنات',
-                'table_info' => 'معلومات الجداول',
-                'table_name' => 'اسم الجدول',
-                'table_rows' => 'عدد الصفوف',
-                'table_size' => 'حجم الجدول',
-                'last_modified' => 'آخر تعديل',
-                'migration_name' => 'اسم المايكريشن',
-                'batch' => 'الدفعة',
-                'executed_at' => 'تاريخ التنفيذ',
-                'pending_migrations' => 'المايكريشنات المعلقة',
-                'executed_migrations' => 'المايكريشنات المنفذة',
-                'run_pending' => 'تشغيل المعلقة',
-                'rollback_last' => 'تراجع الأخيرة',
-                'refresh_all' => 'إعادة تشغيل الكل',
-                'success' => 'تم بنجاح',
-                'error' => 'خطأ',
-                'loading' => 'جاري التنفيذ...',
-                'no_pending_migrations' => 'لا توجد مايكريشنات معلقة',
-                'no_executed_migrations' => 'لا توجد مايكريشنات منفذة',
-                'confirm_rollback' => 'هل أنت متأكد من تراجع آخر دفعة من المايكريشنات؟',
-                'confirm_refresh' => 'هل أنت متأكد من إعادة تشغيل جميع المايكريشنات؟ سيتم حذف جميع البيانات!',
-                'run_seeders' => 'تشغيل الـ Seeders',
-                'confirm_seeders' => 'هل أنت متأكد من تشغيل الـ seeders؟ سيتم إضافة البيانات التجريبية.',
-            ]
         ]);
     }
 
@@ -96,38 +68,19 @@ class MigrationController extends Controller
         $this->checkAccessKey($request);
         
         try {
-            $output = [];
-            
-            // Safe migrations will handle existing tables
-            $this->checkForConflictingTables();
-            
             // Run migrations
             Artisan::call('migrate', ['--force' => true]);
-            $output[] = Artisan::output();
+            $output = Artisan::output();
             
-            // Always run seeders to ensure users and permissions exist
+            // Run seeders
             Artisan::call('db:seed', ['--force' => true]);
-            $output[] = 'Seeding completed: ' . Artisan::output();
             
-            // Get updated status
-            $migrations = $this->getMigrationsStatus();
-            $tables = $this->getTablesInfo();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تشغيل المايكريشنات وإنشاء المستخدمين بنجاح',
-                'output' => $output,
-                'migrations' => $migrations,
-                'tables' => $tables
-            ]);
-            
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('success', 'تم تشغيل المايكريشنات بنجاح! ✅');
+                
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء تشغيل المايكريشنات: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'suggestion' => $this->getSuggestionForError($e->getMessage())
-            ], 500);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
     }
 
@@ -159,25 +112,12 @@ class MigrationController extends Controller
             $migrations = $this->getMigrationsStatus();
             $tables = $this->getTablesInfo();
             
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تراجع المايكريشنات بنجاح',
-                'output' => $output,
-                'migrations' => $migrations,
-                'tables' => $tables
-            ]);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('success', 'تم تراجع المايكريشنات بنجاح! ✅');
             
         } catch (\Exception $e) {
-            // Re-enable foreign key checks in case of error (MySQL only)
-            if (config('database.default') === 'mysql') {
-                DB::statement('SET FOREIGN_KEY_CHECKS=1;');
-            }
-            
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء تراجع المايكريشنات: ' . $e->getMessage(),
-                'error' => $e->getMessage()
-            ], 500);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
     }
 
@@ -189,30 +129,14 @@ class MigrationController extends Controller
         $this->checkAccessKey($request);
         
         try {
-            $output = [];
-            
-            // Run all seeders
             Artisan::call('db:seed', ['--force' => true]);
-            $output[] = 'Seeding completed: ' . Artisan::output();
             
-            // Get updated status
-            $migrations = $this->getMigrationsStatus();
-            $tables = $this->getTablesInfo();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم تشغيل الـ seeders بنجاح',
-                'output' => $output,
-                'migrations' => $migrations,
-                'tables' => $tables
-            ]);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('success', 'تم تشغيل الـ Seeders بنجاح! ✅');
             
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء تشغيل الـ seeders: ' . $e->getMessage(),
-                'error' => $e->getMessage()
-            ], 500);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
     }
 
@@ -244,30 +168,16 @@ class MigrationController extends Controller
                 DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             }
             
-            // Get updated status
-            $migrations = $this->getMigrationsStatus();
-            $tables = $this->getTablesInfo();
-            
-            return response()->json([
-                'success' => true,
-                'message' => 'تم إعادة تشغيل المايكريشنات وإنشاء المستخدمين بنجاح',
-                'output' => $output,
-                'migrations' => $migrations,
-                'tables' => $tables
-            ]);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('success', 'تم إعادة تشغيل المايكريشنات بنجاح! ✅');
             
         } catch (\Exception $e) {
-            // Re-enable foreign key checks in case of error (MySQL only)
             if (config('database.default') === 'mysql') {
                 DB::statement('SET FOREIGN_KEY_CHECKS=1;');
             }
             
-            return response()->json([
-                'success' => false,
-                'message' => 'حدث خطأ أثناء إعادة تشغيل المايكريشنات: ' . $e->getMessage(),
-                'error' => $e->getMessage(),
-                'suggestion' => $this->getSuggestionForError($e->getMessage())
-            ], 500);
+            return redirect()->route('admin.migrations', ['key' => 'migrate123'])
+                ->with('error', 'حدث خطأ: ' . $e->getMessage());
         }
     }
 

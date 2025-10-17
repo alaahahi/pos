@@ -21,6 +21,18 @@ use App\Http\Controllers\MigrationController;
 use App\Http\Controllers\SystemConfigController;
 use Illuminate\Support\Facades\Artisan;
 
+// ============================================================================
+// Migration Management Routes - NO MIDDLEWARE - MUST BE FIRST
+// ============================================================================
+Route::get('/admin/migrations', [MigrationController::class, 'index'])->name('admin.migrations');
+    
+Route::post('/admin/migrations/run', [MigrationController::class, 'runMigrations'])->name('admin.migrations.run');
+    
+Route::post('/admin/migrations/rollback', [MigrationController::class, 'rollbackMigrations'])->name('admin.migrations.rollback');
+    
+Route::post('/admin/migrations/refresh', [MigrationController::class, 'refreshMigrations'])->name('admin.migrations.refresh');
+    
+Route::post('/admin/migrations/seeders', [MigrationController::class, 'runSeeders'])->name('admin.migrations.seeders');
 
 /*
 |--------------------------------------------------------------------------
@@ -88,7 +100,7 @@ Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [Deco
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
   Route::post('products/{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');
-  Route::post('products/{product}/toggle-best-selling', [ProductController::class, 'toggleBestSelling'])->name('toggle-best-selling');
+  // Route::post('products/{product}/toggle-best-selling', [ProductController::class, 'toggleBestSelling'])->name('toggle-best-selling'); // Removed: Best selling is now calculated automatically
   Route::post('products/{product}', [ProductController::class, 'update'])->name('products.update'); 
   Route::get('products/trashed', [ProductController::class, 'trashed'])->name('products.trashed');
   Route::post('products/{id}/restore', [ProductController::class, 'restore'])->name('products.restore');
@@ -158,14 +170,6 @@ Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [Deco
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
 Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
 
-// Migration Management Routes - بدون تسجيل دخول مع مفتاح ثابت
-Route::prefix('admin')->group(function () {
-    Route::get('/migrations', [MigrationController::class, 'index'])->name('admin.migrations');
-    Route::post('/migrations/run', [MigrationController::class, 'runMigrations'])->name('admin.migrations.run');
-    Route::post('/migrations/rollback', [MigrationController::class, 'rollbackMigrations'])->name('admin.migrations.rollback');
-    Route::post('/migrations/refresh', [MigrationController::class, 'refreshMigrations'])->name('admin.migrations.refresh');
-    Route::post('/migrations/seeders', [MigrationController::class, 'runSeeders'])->name('admin.migrations.seeders');
-});
 // Public Gallery Routes (No Authentication Required)
 Route::get('/gallery', [App\Http\Controllers\PublicGalleryController::class, 'index'])->name('public.gallery');
 Route::get('/gallery/{decoration}', [App\Http\Controllers\PublicGalleryController::class, 'show'])->name('public.decoration.show');

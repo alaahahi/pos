@@ -11,20 +11,22 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('purchase_invoice_items', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('purchase_invoice_id')->constrained('purchase_invoices')->onDelete('cascade');
-            $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
-            $table->integer('quantity');
-            $table->decimal('cost_price', 10, 2);
-            $table->decimal('sales_price', 10, 2);
-            $table->decimal('total', 10, 2);
-            $table->timestamps();
-            
-            // Indexes
-            $table->index('purchase_invoice_id');
-            $table->index('product_id');
-        });
+        if (!Schema::hasTable('purchase_invoice_items')) {
+            Schema::create('purchase_invoice_items', function (Blueprint $table) {
+                $table->id();
+                $table->foreignId('purchase_invoice_id')->constrained('purchase_invoices')->onDelete('cascade');
+                $table->foreignId('product_id')->constrained('products')->onDelete('cascade');
+                $table->integer('quantity');
+                $table->decimal('cost_price', 10, 2);
+                $table->decimal('sales_price', 10, 2);
+                $table->decimal('total', 10, 2);
+                $table->timestamps();
+                
+                // Indexes
+                $table->index('purchase_invoice_id');
+                $table->index('product_id');
+            });
+        }
     }
 
     /**

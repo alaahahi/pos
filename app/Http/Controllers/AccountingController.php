@@ -689,6 +689,9 @@ class AccountingController extends Controller
         if($amount){
             if($created==0){
                 $created=$this->currentDate;
+            } else if (is_numeric($created) && $created > 10000) {
+                // Convert timestamp to datetime string
+                $created = date('Y-m-d H:i:s', $created);
             }
             $user=  User::with('wallet')->find($user_id);
             if($id = $user->wallet->id){
@@ -717,6 +720,9 @@ class AccountingController extends Controller
         if($amount){
         if($created==0){
             $created=$this->currentDate;
+        } else if (is_numeric($created) && $created > 10000) {
+            // Convert timestamp to datetime string
+            $created = date('Y-m-d H:i:s', $created);
         }
 
         $user=  User::with('wallet')->find($user_id);

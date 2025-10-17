@@ -576,13 +576,13 @@ const removeItem = (index) => {
 
 const addSupplier = async () => {
   try {
-    const response = await axios.post(route('customers.store'), {
+ 
+    const response = await axios.post(route('suppliers.store'), {
       name: newSupplier.name,
       phone: newSupplier.phone,
-      is_supplier: true,
     });
 
-    const supplier = response.data.customer;
+    const supplier = response.data.supplier || response.data;
     selectSupplier(supplier);
     
     // Reset form
@@ -616,7 +616,22 @@ const submitForm = () => {
 
   loading.value = true;
   
-  form.post(route('purchase-invoices.store'), {
+  // Transform items to match backend expectations
+  const formData = {
+    supplier_id: form.supplier_id,
+    invoice_date: form.invoice_date,
+    notes: form.notes,
+    withdraw_from_cashbox: form.withdraw_from_cashbox,
+    currency: form.currency,
+    items: form.items.map(item => ({
+      product_id: item.product.id,
+      quantity: item.quantity,
+      cost_price: item.cost_price,
+      sales_price: item.sales_price,
+    })),
+  };
+  
+  form.transform(() => formData).post(route('purchase-invoices.store'), {
     onSuccess: () => {
       loading.value = false;
       toast.success('تم إنشاء فاتورة المشتريات بنجاح');
@@ -624,6 +639,7 @@ const submitForm = () => {
     onError: (errors) => {
       loading.value = false;
       console.error('Form errors:', errors);
+      toast.error('حدث خطأ في حفظ الفاتورة');
     },
   });
 };
