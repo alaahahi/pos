@@ -56,6 +56,7 @@ Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name(
 Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');
 Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
 Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
+Route::get('today-sales',[OrderController::class, 'getTodaySales'])->name('today-sales');
 
 Route::get('/check-session', function () {
     $user = Auth::user();

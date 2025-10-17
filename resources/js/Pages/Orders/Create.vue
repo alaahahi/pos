@@ -24,6 +24,8 @@
       </div>
     </div>
 
+
+
     <!-- Main POS Layout -->
     <div class="pos-container">
       <!-- Left Panel - Products -->
@@ -284,8 +286,51 @@
             </div>
           </div>
         </div>
+    </div>
+    <!-- Daily Sales Statistics -->
+    <div class="daily-sales-stats">
+      <div class="stats-grid">
+        <div class="stat-card stat-orders">
+          <div class="stat-icon">
+            <i class="bi bi-receipt"></i>
+          </div>
+          <div class="stat-content">
+            <h6>عدد الفواتير</h6>
+            <span class="stat-value">{{ dailySales.orders_count }}</span>
+          </div>
+        </div>
+        
+        <div class="stat-card stat-sales">
+          <div class="stat-icon">
+            <i class="bi bi-cash-stack"></i>
+          </div>
+          <div class="stat-content">
+            <h6>إجمالي المبيعات</h6>
+            <span class="stat-value">{{ defaultCurrency }} {{ Math.round(dailySales.total_sales) }}</span>
+          </div>
+        </div>
+        
+        <div class="stat-card stat-paid">
+          <div class="stat-icon">
+            <i class="bi bi-check-circle"></i>
+          </div>
+          <div class="stat-content">
+            <h6>المدفوع</h6>
+            <span class="stat-value">{{ defaultCurrency }} {{ Math.round(dailySales.total_paid) }}</span>
+          </div>
+        </div>
+        
+        <div class="stat-card stat-due">
+          <div class="stat-icon">
+            <i class="bi bi-exclamation-circle"></i>
+          </div>
+          <div class="stat-content">
+            <h6>المتبقي</h6>
+            <span class="stat-value">{{ defaultCurrency }} {{ Math.round(dailySales.total_due) }}</span>
+          </div>
+        </div>
       </div>
-
+    </div>
       <!-- Confirm Modal -->
       <ModalConfirmOrderAndPay 
         :translations="translations" 
@@ -462,6 +507,12 @@ let cashInfo = ref({
   totalValue: 0,
   products: []
 });
+let dailySales = ref({
+  orders_count: 0,
+  total_sales: 0,
+  total_paid: 0,
+  total_due: 0,
+});
 
 // Template refs
 const searchInput = ref(null);
@@ -474,6 +525,7 @@ const props = defineProps({
   translations: Object,
   defaultCurrency: String,
   categories: Array,
+  todaySales: Object,
 });
 
 const selectedCustomer = ref(props.defaultCustomer?.id || null);
@@ -818,6 +870,17 @@ const openConfirmModal = () => {
   ShowModalConfirmOrderAndPay.value = true;
 };
 
+const updateDailySales = async () => {
+  try {
+    const response = await axios.get('/api/today-sales');
+    if (response.data) {
+      dailySales.value = response.data;
+    }
+  } catch (error) {
+    console.error('Error fetching daily sales:', error);
+  }
+};
+
 const saveInvoice = async (event) => {
   show_loader.value = true;
  
@@ -850,6 +913,9 @@ const saveInvoice = async (event) => {
       if(event.printInvoice){
         window.open(`/api/getIndexAccountsSelas?print=2&transactions_id=${id}&order_id=${order_id}`, '_blank');
       }
+      
+      // Update daily sales statistics
+      await updateDailySales();
       
       // Clear form after successful save but keep customer
       clearCart();
@@ -978,6 +1044,11 @@ const handleKeydown = (event) => {
 // Lifecycle
 onMounted(() => {
   document.addEventListener('keydown', handleKeydown);
+  
+  // Initialize daily sales from props
+  if (props.todaySales) {
+    dailySales.value = props.todaySales;
+  }
   
   // Focus barcode input on load
   nextTick(() => {
@@ -2006,5 +2077,113 @@ ul#vs1__listbox li.vs__dropdown-option--selected {
   display: flex;
   justify-content: flex-end;
   gap: 0.5rem;
+}
+
+/* Daily Sales Statistics */
+.daily-sales-stats {
+  margin-bottom: 1rem;
+  margin-top: 1rem;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 1rem;
+}
+
+.stat-card {
+  background: white;
+  border-radius: 12px;
+  padding: 1.25rem;
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  transition: transform 0.2s, box-shadow 0.2s;
+  border: 2px solid transparent;
+}
+
+.stat-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.12);
+}
+
+.stat-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.5rem;
+  color: white;
+}
+
+.stat-orders .stat-icon {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-sales .stat-icon {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+}
+
+.stat-paid .stat-icon {
+  background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-due .stat-icon {
+  background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.stat-content {
+  flex: 1;
+}
+
+.stat-content h6 {
+  margin: 0 0 0.25rem 0;
+  font-size: 0.85rem;
+  color: #6c757d;
+  font-weight: 500;
+}
+
+.stat-value {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: #2c3e50;
+  display: block;
+}
+
+/* Responsive design for stats */
+@media (max-width: 1200px) {
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
+
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .stat-card {
+    padding: 1rem;
+  }
+  
+  .stat-icon {
+    width: 40px;
+    height: 40px;
+    font-size: 1.25rem;
+  }
+  
+  .stat-value {
+    font-size: 1.25rem;
+  }
+}
+
+/* Print - hide stats */
+@media print {
+  .daily-sales-stats {
+    display: none;
+  }
 }
 </style>

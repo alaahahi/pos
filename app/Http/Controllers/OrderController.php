@@ -108,12 +108,31 @@ class OrderController extends Controller
                 ];
             });
 
+        // Get today's sales statistics
+        $todayStart = Carbon::today();
+        $todayEnd = Carbon::today()->endOfDay();
+        
+        $todaySales = Order::whereBetween('created_at', [$todayStart, $todayEnd])
+            ->selectRaw('
+                COUNT(*) as orders_count,
+                SUM(total_amount) as total_sales,
+                SUM(total_paid) as total_paid,
+                SUM(total_amount - total_paid) as total_due
+            ')
+            ->first();
+
         return Inertia::render('Orders/Create', [
             'translations' => __('messages'),
             'customers' => $customers,
             'products' => $products,
             'defaultCustomer' => $defaultCustomer,
-            'defaultCurrency' => $this->defaultCurrency
+            'defaultCurrency' => $this->defaultCurrency,
+            'todaySales' => [
+                'orders_count' => $todaySales->orders_count ?? 0,
+                'total_sales' => $todaySales->total_sales ?? 0,
+                'total_paid' => $todaySales->total_paid ?? 0,
+                'total_due' => $todaySales->total_due ?? 0,
+            ]
         ]);
     }
 
@@ -557,6 +576,31 @@ public function restore($id)
 
     return redirect()->route('orders.index')
         ->with('success', __('messages.order_restored_successfully'));
+}
+
+/**
+ * Get today's sales statistics
+ */
+public function getTodaySales()
+{
+    $todayStart = Carbon::today();
+    $todayEnd = Carbon::today()->endOfDay();
+    
+    $todaySales = Order::whereBetween('created_at', [$todayStart, $todayEnd])
+        ->selectRaw('
+            COUNT(*) as orders_count,
+            SUM(total_amount) as total_sales,
+            SUM(total_paid) as total_paid,
+            SUM(total_amount - total_paid) as total_due
+        ')
+        ->first();
+
+    return response()->json([
+        'orders_count' => $todaySales->orders_count ?? 0,
+        'total_sales' => $todaySales->total_sales ?? 0,
+        'total_paid' => $todaySales->total_paid ?? 0,
+        'total_due' => $todaySales->total_due ?? 0,
+    ]);
 }
 
 public function print($id)
