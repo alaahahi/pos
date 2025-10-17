@@ -1,5 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
+    <div dir="rtl" lang="ar">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
       <h1 class="dark:text-white">إنشاء فاتورة مشتريات</h1>
@@ -202,7 +203,7 @@
                             class="form-control form-control-sm"
                             v-model.number="item.cost_price"
                             @input="updateItemTotal(index)"
-                            step="0.01"
+                            step="1"
                             min="0"
                             style="width: 100px;"
                           />
@@ -212,13 +213,13 @@
                             type="number"
                             class="form-control form-control-sm"
                             v-model.number="item.sales_price"
-                            step="0.01"
+                            step="1"
                             min="0"
                             style="width: 100px;"
                           />
                         </td>
                         <td>
-                          <strong>{{ item.total.toFixed(2) }} {{ form.currency }}</strong>
+                          <strong>{{ Math.round(item.total) }} {{ form.currency }}</strong>
                         </td>
                         <td>
                           <button
@@ -234,7 +235,7 @@
                     <tfoot class="table-light">
                       <tr>
                         <th colspan="4" class="text-end">المجموع الكلي:</th>
-                        <th>{{ totalAmount.toFixed(2) }} {{ form.currency }}</th>
+                        <th><strong class="text-primary">{{ Math.round(totalAmount) }} {{ form.currency }}</strong></th>
                         <th></th>
                       </tr>
                     </tfoot>
@@ -277,7 +278,7 @@
                 
                 <div v-if="form.withdraw_from_cashbox" class="alert alert-warning">
                   <i class="bi bi-exclamation-triangle me-2"></i>
-                  سيتم سحب {{ totalAmount.toFixed(2) }} {{ form.currency }} من الصندوق الرئيسي
+                  سيتم سحب {{ Math.round(totalAmount) }} {{ form.currency }} من الصندوق الرئيسي
                 </div>
               </div>
             </div>
@@ -365,13 +366,13 @@
                 <div class="col-md-6">
                   <div class="mb-3">
                     <label class="form-label">سعر التكلفة</label>
-                    <input type="number" class="form-control" v-model.number="manualProduct.cost_price" step="0.01" min="0" required />
+                    <input type="number" class="form-control" v-model.number="manualProduct.cost_price" step="1" min="0" required />
                   </div>
                 </div>
               </div>
               <div class="mb-3">
                 <label class="form-label">سعر البيع</label>
-                <input type="number" class="form-control" v-model.number="manualProduct.sales_price" step="0.01" min="0" required />
+                <input type="number" class="form-control" v-model.number="manualProduct.sales_price" step="1" min="0" required />
               </div>
             </form>
           </div>
@@ -389,6 +390,7 @@
 
     <!-- Modal Backdrop -->
     <div v-if="showAddSupplierModal || showProductModal" class="modal-backdrop fade show"></div>
+    </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
 

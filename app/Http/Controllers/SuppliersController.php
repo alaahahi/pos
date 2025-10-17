@@ -13,7 +13,7 @@ class SuppliersController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:read suppliers', ['only' => ['index']]);
+        $this->middleware('permission:read supplier', ['only' => ['index']]);
         $this->middleware('permission:create supplier', ['only' => ['create']]);
         $this->middleware('permission:update supplier', ['only' => ['update', 'edit']]);
         $this->middleware('permission:delete supplier', ['only' => ['destroy']]);
@@ -50,7 +50,7 @@ class SuppliersController extends Controller
         // Paginate the filtered suppliers
         $suppliers = $suppliersQuery->paginate(10);
 
-        return Inertia('Client/index', [
+        return Inertia('Supplier/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'suppliers' => $suppliers,
@@ -62,7 +62,7 @@ class SuppliersController extends Controller
      */
     public function create()
     {
-        return Inertia('Client/Create', [
+        return Inertia('Supplier/Create', [
             'translations' => __('messages'),
         ]);
     }
@@ -101,7 +101,7 @@ class SuppliersController extends Controller
      */
     public function edit(Supplier $supplier)
     {
-        return Inertia('Client/Edit', [
+        return Inertia('Supplier/Edit', [
             'translations' => __('messages'),
             'supplier' => $supplier,
         ]);
@@ -149,3 +149,4 @@ class SuppliersController extends Controller
             ->with('success', __('messages.data_deleted_successfully'));
     }
 }
+

@@ -1,5 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
+    <div dir="rtl" lang="ar">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
       <h1 class="dark:text-white">{{ translations.suppliers }}</h1>
@@ -54,22 +55,42 @@
                   {{ translations.search }} &nbsp; <i class="bi bi-search"></i>
                 </button>
               </div>
-              <div class="col-md-2">
-                <Link
-                  v-if="hasPermission('read suppliers')"
-                  class="btn btn-success"
-                  :href="route('export.suppliers')"
-                >
-                  {{ translations.export }} &nbsp; <i class="bi bi-filetype-xls"></i>
-                </Link>
-              </div>
-              <div class="col-md-2">
+            </div>
+            
+            <!-- Action Buttons Row -->
+            <div class="row mt-3">
+              <div class="col-md-3">
                 <Link
                   v-if="hasPermission('create supplier')"
-                  class="btn btn-primary"
+                  class="btn btn-primary w-100"
                   :href="route('suppliers.create')"
                 >
-                  {{ translations.create }} &nbsp; <i class="bi bi-plus-circle"></i>
+                  <i class="bi bi-plus-circle"></i> &nbsp; إضافة مورد
+                </Link>
+              </div>
+              <div class="col-md-3">
+                <Link
+                  class="btn btn-success w-100"
+                  :href="route('purchase-invoices.create')"
+                >
+                  <i class="bi bi-receipt"></i> &nbsp; إنشاء فاتورة مشتريات
+                </Link>
+              </div>
+              <div class="col-md-3">
+                <Link
+                  class="btn btn-info w-100"
+                  :href="route('purchase-invoices.index')"
+                >
+                  <i class="bi bi-list-ul"></i> &nbsp; عرض فواتير المشتريات
+                </Link>
+              </div>
+              <div class="col-md-3">
+                <Link
+                  v-if="hasPermission('read suppliers')"
+                  class="btn btn-secondary w-100"
+                  :href="route('export.suppliers')"
+                >
+                  <i class="bi bi-filetype-xls"></i> &nbsp; {{ translations.export }}
                 </Link>
               </div>
             </div>
@@ -138,6 +159,7 @@
       </div>
       <Pagination :links="suppliers.links" />
     </section>
+    </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
 

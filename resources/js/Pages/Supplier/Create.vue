@@ -1,9 +1,9 @@
 <template>
   <AuthenticatedLayout :translations="translations">
-
+    <div dir="rtl" lang="ar">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white"> {{ translations.suppliers }}</h1>
+      <h1 class="dark:text-white">{{ translations.suppliers }}</h1>
       <nav>
         <ol class="breadcrumb">
           <li class="breadcrumb-item">
@@ -25,7 +25,10 @@
 
           <div class="card">
             <div class="card-body">
-              <h5 class="card-title"> {{ translations.add_new_customer }} </h5>
+              <h5 class="card-title">
+                <i class="bi bi-plus-circle me-2"></i>
+                إضافة مورد جديد
+              </h5>
 
               <!-- General Form Elements -->
               <form @submit.prevent="store" class="row g-3">
@@ -80,7 +83,7 @@
                 </div>
 
               </form>
-              <!-- End Add New Customer Form -->
+              <!-- End Add New Supplier Form -->
             </div>
           </div>
 
@@ -89,13 +92,13 @@
       </div>
 
     </section>
-
+    </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
-import { useForm } from '@inertiajs/vue3'
+import { useForm, Link } from '@inertiajs/vue3'
 import InputError from '@/Components/InputError.vue';
 import { ref } from 'vue';
 

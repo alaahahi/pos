@@ -1,5 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
+    <div dir="rtl" lang="ar">
     <!-- breadcrumb-->
     <div class="pagetitle dark:text-white">
       <h1 class="dark:text-white">فواتير المشتريات</h1>
@@ -178,7 +179,7 @@
                   </td>
                   <td>
                     <div class="amount-info">
-                      <strong class="text-success">{{ invoice.total_amount.toFixed(2) }} دينار</strong>
+                      <strong class="text-success">{{ Math.round(invoice.total_amount) }} دينار</strong>
                     </div>
                   </td>
                   <td>
@@ -238,6 +239,7 @@
       
       <Pagination :links="purchaseInvoices?.links" />
     </section>
+    </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
 
@@ -297,7 +299,7 @@ const formatDateTime = (date) => {
 };
 
 const getMonthlyTotal = () => {
-  if (!props.purchaseInvoices?.data) return '0.00';
+  if (!props.purchaseInvoices?.data) return '0';
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -308,7 +310,7 @@ const getMonthlyTotal = () => {
   });
   
   const total = monthlyInvoices.reduce((sum, invoice) => sum + parseFloat(invoice.total_amount), 0);
-  return total.toFixed(2);
+  return Math.round(total).toLocaleString();
 };
 
 const getActiveSuppliersCount = () => {
@@ -317,7 +319,7 @@ const getActiveSuppliersCount = () => {
 };
 
 const getAverageInvoice = () => {
-  if (!props.purchaseInvoices?.data?.length) return '0.00';
+  if (!props.purchaseInvoices?.data?.length) return '0';
   
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
@@ -327,11 +329,11 @@ const getAverageInvoice = () => {
     return invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear;
   });
   
-  if (!monthlyInvoices.length) return '0.00';
+  if (!monthlyInvoices.length) return '0';
   
   const total = monthlyInvoices.reduce((sum, invoice) => sum + parseFloat(invoice.total_amount), 0);
   const average = total / monthlyInvoices.length;
-  return average.toFixed(2);
+  return Math.round(average).toLocaleString();
 };
 
 const deleteInvoice = (invoice) => {

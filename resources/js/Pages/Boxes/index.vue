@@ -910,6 +910,7 @@ const calculateTotalOutIQD = () => {
   background: #f8f9fa;
   padding: 1.5rem;
   border-bottom: 1px solid #e9ecef;
+  direction: rtl;
 }
 
 .actions-wrapper {
@@ -917,6 +918,7 @@ const calculateTotalOutIQD = () => {
   gap: 1rem;
   flex-wrap: wrap;
   margin-bottom: 1rem;
+  direction: rtl;
 }
 
 .action-group {
@@ -1024,10 +1026,12 @@ const calculateTotalOutIQD = () => {
   padding: 1.5rem;
   border-radius: 8px;
   margin-bottom: 1.5rem;
+  direction: rtl;
 }
 
 .filter-form {
   width: 100%;
+  direction: rtl;
 }
 
 .filter-grid {
@@ -1035,6 +1039,7 @@ const calculateTotalOutIQD = () => {
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
   gap: 1rem;
   align-items: end;
+  direction: rtl;
 }
 
 .filter-item {

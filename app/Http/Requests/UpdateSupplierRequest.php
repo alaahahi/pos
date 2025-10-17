@@ -4,7 +4,7 @@ namespace App\Http\Requests;
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class StorePermissionRequest extends FormRequest
+class UpdateSupplierRequest extends FormRequest
 {
     /**
      * Determine if the user is authorized to make this request.
@@ -19,21 +19,24 @@ class StorePermissionRequest extends FormRequest
      *
      * @return array<string, \Illuminate\Contracts\Validation\ValidationRule|array<mixed>|string>
      */
-    public function rules()
+    public function rules(): array
     {
         return [
-            'name' => 'required|string|max:255|unique:permissions,name', // Validate name field
+            'name' => 'required|string|max:255',
+            'phone' => 'nullable',
+            'address' => 'nullable',
+            'notes' => 'nullable',
+            'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
     }
-    
+
     public function messages()
     {
         return [
-            'name.required' => __('rules.Permission_name_is_required'),
-            'name.unique' => __('rules.This_permission_name_has_already_been_taken'),
-            'name.string' => __('rules.Permission_name_must_be_a_string'),
-            'name.max' => __('rules.Permission_name_must_not_exceed_255_characters'),
+            'name.required' => __('rules.Name_is_required'),
+            'avatar.image' => __('rules.The_avatar_must_be_an_image_file'),
+            'avatar.mimes' => __('rules.The_avatar_must_be_a_file_of_type_jpeg_png_jpg_gif'),
+            'avatar.max' => __('rules.The_avatar_must_not_exceed_2MB'),
         ];
     }
-    
 }

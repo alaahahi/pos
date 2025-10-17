@@ -28,14 +28,14 @@ class Supplier extends Model
     ];
     public function balance()
     {
-        return $this->hasOne(CustomerBalance::class);
+        return $this->hasOne(SupplierBalance::class);
     }
     /**
      * The attributes that should be appended.
      *
      * @var array
      */
-    protected $appends = ['avatar_url'];
+    protected $appends = [];
 
     /**
      * The attributes that should be hidden for serialization.
@@ -62,7 +62,10 @@ class Supplier extends Model
      */
     public function getAvatarUrlAttribute()
     {
-        return asset("storage/{$this->attributes['avatar']}");
+        if (isset($this->attributes['avatar']) && $this->attributes['avatar']) {
+            return asset("storage/{$this->attributes['avatar']}");
+        }
+        return asset('dashboard-assets/img/default-avatar.png');
     }
 
     /**

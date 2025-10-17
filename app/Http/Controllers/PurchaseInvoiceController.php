@@ -6,6 +6,7 @@ use App\Models\PurchaseInvoice;
 use App\Models\PurchaseInvoiceItem;
 use App\Models\Product;
 use App\Models\Customer;
+use App\Models\Supplier;
 use App\Models\ProductPriceHistory;
 use App\Models\CashboxTransaction;
 use App\Models\User;
@@ -51,7 +52,7 @@ class PurchaseInvoiceController extends Controller
         $purchaseInvoices = $query->paginate(15);
 
         // Get suppliers for filter dropdown
-        $suppliers = Customer::where('is_supplier', true)
+        $suppliers = Supplier::where('is_active', true)
             ->select('id', 'name')
             ->orderBy('name')
             ->get();
@@ -60,6 +61,7 @@ class PurchaseInvoiceController extends Controller
             'purchaseInvoices' => $purchaseInvoices,
             'suppliers' => $suppliers,
             'filters' => $request->only(['search', 'supplier_id', 'date_from', 'date_to']),
+            'translations' => __('messages'),
         ]);
     }
 
@@ -68,7 +70,7 @@ class PurchaseInvoiceController extends Controller
      */
     public function create()
     {
-        $suppliers = Customer::where('is_supplier', true)
+        $suppliers = Supplier::where('is_active', true)
             ->select('id', 'name', 'phone')
             ->orderBy('name')
             ->get();
@@ -81,6 +83,7 @@ class PurchaseInvoiceController extends Controller
         return Inertia::render('PurchaseInvoices/Create', [
             'suppliers' => $suppliers,
             'products' => $products,
+            'translations' => __('messages'),
         ]);
     }
 
@@ -90,7 +93,7 @@ class PurchaseInvoiceController extends Controller
     public function store(Request $request)
     {
         $request->validate([
-            'supplier_id' => 'nullable|exists:customers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
@@ -211,7 +214,7 @@ class PurchaseInvoiceController extends Controller
             return response()->json([]);
         }
 
-        $suppliers = Customer::where('is_supplier', true)
+        $suppliers = Supplier::where('is_active', true)
             ->where('name', 'like', "%{$query}%")
             ->select('id', 'name', 'phone')
             ->limit(10)

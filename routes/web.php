@@ -8,6 +8,7 @@ use App\Http\Controllers\UsersController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomersController;
+use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\BoxesController;
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
@@ -50,9 +51,9 @@ Route::middleware(['auth', 'active.session'])->group(function () {
   Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('activate');
   Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update'); 
 
-  Route::resource('suppliers', CustomersController::class);
-  Route::post('suppliers/{supplier}/activate', [CustomersController::class, 'activate'])->name('activate');
-  Route::post('suppliers/{supplier}', [CustomersController::class, 'update'])->name('suppliers.update');
+  Route::resource('suppliers', SuppliersController::class);
+  Route::post('suppliers/{supplier}/activate', [SuppliersController::class, 'activate'])->name('suppliers.activate');
+  Route::post('suppliers/{supplier}', [SuppliersController::class, 'update'])->name('suppliers.update');
 
 
     // Decoration routes
