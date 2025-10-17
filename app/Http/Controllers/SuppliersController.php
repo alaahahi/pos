@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreSupplierRequest;
 use App\Http\Requests\UpdateSupplierRequest;
+use App\Services\LogService;
 
 class SuppliersController extends Controller
 {
@@ -91,6 +92,16 @@ class SuppliersController extends Controller
             'currency_preference' => 'dinar', // Default preference
             'last_transaction_date' => now(), // Current date
         ]);
+
+        // Log supplier creation
+        LogService::createLog(
+            'Supplier',
+            'Created',
+            $supplier->id,
+            [],
+            $supplier->toArray(),
+            'success'
+        );
     
         return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_saved_successfully'));
@@ -112,6 +123,7 @@ class SuppliersController extends Controller
      */
     public function update(UpdateSupplierRequest $request, Supplier $supplier)
     {
+        $originalData = $supplier->getOriginal();
         // Check if an avatar file is uploaded and store it
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
@@ -120,6 +132,16 @@ class SuppliersController extends Controller
 
         // Update supplier information
         $supplier->update($request->validated());
+
+        // Log supplier update
+        LogService::createLog(
+            'Supplier',
+            'Updated',
+            $supplier->id,
+            $originalData,
+            $supplier->toArray(),
+            'warning'
+        );
 
         return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_updated_successfully'));
@@ -130,9 +152,20 @@ class SuppliersController extends Controller
      */
     public function activate(Supplier $supplier)
     {
+        $originalData = $supplier->getOriginal();
         $supplier->update([
             'is_active' => !$supplier->is_active,
         ]);
+
+        // Log status toggle
+        LogService::createLog(
+            'Supplier',
+            'Status Toggled',
+            $supplier->id,
+            $originalData,
+            $supplier->toArray(),
+            'info'
+        );
 
         return redirect()->route('suppliers.index')
             ->with('success', __('messages.status_updated_successfully'));
@@ -143,7 +176,19 @@ class SuppliersController extends Controller
      */
     public function destroy(Supplier $supplier)
     {
+        $originalData = $supplier->toArray();
+        $id = $supplier->id;
         $supplier->delete();
+
+        // Log deletion
+        LogService::createLog(
+            'Supplier',
+            'Deleted',
+            $id,
+            $originalData,
+            [],
+            'danger'
+        );
 
         return redirect()->route('suppliers.index')
             ->with('success', __('messages.data_deleted_successfully'));

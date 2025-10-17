@@ -13,6 +13,7 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Services\LogService;
 class ProductController extends Controller
 {
 
@@ -149,6 +150,16 @@ class ProductController extends Controller
         
         // إنشاء المنتج
         $product = Product::create($validated);
+
+        // Log product creation (redundant with model event but ensures coverage when events disabled)
+        LogService::createLog(
+            'Product',
+            'Created',
+            $product->id,
+            [],
+            $product->toArray(),
+            'success'
+        );
         
         // مزامنة الصلاحيات إذا وُجدت
         if ($request->has('selectedRoles')) {
@@ -190,6 +201,7 @@ class ProductController extends Controller
     public function update(UpdateProductRequest $request, Product $product)
     {
         // التحقق من البيانات
+        $originalData = $product->getOriginal();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'model' => 'nullable|string|max:100',
@@ -228,6 +240,16 @@ class ProductController extends Controller
         
         // تحديث المنتج
         $product->update($validated);
+
+        // Log product update (redundant with model event but ensures coverage when events disabled)
+        LogService::createLog(
+            'Product',
+            'Updated',
+            $product->id,
+            $originalData,
+            $product->toArray(),
+            'warning'
+        );
         
         // مزامنة الصلاحيات إذا وُجدت
         if ($request->has('selectedRoles')) {
@@ -241,10 +263,19 @@ class ProductController extends Controller
 
     public function activate(Product $product)
     {
+        $originalData = $product->getOriginal();
         $product->update(
             [
                 'is_active' => ($product->is_active) ? 0 : 1
             ]
+        );
+        LogService::createLog(
+            'Product',
+            'Status Toggled',
+            $product->id,
+            $originalData,
+            $product->toArray(),
+            'info'
         );
         return redirect()->route('products.index')
             ->with('success', 'product Status Updated successfully!');
@@ -252,18 +283,36 @@ class ProductController extends Controller
 
     public function toggleFeatured(Product $product)
     {
+        $originalData = $product->getOriginal();
         $product->update([
             'is_featured' => !$product->is_featured
         ]);
+        LogService::createLog(
+            'Product',
+            'Featured Toggled',
+            $product->id,
+            $originalData,
+            $product->toArray(),
+            'info'
+        );
         
         return redirect()->back()->with('success', 'تم تحديث حالة المنتج المميز بنجاح');
     }
 
     public function toggleBestSelling(Product $product)
     {
+        $originalData = $product->getOriginal();
         $product->update([
             'is_best_selling' => !$product->is_best_selling
         ]);
+        LogService::createLog(
+            'Product',
+            'BestSelling Toggled',
+            $product->id,
+            $originalData,
+            $product->toArray(),
+            'info'
+        );
         
         return redirect()->back()->with('success', 'تم تحديث حالة المنتج الأكثر مبيعاً بنجاح');
     }
@@ -279,7 +328,17 @@ class ProductController extends Controller
         }
     
         // حذف المنتج حذفًا ناعمًا
+        $originalData = $product->toArray();
+        $id = $product->id;
         $product->delete();
+        LogService::createLog(
+            'Product',
+            'Deleted',
+            $id,
+            $originalData,
+            [],
+            'danger'
+        );
     
         return redirect()->route('products.index')
             ->with('success', __('messages.data_deleted_successfully'));

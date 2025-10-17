@@ -135,6 +135,9 @@ Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [Deco
     ->middleware('auth')
     ->only(['index']);
 
+  // Frontend interaction logs endpoint
+  Route::post('logs', [LogController::class, 'store'])->name('logs.store');
+
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
   Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update');
