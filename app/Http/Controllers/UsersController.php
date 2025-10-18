@@ -81,6 +81,8 @@ class UsersController extends Controller
             'email' => $request->email,
             'password' => bcrypt($request->password),  // Hash the password
             'avatar' => $request->avatar ? $request->avatar : 'avatars/default_avatar.png',
+            'commission_enabled' => (bool) $request->get('commission_enabled', false),
+            'commission_rate_percent' => $request->get('commission_rate_percent', 0),
         ]);
     
         // Handle avatar upload if a file is provided
@@ -150,7 +152,10 @@ class UsersController extends Controller
         }
     
         // Update user information, including avatar and other fields, in a single save operation
-        $user->update($request->validated());
+        $validated = $request->validated();
+        $validated['commission_enabled'] = (bool) $request->get('commission_enabled', $user->commission_enabled);
+        $validated['commission_rate_percent'] = $request->get('commission_rate_percent', $user->commission_rate_percent);
+        $user->update($validated);
     
         // Sync roles if any
         $user->syncRoles($request->selectedRoles);

@@ -65,6 +65,21 @@
                   </div>
                 </div>
                 <div class="row mb-3">
+                  <label class="col-sm-2 col-form-label">عمولة الديكورات</label>
+                  <div class="col-sm-10">
+                    <div class="form-check form-switch mb-2">
+                      <input class="form-check-input" type="checkbox" v-model="form.commission_enabled" id="commissionEnabled">
+                      <label class="form-check-label" for="commissionEnabled">تفعيل نسبة العمولة</label>
+                    </div>
+                    <div class="input-group">
+                      <input type="number" step="0.01" min="0" max="100" class="form-control" v-model="form.commission_rate_percent" :disabled="!form.commission_enabled" placeholder="% نسبة العمولة (مثال: 5)">
+                      <span class="input-group-text">%</span>
+                    </div>
+                    <small class="text-muted">تحسب العمولة من سعر المبيع النهائي للديكور.</small>
+                  </div>
+                </div>
+
+                <div class="row mb-3">
                   <label for="inputNumber" class="col-sm-2 col-form-label"> {{ translations.avatar }}</label>
                   <div class="col-sm-10">
                     <input type="file" @input="form.avatar = $event.target.files[0]" />
@@ -123,6 +138,8 @@ const form = useForm({
   password: "",
   selectedRoles: "",
   avatar: null,
+  commission_enabled: false,
+  commission_rate_percent: 0,
 })
 
 

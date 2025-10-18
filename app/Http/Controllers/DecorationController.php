@@ -14,6 +14,7 @@ use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Models\EmployeeCommission;
 
 class DecorationController extends Controller
 {
@@ -915,6 +916,40 @@ class DecorationController extends Controller
             $order->update($data);
         }
 
+        // If order completed and has assigned employee with commission enabled, accrue commission
+        if (($request->status === 'completed' || $order->fresh()->status === 'completed') && $order->assigned_employee_id) {
+            $employee = \App\Models\User::find($order->assigned_employee_id);
+            if ($employee && $employee->commission_enabled && $employee->commission_rate_percent > 0) {
+                $rate = (float) $employee->commission_rate_percent; // percent
+                $baseAmount = (float) $order->total_price;
+                $commissionAmount = round($baseAmount * ($rate / 100), 2);
+                $currencyCode = $order->currency === 'dollar' ? 'USD' : 'IQD';
+
+                // Determine period month as first day of completed month
+                $completedAt = $order->completed_at ?: now();
+                $periodMonth = $completedAt->copy()->startOfMonth()->toDateString();
+
+                EmployeeCommission::updateOrCreate(
+                    [
+                        'user_id' => $employee->id,
+                        'decoration_order_id' => $order->id,
+                    ],
+                    [
+                        'commission_rate_percent' => $rate,
+                        'base_amount' => $baseAmount,
+                        'commission_amount' => $commissionAmount,
+                        'currency' => $currencyCode,
+                        'status' => 'accrued',
+                        'period_month' => $periodMonth,
+                        'meta' => [
+                            'order_currency' => $order->currency,
+                            'auto_generated' => true,
+                        ],
+                    ]
+                );
+            }
+        }
+
         // Create payment record if paid_amount is provided and greater than 0
         if ($request->has('paid_amount') && $request->paid_amount && $request->paid_amount > 0) {
             $this->createPaymentRecord($order, $request->paid_amount, $request->notes);
@@ -1434,8 +1469,13 @@ class DecorationController extends Controller
     {
         $activeTab = $request->get('tab', 'current');
         
-        // Get current month
+        // Get current month and calculate live data for display
         $currentMonth = MonthlyAccount::getCurrentMonth();
+        try {
+            $currentMonth->calculateMonthlyData();
+        } catch (\Throwable $e) {
+            \Log::warning('Failed to calculate current month data', ['error' => $e->getMessage()]);
+        }
         
         // Get monthly accounts
         $monthlyAccounts = MonthlyAccount::orderBy('year', 'desc')
@@ -1595,6 +1635,55 @@ class DecorationController extends Controller
                 'monthly_account_id' => $monthlyAccount->id,
             ]);
 
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * Payout accrued employee commissions for a given month and mark them as paid.
+     */
+    public function payoutMonthlyCommissions(Request $request)
+    {
+        $request->validate([
+            'year' => 'required|integer|min:2020|max:2100',
+            'month' => 'required|integer|min:1|max:12',
+        ]);
+
+        $year = (int) $request->year;
+        $month = (int) $request->month;
+        $periodDate = now()->setYear($year)->setMonth($month)->startOfMonth();
+
+        DB::beginTransaction();
+        try {
+            $commissions = EmployeeCommission::whereDate('period_month', $periodDate->toDateString())
+                ->where('status', 'accrued')
+                ->get();
+
+            foreach ($commissions as $commission) {
+                $commission->update([
+                    'status' => 'paid',
+                    'paid_at' => now(),
+                    'paid_by' => auth()->id(),
+                ]);
+            }
+
+            // Recalculate monthly data to reflect zero accrued commissions
+            $monthlyAccount = MonthlyAccount::where('year', $year)->where('month', $month)->first();
+            if ($monthlyAccount) {
+                $monthlyAccount->calculateMonthlyData()->save();
+            }
+
+            DB::commit();
+            return response()->json([
+                'success' => true,
+                'message' => 'تم دفع العمولات وخصمها من الحسابات للشهر المحدد',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Payout commissions failed', ['error' => $e->getMessage()]);
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

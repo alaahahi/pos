@@ -84,6 +84,14 @@
                                 <label>إجمالي المدفوعات المستلمة:</label>
                                 <span class="value">{{ formatCurrency(currentMonth.total_payments_received) }}</span>
                               </div>
+                              <div class="info-item">
+                                <label>عمولات الموظفين (دولار):</label>
+                                <span class="value text-danger">{{ formatCurrency(currentMonth.total_commissions_usd, 'dollar') }}</span>
+                              </div>
+                              <div class="info-item">
+                                <label>عمولات الموظفين (دينار):</label>
+                                <span class="value text-danger">{{ formatCurrency(currentMonth.total_commissions_iqd, 'dinar') }}</span>
+                              </div>
                             </div>
                             <div class="col-md-6">
                               <div class="info-item">
@@ -114,6 +122,24 @@
                                 <div class="info-item">
                                   <label>الدينار:</label>
                                   <span class="value">{{ formatCurrency(currentMonth.opening_balance_dinar, 'dinar') }}</span>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div class="mt-4">
+                            <h6>عمولات الموظفين للشهر:</h6>
+                            <div class="row">
+                              <div class="col-md-6">
+                                <div class="info-item">
+                                  <label>بالدولار:</label>
+                                  <span class="value text-danger">{{ formatCurrency(currentMonth.total_commissions_usd, 'dollar') }}</span>
+                                </div>
+                              </div>
+                              <div class="col-md-6">
+                                <div class="info-item">
+                                  <label>بالدينار:</label>
+                                  <span class="value text-danger">{{ formatCurrency(currentMonth.total_commissions_iqd, 'dinar') }}</span>
                                 </div>
                               </div>
                             </div>
@@ -150,6 +176,17 @@
                           <div v-else class="alert alert-info">
                             <i class="bi bi-info-circle"></i>
                             الشهر مغلق - لا يمكن إجراء تعديلات
+                          </div>
+                          <div class="mt-3">
+                            <h6>دفع عمولات الموظفين</h6>
+                            <p class="text-muted">يمكن دفع العمولات المستحقة وتصفيتها للشهر القادم.</p>
+                            <button 
+                              class="btn btn-outline-success w-100"
+                              @click="payoutCommissions(currentMonth.year, currentMonth.month)"
+                              :disabled="currentMonth.status !== 'open'"
+                            >
+                              <i class="bi bi-cash-coin"></i> دفع العمولات للشهر
+                            </button>
                           </div>
                         </div>
                       </div>
@@ -387,7 +424,7 @@ const months = [
 ];
 
 const formatCurrency = (amount, currency = 'dollar') => {
-  if (!amount) return '0.00';
+  if (amount === undefined || amount === null) return '0.00';
   const symbol = currency === 'dollar' ? '$' : 'د.ع';
   return `${parseFloat(amount).toFixed(2)} ${symbol}`;
 };
@@ -446,6 +483,30 @@ const recalculateData = async (monthlyAccountId) => {
   } catch (error) {
     console.error('Error recalculating data:', error);
     alert('حدث خطأ أثناء إعادة حساب البيانات');
+  }
+};
+
+const payoutCommissions = async (year, month) => {
+  try {
+    const response = await fetch(route('decoration.monthly.payoutCommissions'), {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+      },
+      body: JSON.stringify({ year, month }),
+    });
+
+    const data = await response.json();
+    if (data.success) {
+      alert('تم دفع العمولات بنجاح');
+      router.reload();
+    } else {
+      alert(data.message || 'حدث خطأ أثناء دفع العمولات');
+    }
+  } catch (error) {
+    console.error('Error paying out commissions:', error);
+    alert('حدث خطأ أثناء دفع العمولات');
   }
 };
 
