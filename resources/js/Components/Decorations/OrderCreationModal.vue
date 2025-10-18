@@ -219,6 +219,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const props = defineProps({
   decoration: Object,
@@ -344,6 +345,12 @@ const submitOrder = async () => {
       onSuccess: () => {
         processing.value = false
         errors.value = {}
+      axios.post('/logs', {
+        module_name: 'Decoration Order',
+        action: 'Order Creation Modal Submit',
+        affected_record_id: null,
+        updated_data: form
+      }).catch(() => {})
         emit('success')
       },
       onError: (errs) => {

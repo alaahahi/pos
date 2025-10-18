@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
+use App\Services\LogService;
 
 class CustomersController extends Controller
 {
@@ -91,6 +92,16 @@ class CustomersController extends Controller
             'currency_preference' => 'dinar', // Default preference
             'last_transaction_date' => now(), // Current date
         ]);
+
+        // Log customer creation
+        LogService::createLog(
+            'Customer',
+            'Created',
+            $customer->id,
+            [],
+            $customer->toArray(),
+            'success'
+        );
     
         return redirect()->route('customers.index')
             ->with('success', __('messages.data_saved_successfully'));
@@ -112,6 +123,7 @@ class CustomersController extends Controller
      */
     public function update(UpdateCustomerRequest $request, Customer $customer)
     {
+        $originalData = $customer->getOriginal();
         // Check if an avatar file is uploaded and store it
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
@@ -120,6 +132,16 @@ class CustomersController extends Controller
 
         // Update customer information
         $customer->update($request->validated());
+
+        // Log customer update
+        LogService::createLog(
+            'Customer',
+            'Updated',
+            $customer->id,
+            $originalData,
+            $customer->toArray(),
+            'warning'
+        );
 
         return redirect()->route('customers.index')
             ->with('success', __('messages.data_updated_successfully'));
@@ -130,9 +152,20 @@ class CustomersController extends Controller
      */
     public function activate(Customer $customer)
     {
+        $originalData = $customer->getOriginal();
         $customer->update([
             'is_active' => !$customer->is_active,
         ]);
+
+        // Log status toggle
+        LogService::createLog(
+            'Customer',
+            'Status Toggled',
+            $customer->id,
+            $originalData,
+            $customer->toArray(),
+            'info'
+        );
 
         return redirect()->route('customers.index')
             ->with('success', __('messages.status_updated_successfully'));
@@ -143,7 +176,19 @@ class CustomersController extends Controller
      */
     public function destroy(Customer $customer)
     {
+        $originalData = $customer->toArray();
+        $id = $customer->id;
         $customer->delete();
+
+        // Log deletion
+        LogService::createLog(
+            'Customer',
+            'Deleted',
+            $id,
+            $originalData,
+            [],
+            'danger'
+        );
 
         return redirect()->route('customers.index')
             ->with('success', __('messages.data_deleted_successfully'));

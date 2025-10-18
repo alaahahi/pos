@@ -13,6 +13,7 @@ use App\Models\UserType;
 use App\Models\User;
 use App\Models\Transactions;
 use Carbon\Carbon;
+use App\Services\LogService;
 class BoxesController extends Controller
 {
     public function __construct(AccountingController $accountingController)
@@ -158,6 +159,21 @@ class BoxesController extends Controller
                 '$',
                 $request->date
             );
+
+            if ($transaction) {
+                LogService::createLog(
+                    'Box',
+                    'Deposit',
+                    $transaction->id,
+                    [],
+                    [
+                        'amount' => $request->amountDollar,
+                        'currency' => '$',
+                        'note' => $request->amountNote ?? ''
+                    ],
+                    'success'
+                );
+            }
         }
         if($request->amountDinar > 0){
             $transaction = $this->accountingController->increaseWallet(
@@ -171,6 +187,21 @@ class BoxesController extends Controller
                 'IQD',
                 $request->date
             );
+
+            if ($transaction) {
+                LogService::createLog(
+                    'Box',
+                    'Deposit',
+                    $transaction->id,
+                    [],
+                    [
+                        'amount' => $request->amountDinar,
+                        'currency' => 'IQD',
+                        'note' => $request->amountNote ?? ''
+                    ],
+                    'success'
+                );
+            }
         }
  
         
@@ -195,6 +226,21 @@ class BoxesController extends Controller
                 '$',
                 $request->date
             );
+
+            if ($transaction) {
+                LogService::createLog(
+                    'Box',
+                    'Withdraw',
+                    $transaction->id,
+                    [],
+                    [
+                        'amount' => $request->amountDollar,
+                        'currency' => '$',
+                        'note' => $request->amountNote ?? ''
+                    ],
+                    'warning'
+                );
+            }
         }
         if($request->amountDinar > 0){
             $transaction = $this->accountingController->decreaseWallet(
@@ -208,6 +254,21 @@ class BoxesController extends Controller
                 'IQD',
                 $request->date
             );
+
+            if ($transaction) {
+                LogService::createLog(
+                    'Box',
+                    'Withdraw',
+                    $transaction->id,
+                    [],
+                    [
+                        'amount' => $request->amountDinar,
+                        'currency' => 'IQD',
+                        'note' => $request->amountNote ?? ''
+                    ],
+                    'warning'
+                );
+            }
         }
  
         

@@ -151,6 +151,7 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const props = defineProps({
   decoration: Object,
@@ -195,6 +196,12 @@ const submitForm = () => {
   router.patch(route('decorations.update', props.decoration.id), formData, {
     onSuccess: () => {
       processing.value = false
+      axios.post('/logs', {
+        module_name: 'Decoration',
+        action: 'Edit Decoration Modal Submit',
+        affected_record_id: props.decoration.id,
+        updated_data: formData
+      }).catch(() => {})
       emit('success')
     },
     onError: () => {

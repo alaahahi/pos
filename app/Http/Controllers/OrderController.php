@@ -16,6 +16,7 @@ use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\DB;
 use App\Http\Controllers\AccountingController;
+use App\Services\LogService;
 
 
 class OrderController extends Controller
@@ -174,7 +175,7 @@ class OrderController extends Controller
              
              $finalAmount = $validated['total_amount'] - $discountAmount;
              
-             // إنشاء الطلب
+            // إنشاء الطلب
              $order = Order::create([
                  'customer_id' => $validated['customer_id'],
                  'payment_method' => 'cash',
@@ -230,8 +231,15 @@ class OrderController extends Controller
                 );
             }
 
-            // تسجيل العملية في السجلات
-            Log::info('Order created', ['order_id' => $order->id, 'customer_id' => $order->customer_id]);
+            // تسجيل العملية في logs table
+            LogService::createLog(
+                'Order',
+                'Created',
+                $order->id,
+                [],
+                $order->toArray(),
+                'success'
+            );
     
             DB::commit();
      
@@ -247,7 +255,7 @@ class OrderController extends Controller
              return redirect()->route('orders.index')->with('success', __('messages.data_saved_successfully'));
          } catch (\Exception $e) {
              DB::rollBack();
-             Log::error('Order creation failed', ['error' => $e->getMessage()]);
+            Log::error('Order creation failed', ['error' => $e->getMessage()]);
      
              if ($request->expectsJson()) {
                  return response()->json(['error' => $e->getMessage()], 500);
@@ -447,7 +455,15 @@ class OrderController extends Controller
             // حفظ التغييرات
             DB::commit();
     
-            Log::info('Order updated successfully', ['order_id' => $order->id]);
+            // تسجيل عملية التحديث
+            LogService::createLog(
+                'Order',
+                'Updated',
+                $order->id,
+                $oldItems->toArray(),
+                $order->fresh()->toArray(),
+                'warning'
+            );
     
             if ($request->expectsJson()) {
                 return response()->json([
@@ -514,11 +530,15 @@ class OrderController extends Controller
 
             DB::commit();
 
-            // Log
-            Log::info('Order deleted, stock restored, and payments refunded', [
-                'order_id' => $order->id,
-                'refunded_amount' => $order->total_paid,
-            ]);
+            // Log deletion
+            LogService::createLog(
+                'Order',
+                'Deleted',
+                $order->id,
+                $order->toArray(),
+                [],
+                'danger'
+            );
 
             return redirect()->route('orders.index')
                 ->with('success', __('messages.data_deleted_successfully'));

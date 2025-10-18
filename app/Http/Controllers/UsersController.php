@@ -8,6 +8,7 @@ use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Services\LogService;
 
 class UsersController extends Controller
 {
@@ -96,6 +97,16 @@ class UsersController extends Controller
             $user->syncRoles($request->selectedRoles);
         }
     
+        // Log user creation
+        LogService::createLog(
+            'User',
+            'Created',
+            $user->id,
+            [],
+            $user->toArray(),
+            'success'
+        );
+    
         // Redirect with success message
         return redirect()->route('users.index')
             ->with('success', __('messages.data_saved_successfully'));
@@ -131,7 +142,7 @@ class UsersController extends Controller
     public function update(UpdateUserRequest $request, User $user)
     {
         // The request is automatically validated using the UpdateUserRequest rules
-    
+        $originalData = $user->getOriginal();
         // Check if an avatar file is uploaded and store it
         if ($request->hasFile('avatar')) {
             $path = $request->file('avatar')->store('avatars', 'public');
@@ -143,6 +154,16 @@ class UsersController extends Controller
     
         // Sync roles if any
         $user->syncRoles($request->selectedRoles);
+
+        // Log user update
+        LogService::createLog(
+            'User',
+            'Updated',
+            $user->id,
+            $originalData,
+            $user->toArray(),
+            'warning'
+        );
     
         return redirect()->route('users.index')
             ->with('success', __('messages.data_updated_successfully'));
@@ -151,10 +172,20 @@ class UsersController extends Controller
 
     public function activate(User $user)
     {
+        $originalData = $user->getOriginal();
         $user->update(
             [
                 'is_active' => ($user->is_active) ? 0 : 1
             ]
+        );
+        // Log status toggle
+        LogService::createLog(
+            'User',
+            'Status Toggled',
+            $user->id,
+            $originalData,
+            $user->toArray(),
+            'info'
         );
         return redirect()->route('users.index')
             ->with('success', 'user Status Updated successfully!');
@@ -164,7 +195,18 @@ class UsersController extends Controller
      */
     public function destroy(User $user)
     {
+        $originalData = $user->toArray();
+        $id = $user->id;
         $user->delete();
+        // Log deletion
+        LogService::createLog(
+            'User',
+            'Deleted',
+            $id,
+            $originalData,
+            [],
+            'danger'
+        );
         return redirect()->route('users.index')
         ->with('success',  __('messages.data_deleted_successfully'));
     }

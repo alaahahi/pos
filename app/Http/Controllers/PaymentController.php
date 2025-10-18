@@ -10,6 +10,7 @@ use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use App\Services\LogService;
 
 class PaymentController extends Controller
 {
@@ -208,6 +209,21 @@ class PaymentController extends Controller
                 'type' => $request->type,
             ]);
 
+            // Persist to logs table
+            LogService::createLog(
+                'Payment',
+                'Created',
+                $payment->id,
+                [],
+                [
+                    'customer_id' => $request->customer_id,
+                    'amount' => $request->amount,
+                    'currency' => $request->currency,
+                    'type' => $request->type,
+                ],
+                'success'
+            );
+
             return redirect()->route('payments.index')
                 ->with('success', 'تم إنشاء الدفعة بنجاح');
 
@@ -284,6 +300,19 @@ class PaymentController extends Controller
             'type' => $request->type,
         ]);
 
+        LogService::createLog(
+            'Payment',
+            'Updated',
+            $payment->id,
+            [],
+            [
+                'amount' => $request->amount,
+                'currency' => $request->currency,
+                'type' => $request->type,
+            ],
+            'warning'
+        );
+
         return redirect()->route('payments.index')
             ->with('success', 'تم تحديث الدفعة بنجاح');
     }
@@ -293,11 +322,22 @@ class PaymentController extends Controller
      */
     public function destroy(Box $payment)
     {
+        $original = $payment->toArray();
+        $id = $payment->id;
         $payment->delete();
 
         Log::info('Payment deleted', [
-            'payment_id' => $payment->id,
+            'payment_id' => $id,
         ]);
+
+        LogService::createLog(
+            'Payment',
+            'Deleted',
+            $id,
+            $original,
+            [],
+            'danger'
+        );
 
         return redirect()->route('payments.index')
             ->with('success', 'تم حذف الدفعة بنجاح');

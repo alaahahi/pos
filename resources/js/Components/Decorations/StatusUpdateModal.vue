@@ -91,6 +91,7 @@
 <script setup>
 import { ref, reactive } from 'vue'
 import { router } from '@inertiajs/vue3'
+import axios from 'axios'
 
 const props = defineProps({
   order: Object,
@@ -148,6 +149,12 @@ const updateStatus = () => {
   router.patch(route('decoration.orders.status', props.order.id), formData, {
     onSuccess: () => {
       processing.value = false
+      axios.post('/logs', {
+        module_name: 'Decoration Order',
+        action: 'Status Modal Submit',
+        affected_record_id: props.order.id,
+        updated_data: formData
+      }).catch(() => {})
       errors.value = {}
       emit('success')
     },
