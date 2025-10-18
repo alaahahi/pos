@@ -25,6 +25,8 @@ class UpdateUserRequest extends FormRequest
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $this->user->id, // Exclude current user's email
             'password' => 'nullable|string|min:8',
+            'commission_enabled' => 'nullable|boolean',
+            'commission_rate_percent' => 'nullable|numeric|min:0|max:100',
         ];
     }
 

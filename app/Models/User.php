@@ -30,7 +30,9 @@ class User extends Authenticatable
         'created_at',
         'is_active',
         'avatar',
-        'updated_at'
+        'updated_at',
+        'commission_enabled',
+        'commission_rate_percent'
     ];
 
     protected $appends = ['avatar_url'];
