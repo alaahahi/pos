@@ -26,6 +26,8 @@ class StoreUserRequest extends FormRequest
             'email' => 'required|email|unique:users,email',
             'password' => 'required|string|min:8',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048', // Optional avatar upload validation
+            'commission_enabled' => 'nullable|boolean',
+            'commission_rate_percent' => 'nullable|numeric|min:0|max:100',
         ];
     }
 

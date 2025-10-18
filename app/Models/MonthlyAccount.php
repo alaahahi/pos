@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use App\Models\EmployeeCommission;
 
 class MonthlyAccount extends Model
 {
@@ -126,9 +127,23 @@ class MonthlyAccount extends Model
         $this->total_balance_dinar = $deposits->where('currency', 'IQD')->sum('amount') - 
                                     $withdrawals->where('currency', 'IQD')->sum('amount');
 
-        // Calculate net profit
-        $this->net_profit_dollar = $this->total_payments_received_usd - $this->total_balance_dollar;
-        $this->net_profit_dinar = $this->total_payments_received_iqd - $this->total_balance_dinar;
+        // Calculate employee commissions for the month
+        $periodDate = $startDate->copy()->toDateString();
+        $commissionsUsd = EmployeeCommission::whereDate('period_month', $periodDate)
+            ->where('status', 'accrued')
+            ->where('currency', 'USD')
+            ->sum('commission_amount');
+        $commissionsIqd = EmployeeCommission::whereDate('period_month', $periodDate)
+            ->where('status', 'accrued')
+            ->where('currency', 'IQD')
+            ->sum('commission_amount');
+
+        $this->total_commissions_usd = $commissionsUsd;
+        $this->total_commissions_iqd = $commissionsIqd;
+
+        // Calculate net profit (deduct commissions as expenses)
+        $this->net_profit_dollar = ($this->total_payments_received_usd - $this->total_balance_dollar) - $this->total_commissions_usd;
+        $this->net_profit_dinar = ($this->total_payments_received_iqd - $this->total_balance_dinar) - $this->total_commissions_iqd;
 
         return $this;
     }

@@ -93,6 +93,7 @@ Route::post('/decoration-monthly-accounting/close', [DecorationController::class
 Route::get('/decoration-monthly-accounting/report', [DecorationController::class, 'getMonthlyReport'])->name('decoration.monthly.report');
 Route::put('/decoration-monthly-accounting/{monthlyAccount}', [DecorationController::class, 'updateMonthlyAccount'])->name('decoration.monthly.update');
 Route::post('/decoration-monthly-accounting/{monthlyAccount}/recalculate', [DecorationController::class, 'recalculateMonthlyData'])->name('decoration.monthly.recalculate');
+Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationController::class, 'payoutMonthlyCommissions'])->name('decoration.monthly.payoutCommissions');
 
 
 
