@@ -916,25 +916,28 @@ class DecorationController extends Controller
             $order->update($data);
         }
 
-        // If order completed and has assigned employee with commission enabled, accrue commission
+        // If order completed and has assigned employee with commission enabled, accrue commission (only once)
         if (($request->status === 'completed' || $order->fresh()->status === 'completed') && $order->assigned_employee_id) {
             $employee = \App\Models\User::find($order->assigned_employee_id);
             if ($employee && $employee->commission_enabled && $employee->commission_rate_percent > 0) {
-                $rate = (float) $employee->commission_rate_percent; // percent
-                $baseAmount = (float) $order->total_price;
-                $commissionAmount = round($baseAmount * ($rate / 100), 2);
-                $currencyCode = $order->currency === 'dollar' ? 'USD' : 'IQD';
+                // Check if commission already exists for this order to prevent duplicates
+                $existingCommission = EmployeeCommission::where('user_id', $employee->id)
+                    ->where('decoration_order_id', $order->id)
+                    ->first();
 
-                // Determine period month as first day of completed month
-                $completedAt = $order->completed_at ?: now();
-                $periodMonth = $completedAt->copy()->startOfMonth()->toDateString();
+                if (!$existingCommission) {
+                    $rate = (float) $employee->commission_rate_percent; // percent
+                    $baseAmount = (float) $order->total_price;
+                    $commissionAmount = round($baseAmount * ($rate / 100), 2);
+                    $currencyCode = $order->currency === 'dollar' ? 'USD' : 'IQD';
 
-                EmployeeCommission::updateOrCreate(
-                    [
+                    // Determine period month as first day of completed month
+                    $completedAt = $order->completed_at ?: now();
+                    $periodMonth = $completedAt->copy()->startOfMonth()->toDateString();
+
+                    EmployeeCommission::create([
                         'user_id' => $employee->id,
                         'decoration_order_id' => $order->id,
-                    ],
-                    [
                         'commission_rate_percent' => $rate,
                         'base_amount' => $baseAmount,
                         'commission_amount' => $commissionAmount,
@@ -945,8 +948,8 @@ class DecorationController extends Controller
                             'order_currency' => $order->currency,
                             'auto_generated' => true,
                         ],
-                    ]
-                );
+                    ]);
+                }
             }
         }
 
@@ -1174,6 +1177,17 @@ class DecorationController extends Controller
             $order = DecorationOrder::findOrFail($request->order_id);
             $customer = $order->customer;
 
+            // Check if order is already fully paid to prevent overpayment
+            if ($order->paid_amount >= $order->total_price) {
+                throw new \Exception('الطلب مدفوع بالكامل بالفعل - لا يمكن إضافة دفعة أخرى');
+            }
+
+            // Ensure payment doesn't exceed remaining amount
+            $remainingAmount = $order->total_price - $order->paid_amount;
+            if ($request->amount > $remainingAmount) {
+                throw new \Exception('المبلغ المدخل أكبر من المبلغ المتبقي (' . number_format($remainingAmount, 2) . ')');
+            }
+
             // Convert currency to 3-letter code
             $currencyCode = $request->currency === 'dollar' ? 'USD' : 'IQD';
             
@@ -1189,7 +1203,7 @@ class DecorationController extends Controller
                     'notes' => $request->notes,
                     'payment_method' => $request->payment_method,
                     'decoration_order_id' => $order->id,
-                    'customer_id' => $customer->id,
+                    'customer_id' => $customer ? $customer->id : null,
                 ],
                 'morphed_id' => $order->id,
                 'morphed_type' => DecorationOrder::class,

@@ -270,7 +270,7 @@
                         </td>
                         <td>
                           <span class="badge" :class="payment.currency === 'USD' ? 'bg-primary' : 'bg-info'">
-                            {{ payment.currency }}
+                            {{ payment.currency === 'USD' ? 'دولار' : 'دينار' }}
                           </span>
                         </td>
                         <td>
