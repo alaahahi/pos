@@ -67,11 +67,11 @@ class ProductController extends Controller
         // Apply stock filter
         $ProductQuery->when($filters['stock'], function ($query, $stock) {
             if ($stock === 'low') {
-                return $query->where('quantity', '<=', 5)->where('quantity', '>', 0);
+                return $query->where('products.quantity', '<=', 5)->where('products.quantity', '>', 0);
             } elseif ($stock === 'out') {
-                return $query->where('quantity', 0);
+                return $query->where('products.quantity', 0);
             } elseif ($stock === 'available') {
-                return $query->where('quantity', '>', 5);
+                return $query->where('products.quantity', '>', 5);
             }
             return $query;
         });
