@@ -35,6 +35,10 @@ class SystemConfigController extends Controller
             'third_title_ar' => 'nullable|string|max:255',
             'third_title_kr' => 'nullable|string|max:255',
             'exchange_rate' => 'required|numeric|min:0',
+            'decoration_types' => 'nullable|array',
+            'decoration_types.*.value' => 'required|string',
+            'decoration_types.*.label_ar' => 'required|string',
+            'decoration_types.*.label_en' => 'nullable|string',
         ]);
 
         $config = SystemConfig::first();

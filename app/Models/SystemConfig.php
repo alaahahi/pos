@@ -20,10 +20,11 @@ class SystemConfig extends Model
         'third_title_ar',
         'third_title_kr',
         'exchange_rate',
+        'decoration_types',
     ];
     protected $casts = [
         'default_price_s' => 'array',
         'default_price_p' => 'array',
-
+        'decoration_types' => 'array',
     ];
 }

@@ -105,6 +105,7 @@
             <CreateDecorationForm 
               :translations="translations"
               :exchangeRate="exchangeRate"
+              :decorationTypes="decorationTypes"
               @success="handleCreateSuccess"
               @cancel="showCreateModal = false"
             />
@@ -136,6 +137,10 @@ const props = defineProps({
   exchangeRate: {
     type: Number,
     default: 1500
+  },
+  decorationTypes: {
+    type: Array,
+    default: () => []
   },
   activeTabProp: {
     type: String,

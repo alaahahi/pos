@@ -223,13 +223,13 @@
                     <label class="form-label">{{ translations.decoration_type }} *</label>
                     <select class="form-select" v-model="createForm.type" required>
                       <option value="">اختر النوع</option>
-                      <option value="birthday">{{ translations.birthday }}</option>
-                      <option value="gender_reveal">{{ translations.gender_reveal }}</option>
-                      <option value="baby_shower">{{ translations.baby_shower }}</option>
-                      <option value="wedding">{{ translations.wedding }}</option>
-                      <option value="graduation">{{ translations.graduation }}</option>
-                      <option value="corporate">{{ translations.corporate }}</option>
-                      <option value="religious">{{ translations.religious }}</option>
+                      <option 
+                        v-for="type in decorationTypes" 
+                        :key="type.value" 
+                        :value="type.value"
+                      >
+                        {{ type.label_ar }}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -400,13 +400,13 @@
                     <label class="form-label">{{ translations.decoration_type }} *</label>
                     <select class="form-select" v-model="editForm.type" required>
                       <option value="">اختر النوع</option>
-                      <option value="birthday">{{ translations.birthday }}</option>
-                      <option value="gender_reveal">{{ translations.gender_reveal }}</option>
-                      <option value="baby_shower">{{ translations.baby_shower }}</option>
-                      <option value="wedding">{{ translations.wedding }}</option>
-                      <option value="graduation">{{ translations.graduation }}</option>
-                      <option value="corporate">{{ translations.corporate }}</option>
-                      <option value="religious">{{ translations.religious }}</option>
+                      <option 
+                        v-for="type in decorationTypes" 
+                        :key="type.value" 
+                        :value="type.value"
+                      >
+                        {{ type.label_ar }}
+                      </option>
                     </select>
                   </div>
                 </div>
@@ -632,7 +632,11 @@ const props = defineProps({
   decorations: Object,
   filters: Object,
   translations: Object,
-  customers: Array
+  customers: Array,
+  decorationTypes: {
+    type: Array,
+    default: () => []
+  }
 })
 
 // Modal states

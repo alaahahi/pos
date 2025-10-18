@@ -95,8 +95,18 @@ class DecorationController extends Controller
                 ->toArray()
         ];
 
-        // Get system config for exchange rate
+        // Get system config for exchange rate and decoration types
         $systemConfig = SystemConfig::first();
+        $decorationTypes = $systemConfig->decoration_types ?? [
+            ['value' => 'birthday', 'label_ar' => 'عيد ميلاد', 'label_en' => 'Birthday'],
+            ['value' => 'gender_reveal', 'label_ar' => 'تحديد جنس المولود', 'label_en' => 'Gender Reveal'],
+            ['value' => 'baby_shower', 'label_ar' => 'حفلة الولادة', 'label_en' => 'Baby Shower'],
+            ['value' => 'wedding', 'label_ar' => 'زفاف', 'label_en' => 'Wedding'],
+            ['value' => 'graduation', 'label_ar' => 'تخرج', 'label_en' => 'Graduation'],
+            ['value' => 'corporate', 'label_ar' => 'شركات', 'label_en' => 'Corporate'],
+            ['value' => 'religious', 'label_ar' => 'ديني', 'label_en' => 'Religious'],
+            ['value' => 'other', 'label_ar' => 'أخرى', 'label_en' => 'Other'],
+        ];
         
         return Inertia::render('Decorations/Dashboard', [
             'translations' => __('messages'),
@@ -107,6 +117,7 @@ class DecorationController extends Controller
             'analytics' => $analytics,
             'activeTabProp' => $activeTab,
             'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500,
+            'decorationTypes' => $decorationTypes,
             'filters' => $request->only(['search', 'type', 'currency', 'is_active', 'status', 'assigned_employee_id', 'event_date'])
         ]);
     }
@@ -135,11 +146,25 @@ class DecorationController extends Controller
             ->orderBy('name')
             ->get();
 
+        // Get system config for decoration types
+        $systemConfig = SystemConfig::first();
+        $decorationTypes = $systemConfig->decoration_types ?? [
+            ['value' => 'birthday', 'label_ar' => 'عيد ميلاد', 'label_en' => 'Birthday'],
+            ['value' => 'gender_reveal', 'label_ar' => 'تحديد جنس المولود', 'label_en' => 'Gender Reveal'],
+            ['value' => 'baby_shower', 'label_ar' => 'حفلة الولادة', 'label_en' => 'Baby Shower'],
+            ['value' => 'wedding', 'label_ar' => 'زفاف', 'label_en' => 'Wedding'],
+            ['value' => 'graduation', 'label_ar' => 'تخرج', 'label_en' => 'Graduation'],
+            ['value' => 'corporate', 'label_ar' => 'شركات', 'label_en' => 'Corporate'],
+            ['value' => 'religious', 'label_ar' => 'ديني', 'label_en' => 'Religious'],
+            ['value' => 'other', 'label_ar' => 'أخرى', 'label_en' => 'Other'],
+        ];
+
         return Inertia::render('Decorations/Index', [
             'translations' => __('messages'),
             'decorations' => $decorations,
             'customers' => $customers,
-            'filters' => $request->only(['search', 'type', 'is_active'])
+            'filters' => $request->only(['search', 'type', 'is_active']),
+            'decorationTypes' => $decorationTypes
         ]);
     }
 
@@ -148,10 +173,22 @@ class DecorationController extends Controller
      */
     public function create()
     {
-        // Get system config for exchange rate
+        // Get system config for exchange rate and decoration types
         $systemConfig = SystemConfig::first();
+        // Get decoration types from system config or use defaults
+        $decorationTypes = $systemConfig->decoration_types ?? [
+            ['value' => 'birthday', 'label_ar' => 'عيد ميلاد', 'label_en' => 'Birthday'],
+            ['value' => 'gender_reveal', 'label_ar' => 'تحديد جنس المولود', 'label_en' => 'Gender Reveal'],
+            ['value' => 'baby_shower', 'label_ar' => 'حفلة الولادة', 'label_en' => 'Baby Shower'],
+            ['value' => 'wedding', 'label_ar' => 'زفاف', 'label_en' => 'Wedding'],
+            ['value' => 'graduation', 'label_ar' => 'تخرج', 'label_en' => 'Graduation'],
+            ['value' => 'corporate', 'label_ar' => 'شركات', 'label_en' => 'Corporate'],
+            ['value' => 'religious', 'label_ar' => 'ديني', 'label_en' => 'Religious'],
+            ['value' => 'other', 'label_ar' => 'أخرى', 'label_en' => 'Other'],
+        ];
         
         return Inertia::render('Decorations/Create', [
+            'decorationTypes' => $decorationTypes,
             'translations' => [
                 'decorations' => 'الديكورات',
                 'create_decoration' => 'إضافة ديكور جديد',
@@ -294,8 +331,22 @@ class DecorationController extends Controller
         \Log::info('Decoration edit - youtube_links:', ['youtube_links' => $decoration->youtube_links]);
         \Log::info('Decoration edit - video_url:', ['video_url' => $decoration->video_url]);
         
+        // Get decoration types from system config
+        $systemConfig = SystemConfig::first();
+        $decorationTypes = $systemConfig->decoration_types ?? [
+            ['value' => 'birthday', 'label_ar' => 'عيد ميلاد', 'label_en' => 'Birthday'],
+            ['value' => 'gender_reveal', 'label_ar' => 'تحديد جنس المولود', 'label_en' => 'Gender Reveal'],
+            ['value' => 'baby_shower', 'label_ar' => 'حفلة الولادة', 'label_en' => 'Baby Shower'],
+            ['value' => 'wedding', 'label_ar' => 'زفاف', 'label_en' => 'Wedding'],
+            ['value' => 'graduation', 'label_ar' => 'تخرج', 'label_en' => 'Graduation'],
+            ['value' => 'corporate', 'label_ar' => 'شركات', 'label_en' => 'Corporate'],
+            ['value' => 'religious', 'label_ar' => 'ديني', 'label_en' => 'Religious'],
+            ['value' => 'other', 'label_ar' => 'أخرى', 'label_en' => 'Other'],
+        ];
+        
         return Inertia::render('Decorations/Edit', [
             'decoration' => $decoration,
+            'decorationTypes' => $decorationTypes,
             'translations' => [
                 'edit_decoration' => 'تعديل الديكور',
                 'basic_information' => 'المعلومات الأساسية',
@@ -506,7 +557,7 @@ class DecorationController extends Controller
             'by_user_id' => auth()->user()->id,
         ]);
 
-        return redirect()->route('decorations.index')
+        return redirect()->route('decorations.dashboard')
             ->with('success', 'تم تحديث الديكور بنجاح');
     }
 
@@ -619,7 +670,7 @@ class DecorationController extends Controller
 
         $decoration->update($data);
 
-        return redirect()->route('decorations.index')
+        return redirect()->route('decorations.dashboard')
             ->with('success', 'تم تحديث الديكور بنجاح');
     }
 
@@ -634,7 +685,7 @@ class DecorationController extends Controller
 
         $decoration->delete();
 
-        return redirect()->route('decorations.index')
+        return redirect()->route('decorations.dashboard')
             ->with('success', 'تم حذف الديكور بنجاح');
     }
 
@@ -736,7 +787,7 @@ class DecorationController extends Controller
                 'by_user_id' => auth()->user()->id,
             ]);
 
-            return redirect()->route('decorations.index')
+            return redirect()->route('decorations.dashboard')
                 ->with('success', __('messages.order_created_successfully'));
                 
         } catch (\Illuminate\Validation\ValidationException $e) {
@@ -1050,9 +1101,7 @@ class DecorationController extends Controller
         // Get payment transactions for decoration orders
         $payments = Box::with('morphed')
             ->where('type', 'payment')
-            ->whereHas('morphed', function ($query) {
-                $query->where('morphed_type', 'App\Models\DecorationOrder');
-            })
+            ->where('morphed_type', DecorationOrder::class)
             ->when($request->search, function ($query, $search) {
                 return $query->where('description', 'LIKE', "%{$search}%");
             })

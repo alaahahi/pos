@@ -17,6 +17,8 @@ class MonthlyAccount extends Model
         'total_orders',
         'total_orders_amount',
         'total_payments_received',
+        'total_payments_received_usd',
+        'total_payments_received_iqd',
         'total_payments_paid',
         'total_balance_dollar',
         'total_balance_dinar',
@@ -34,6 +36,8 @@ class MonthlyAccount extends Model
     protected $casts = [
         'total_orders_amount' => 'decimal:2',
         'total_payments_received' => 'decimal:2',
+        'total_payments_received_usd' => 'decimal:2',
+        'total_payments_received_iqd' => 'decimal:2',
         'total_payments_paid' => 'decimal:2',
         'total_balance_dollar' => 'decimal:2',
         'total_balance_dinar' => 'decimal:2',
@@ -100,33 +104,31 @@ class MonthlyAccount extends Model
         // Calculate payments received (from customers)
         $paymentsReceived = Box::where('type', 'payment')
             ->whereBetween('created', [$startDate, $endDate])
-            ->whereHas('morphed', function ($query) {
-                $query->where('morphed_type', 'App\Models\DecorationOrder');
-            })
+            ->where('morphed_type', DecorationOrder::class)
             ->get();
 
-        $this->total_payments_received = $paymentsReceived->sum('amount');
+        $this->total_payments_received_usd = $paymentsReceived->where('currency', 'USD')->sum('amount');
+        $this->total_payments_received_iqd = $paymentsReceived->where('currency', 'IQD')->sum('amount');
+        $this->total_payments_received = $this->total_payments_received_usd + $this->total_payments_received_iqd;
 
         // Calculate balance transactions
         $balanceTransactions = Box::whereIn('type', ['deposit', 'withdrawal'])
             ->whereBetween('created', [$startDate, $endDate])
-            ->whereHas('morphed', function ($query) {
-                $query->where('morphed_type', 'App\Models\Customer');
-            })
+            ->where('morphed_type', Customer::class)
             ->get();
 
         $deposits = $balanceTransactions->where('type', 'deposit');
         $withdrawals = $balanceTransactions->where('type', 'withdrawal');
 
-        $this->total_balance_dollar = $deposits->where('currency', 'dollar')->sum('amount') - 
-                                     $withdrawals->where('currency', 'dollar')->sum('amount');
+        $this->total_balance_dollar = $deposits->where('currency', 'USD')->sum('amount') - 
+                                     $withdrawals->where('currency', 'USD')->sum('amount');
         
-        $this->total_balance_dinar = $deposits->where('currency', 'dinar')->sum('amount') - 
-                                    $withdrawals->where('currency', 'dinar')->sum('amount');
+        $this->total_balance_dinar = $deposits->where('currency', 'IQD')->sum('amount') - 
+                                    $withdrawals->where('currency', 'IQD')->sum('amount');
 
         // Calculate net profit
-        $this->net_profit_dollar = $this->total_payments_received - $this->total_balance_dollar;
-        $this->net_profit_dinar = $this->total_payments_received - $this->total_balance_dinar;
+        $this->net_profit_dollar = $this->total_payments_received_usd - $this->total_balance_dollar;
+        $this->net_profit_dinar = $this->total_payments_received_iqd - $this->total_balance_dinar;
 
         return $this;
     }
@@ -207,17 +209,13 @@ class MonthlyAccount extends Model
         $payments = Box::with('morphed')
             ->where('type', 'payment')
             ->whereBetween('created', [$startDate, $endDate])
-            ->whereHas('morphed', function ($query) {
-                $query->where('morphed_type', 'App\Models\DecorationOrder');
-            })
+            ->where('morphed_type', DecorationOrder::class)
             ->get();
 
         $balanceTransactions = Box::with('morphed')
             ->whereIn('type', ['deposit', 'withdrawal'])
             ->whereBetween('created', [$startDate, $endDate])
-            ->whereHas('morphed', function ($query) {
-                $query->where('morphed_type', 'App\Models\Customer');
-            })
+            ->where('morphed_type', Customer::class)
             ->get();
 
         return [

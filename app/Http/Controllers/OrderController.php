@@ -62,11 +62,15 @@ class OrderController extends Controller
         });
 
         $orders = $orderQuery->paginate(10);
+        
+        // Get statistics
+        $statistics = $this->getOrderStatistics();
 
         return Inertia::render('Orders/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'orders' => $orders,
+            'statistics' => $statistics,
         ]);
     }
 
@@ -610,6 +614,85 @@ public function print($id)
 
     // Return the view with the order data
     return view('orders.print-invoice', compact('order'));
+}
+
+/**
+ * Get order statistics
+ */
+private function getOrderStatistics()
+{
+    $today = now()->startOfDay();
+    $yesterday = now()->subDay()->startOfDay();
+    $weekStart = now()->startOfWeek();
+    $monthStart = now()->startOfMonth();
+    
+    // Today's orders
+    $todayOrders = Order::whereDate('created_at', $today)->get();
+    $todayCount = $todayOrders->count();
+    $todayTotal = $todayOrders->sum('final_amount') ?: $todayOrders->sum('total_amount');
+    $todayPaid = $todayOrders->sum('total_paid');
+    
+    // Yesterday's orders
+    $yesterdayOrders = Order::whereDate('created_at', $yesterday)->get();
+    $yesterdayCount = $yesterdayOrders->count();
+    $yesterdayTotal = $yesterdayOrders->sum('final_amount') ?: $yesterdayOrders->sum('total_amount');
+    
+    // Week's orders
+    $weekOrders = Order::where('created_at', '>=', $weekStart)->get();
+    $weekCount = $weekOrders->count();
+    $weekTotal = $weekOrders->sum('final_amount') ?: $weekOrders->sum('total_amount');
+    $weekPaid = $weekOrders->sum('total_paid');
+    
+    // Month's orders
+    $monthOrders = Order::where('created_at', '>=', $monthStart)->get();
+    $monthCount = $monthOrders->count();
+    $monthTotal = $monthOrders->sum('final_amount') ?: $monthOrders->sum('total_amount');
+    $monthPaid = $monthOrders->sum('total_paid');
+    
+    // Calculate percentage change from yesterday
+    $countChange = 0;
+    $totalChange = 0;
+    
+    if ($yesterdayCount > 0) {
+        $countChange = round((($todayCount - $yesterdayCount) / $yesterdayCount) * 100, 1);
+    } else if ($todayCount > 0) {
+        $countChange = 100;
+    }
+    
+    if ($yesterdayTotal > 0) {
+        $totalChange = round((($todayTotal - $yesterdayTotal) / $yesterdayTotal) * 100, 1);
+    } else if ($todayTotal > 0) {
+        $totalChange = 100;
+    }
+    
+    return [
+        'today' => [
+            'count' => $todayCount,
+            'total' => round($todayTotal, 2),
+            'paid' => round($todayPaid, 2),
+            'due' => round($todayTotal - $todayPaid, 2),
+        ],
+        'yesterday' => [
+            'count' => $yesterdayCount,
+            'total' => round($yesterdayTotal, 2),
+        ],
+        'week' => [
+            'count' => $weekCount,
+            'total' => round($weekTotal, 2),
+            'paid' => round($weekPaid, 2),
+            'due' => round($weekTotal - $weekPaid, 2),
+        ],
+        'month' => [
+            'count' => $monthCount,
+            'total' => round($monthTotal, 2),
+            'paid' => round($monthPaid, 2),
+            'due' => round($monthTotal - $monthPaid, 2),
+        ],
+        'changes' => [
+            'count' => $countChange,
+            'total' => $totalChange,
+        ],
+    ];
 }
 
 }

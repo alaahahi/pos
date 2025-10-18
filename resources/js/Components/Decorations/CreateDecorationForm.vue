@@ -85,13 +85,13 @@
               </label>
               <select class="form-select" v-model="form.type" required @change="validateField('type')">
                 <option value="">{{ translations.select_type }}</option>
-                <option value="birthday">{{ translations.birthday }}</option>
-                <option value="gender_reveal">{{ translations.gender_reveal }}</option>
-                <option value="baby_shower">{{ translations.baby_shower }}</option>
-                <option value="wedding">{{ translations.wedding }}</option>
-                <option value="graduation">{{ translations.graduation }}</option>
-                <option value="corporate">{{ translations.corporate }}</option>
-                <option value="religious">{{ translations.religious }}</option>
+                <option 
+                  v-for="type in decorationTypes" 
+                  :key="type.value" 
+                  :value="type.value"
+                >
+                  {{ type.label_ar }}
+                </option>
               </select>
               <div class="form-feedback" v-if="errors.type">{{ errors.type }}</div>
             </div>
@@ -546,6 +546,10 @@ const props = defineProps({
   exchangeRate: {
     type: Number,
     default: 1500
+  },
+  decorationTypes: {
+    type: Array,
+    default: () => []
   }
 })
 

@@ -17,6 +17,111 @@
     <!-- End breadcrumb-->
 
     <section class="section dashboard">
+      <!-- Statistics Cards -->
+      <div class="row mb-4">
+        <!-- Today's Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card sales-card">
+            <div class="card-body">
+              <h5 class="card-title">
+                فواتير اليوم
+                <span v-if="statistics?.changes?.count !== 0" :class="statistics?.changes?.count > 0 ? 'text-success' : 'text-danger'">
+                  | <i :class="statistics?.changes?.count > 0 ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                  {{ Math.abs(statistics?.changes?.count || 0) }}%
+                </span>
+              </h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-receipt"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ statistics?.today?.count || 0 }} فاتورة</h6>
+                  <span class="text-success small pt-1 fw-bold">
+                    {{ (statistics?.today?.total || 0).toLocaleString() }} IQD
+                  </span>
+                  <small class="d-block text-muted">
+                    مدفوع: {{ (statistics?.today?.paid || 0).toLocaleString() }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Week's Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card customers-card">
+            <div class="card-body">
+              <h5 class="card-title">فواتير الأسبوع</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-calendar-week"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ statistics?.week?.count || 0 }} فاتورة</h6>
+                  <span class="text-primary small pt-1 fw-bold">
+                    {{ (statistics?.week?.total || 0).toLocaleString() }} IQD
+                  </span>
+                  <small class="d-block text-muted">
+                    مدفوع: {{ (statistics?.week?.paid || 0).toLocaleString() }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Month's Orders -->
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card revenue-card">
+            <div class="card-body">
+              <h5 class="card-title">فواتير الشهر</h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
+                  <i class="bi bi-calendar-month"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>{{ statistics?.month?.count || 0 }} فاتورة</h6>
+                  <span class="text-info small pt-1 fw-bold">
+                    {{ (statistics?.month?.total || 0).toLocaleString() }} IQD
+                  </span>
+                  <small class="d-block text-muted">
+                    مدفوع: {{ (statistics?.month?.paid || 0).toLocaleString() }}
+                  </small>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Yesterday vs Today -->
+        <div class="col-xl-3 col-md-6">
+          <div class="card info-card">
+            <div class="card-body">
+              <h5 class="card-title">
+                المقارنة مع الأمس
+                <span v-if="statistics?.changes?.total !== 0" :class="statistics?.changes?.total > 0 ? 'text-success' : 'text-danger'">
+                  | <i :class="statistics?.changes?.total > 0 ? 'bi bi-arrow-up' : 'bi bi-arrow-down'"></i>
+                  {{ Math.abs(statistics?.changes?.total || 0) }}%
+                </span>
+              </h5>
+              <div class="d-flex align-items-center">
+                <div class="card-icon rounded-circle d-flex align-items-center justify-content-center" 
+                     :class="(statistics?.changes?.total || 0) >= 0 ? 'bg-success' : 'bg-danger'">
+                  <i class="bi bi-graph-up-arrow text-white"></i>
+                </div>
+                <div class="ps-3">
+                  <h6>الأمس: {{ statistics?.yesterday?.count || 0 }}</h6>
+                  <span class="text-muted small">
+                    {{ (statistics?.yesterday?.total || 0).toLocaleString() }} IQD
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
       <div class="card">
         <div class="card-header">
           <div class="d-flex">
@@ -122,7 +227,8 @@ import { reactive } from 'vue';
 
 const props = defineProps({
   orders: Object, 
-  translations: Array 
+  translations: Array,
+  statistics: Object
 });
 
 const page = usePage();
