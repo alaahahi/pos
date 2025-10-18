@@ -5,6 +5,7 @@ use App\Models\Log;
 use App\Models\User;
 use App\Services\LogService;
 use Illuminate\Http\Request;
+use Illuminate\Http\JsonResponse;
 
 class LogController extends Controller
 {
@@ -82,6 +83,32 @@ class LogController extends Controller
         }
         return redirect()->route('logs')
         ->with('success', 'Action Undoed successfully!');
+    }
+
+    /**
+     * Store a new log entry from frontend interactions
+     */
+    public function store(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'module_name' => 'required|string|max:255',
+            'action' => 'required|string|max:255',
+            'affected_record_id' => 'nullable|integer',
+            'original_data' => 'nullable|array',
+            'updated_data' => 'nullable|array',
+            'badge' => 'nullable|string|max:50',
+        ]);
+
+        LogService::createLog(
+            $validated['module_name'],
+            $validated['action'],
+            intval($validated['affected_record_id'] ?? 0),
+            $validated['original_data'] ?? [],
+            $validated['updated_data'] ?? [],
+            $validated['badge'] ?? 'info'
+        );
+
+        return response()->json(['success' => true]);
     }
 
     /**
