@@ -417,6 +417,171 @@
       @close="showModalPurchasesProduct = false" 
       @success="handlePurchaseSuccess"
     />
+    
+    <!-- Print Barcode Modal -->
+    <div class="modal fade" :class="{ show: showPrintModal }" :style="{ display: showPrintModal ? 'block' : 'none' }">
+      <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title">
+              <i class="bi bi-printer"></i> طباعة الباركود
+            </h5>
+            <button type="button" class="btn-close" @click="showPrintModal = false"></button>
+          </div>
+          <div class="modal-body">
+            <div class="alert alert-info mb-3">
+              <strong><i class="bi bi-box"></i> المنتج:</strong> {{ printProduct?.name }}
+            </div>
+            
+            <!-- Barcode Settings Panel -->
+            <div class="barcode-settings p-3" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+              <h6 class="mb-3"><i class="bi bi-sliders"></i> إعدادات الباركود</h6>
+              
+              <!-- Paper Size Settings -->
+              <div class="row mb-2">
+                <div class="col-md-6">
+                  <label class="form-label"><strong>📏 عرض الورق (mm)</strong></label>
+                  <input 
+                    type="number" 
+                    class="form-control form-control-sm" 
+                    min="20" 
+                    max="80" 
+                    step="1" 
+                    v-model.number="printSettings.pageWidth"
+                  >
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label"><strong>📏 ارتفاع الورق (mm)</strong></label>
+                  <input 
+                    type="number" 
+                    class="form-control form-control-sm" 
+                    min="20" 
+                    max="80" 
+                    step="1" 
+                    v-model.number="printSettings.pageHeight"
+                  >
+                </div>
+              </div>
+              
+              <!-- Quick Size Buttons -->
+              <div class="mb-3">
+                <small class="text-muted">أحجام شائعة:</small>
+                <div class="btn-group btn-group-sm mt-1" role="group">
+                  <button type="button" class="btn btn-outline-primary" @click="printSettings.pageWidth = 38; printSettings.pageHeight = 26">
+                    <strong>38×26</strong>
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" @click="printSettings.pageWidth = 35; printSettings.pageHeight = 28">
+                    35×28
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" @click="printSettings.pageWidth = 38; printSettings.pageHeight = 28">
+                    38×28
+                  </button>
+                  <button type="button" class="btn btn-outline-secondary" @click="printSettings.pageWidth = 40; printSettings.pageHeight = 30">
+                    40×30
+                  </button>
+                </div>
+              </div>
+              
+              <hr>
+              
+              <div class="row">
+                <div class="col-md-6">
+                  <label class="form-label">عرض الخط</label>
+                  <input 
+                    type="range" 
+                    class="form-range" 
+                    min="1" 
+                    max="5" 
+                    step="0.1" 
+                    v-model="printSettings.width"
+                  >
+                  <small class="text-muted">{{ printSettings.width }}</small>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">ارتفاع الباركود</label>
+                  <input 
+                    type="range" 
+                    class="form-range" 
+                    min="30" 
+                    max="150" 
+                    step="5" 
+                    v-model="printSettings.height"
+                  >
+                  <small class="text-muted">{{ printSettings.height }}px</small>
+                </div>
+              </div>
+              
+              <div class="row mt-2">
+                <div class="col-md-6">
+                  <label class="form-label">حجم الخط</label>
+                  <input 
+                    type="range" 
+                    class="form-range" 
+                    min="6" 
+                    max="20" 
+                    step="1" 
+                    v-model="printSettings.fontSize"
+                  >
+                  <small class="text-muted">{{ printSettings.fontSize }}px</small>
+                </div>
+                <div class="col-md-6">
+                  <label class="form-label">الهوامش</label>
+                  <input 
+                    type="range" 
+                    class="form-range" 
+                    min="0" 
+                    max="10" 
+                    step="1" 
+                    v-model="printSettings.margin"
+                  >
+                  <small class="text-muted">{{ printSettings.margin }}px</small>
+                </div>
+              </div>
+              
+              <div class="row mt-3">
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="printLandscapeMode"
+                      v-model="printSettings.landscape"
+                    >
+                    <label class="form-check-label" for="printLandscapeMode">
+                      طباعة بالعرض (Landscape)
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="printHighQuality"
+                      v-model="printSettings.highQuality"
+                    >
+                    <label class="form-check-label" for="printHighQuality">
+                      جودة عالية (SVG)
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+      
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" @click="showPrintModal = false">
+              {{ translations.cancel || 'إلغاء' }}
+            </button>
+            <button type="button" class="btn btn-success" @click="confirmPrint" :disabled="loading">
+              <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
+              <i class="bi bi-printer"></i> {{ translations.print || 'طباعة' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
   </AuthenticatedLayout>
 </template>
 
@@ -430,6 +595,7 @@ import { router } from '@inertiajs/vue3';
 import { reactive } from 'vue';
 import { ref } from 'vue';
 import ModalPurchasesProduct from '@/Components/ModalPurchasesProduct.vue';
+import JsBarcode from 'jsbarcode';
 import { useToast } from 'vue-toastification';
 import { debounce } from 'lodash';
 
@@ -447,6 +613,20 @@ const loading = ref(false);
 const previewLoading = ref(false);
 const previewImage = ref(null);
 const selectedProduct = ref(null);
+const showPrintModal = ref(false);
+const printProduct = ref(null);
+
+// Barcode print settings
+const printSettings = reactive({
+  width: 2,
+  height: 70,
+  fontSize: 10,
+  margin: 2,
+  landscape: true,
+  highQuality: true,
+  pageWidth: 38,
+  pageHeight: 26
+});
 
 // Add barcode validation
 const barcodeValidation = ref({
@@ -633,149 +813,157 @@ const generateBarcode = async (product) => {
   }
 }
 
-const printBarcode = async (product) => {
+const printBarcode = (product) => {
   if (!product.barcode) {
     toast.error('لا يوجد باركود للطباعة')
     return
   }
+  
+  printProduct.value = product
+  showPrintModal.value = true
+}
 
+const confirmPrint = async () => {
+  if (!printProduct.value) return
+  
   loading.value = true
-
+  
   try {
-    // Generate barcode image
-    const params = new URLSearchParams({
-      code: product.barcode,
-      type: 'PNG',
-      width: 2,
-      height: 30
+    // Generate SVG barcode
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    
+    JsBarcode(svg, printProduct.value.barcode, {
+      format: "CODE128",
+      width: printSettings.width,
+      height: printSettings.height,
+      displayValue: false,
+      margin: printSettings.margin,
+      background: "#ffffff",
+      lineColor: "#000000",
+      xmlDocument: document
     })
     
-    const response = await fetch(`/barcode/preview?${params}`)
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const barcodeImageUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+
+    // Create print window
+    const printWindow = window.open('', '_blank', 'width=400,height=600')
     
-    if (!response.ok) {
-      throw new Error('Failed to generate barcode image')
+    if (!printWindow) {
+      toast.error('فشل فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة.')
+      return
     }
     
-    const blob = await response.blob()
-    const barcodeImageUrl = URL.createObjectURL(blob)
-
-    // Create a temporary div for printing
-    const printDiv = document.createElement('div')
-    printDiv.id = 'barcode-print-overlay'
-    printDiv.style.position = 'fixed'
-    printDiv.style.top = '0'
-    printDiv.style.left = '0'
-    printDiv.style.width = '100%'
-    printDiv.style.height = '100%'
-    printDiv.style.backgroundColor = 'white'
-    printDiv.style.zIndex = '9999'
-    printDiv.style.padding = '20px'
-    printDiv.style.textAlign = 'center'
-    printDiv.style.fontFamily = 'Arial, sans-serif'
-    printDiv.style.overflow = 'auto'
-
-    printDiv.innerHTML = `
-      <style>
-        @media print {
-          body { margin: 0; padding: 0; }
-          .print-container { 
-            max-width: 100% !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 20px !important; 
-            border: none !important;
-            box-shadow: none !important;
-          }
-          .barcode-container { 
-            max-width: 100% !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 30px !important; 
-            border: 2px solid #000 !important;
-            background: white !important;
-          }
-          .barcode-image { 
-            width: 100% !important; 
-            height: auto !important; 
-            min-height: 300px !important; 
-            max-height: 500px !important;
-            border: 1px solid #000 !important;
-          }
-          .product-name { 
-            font-size: 24px !important; 
-            font-weight: bold !important; 
-            margin-bottom: 20px !important; 
-            text-align: center !important;
-          }
-          .barcode-text { 
-            font-size: 18px !important; 
-            margin-top: 20px !important; 
-            font-family: monospace !important; 
-            text-align: center !important;
-            font-weight: bold !important;
-          }
-          .no-print { display: none !important; }
-        }
-      </style>
-      <div class="print-container" style="max-width: 400px; margin: 50px auto; border: 2px solid #333; padding: 30px; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin-bottom: 20px; color: #333;">طباعة الباركود</h3>
-        
-        <div class="barcode-container" style="border: 1px solid #ddd; padding: 20px; margin: 20px 0; background: #f9f9f9;">
-          <div class="product-name" style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2c3e50;">${product.name || 'Product'}</div>
-          <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode" style="max-width: 100%;width: 100%; height: auto; border: 1px solid #ccc;" onload="console.log('Barcode image loaded successfully')" onerror="console.error('Failed to load barcode image')">
-          <div class="barcode-text" style="font-size: 14px; margin-top: 15px; font-family: monospace; color: #666;">${product.barcode}</div>
-        </div>
-        
-        <div class="no-print" style="margin-top: 30px;">
-          <button onclick="printBarcodeContent()" style="padding: 12px 25px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 15px; font-size: 16px;">
-            <i class="bi bi-printer"></i> طباعة
-          </button>
-          <button onclick="closePrintOverlay()" style="padding: 12px 25px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-            <i class="bi bi-x"></i> إلغاء
-          </button>
-        </div>
-        
-        <div class="no-print" style="margin-top: 20px; font-size: 12px; color: #666;">
-          <p>💡 نصيحة: اختر "Microsoft Print to PDF" لطباعة إلى ملف PDF</p>
-        </div>
-      </div>
+    const orientation = printSettings.landscape ? 'landscape' : 'portrait'
+    const pageWidth = `${printSettings.pageWidth}mm`
+    const pageHeight = `${printSettings.pageHeight}mm`
+    const pageSize = printSettings.landscape ? `${pageWidth} ${pageHeight}` : `${pageHeight} ${pageWidth}`
+    const maxBarcodeHeight = printSettings.landscape ? '18mm' : '22mm'
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>طباعة الباركود</title>
+  <style>
+    /* Optimized for thermal printers */
+    @page { 
+      size: ${pageSize}; 
+      margin: 0; 
+      orientation: ${orientation};
+    }
+    
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    }
+    
+    body {
+      margin: 0;
+      padding: 0;
+      width: ${pageWidth};
+      height: ${pageHeight};
+      font-family: Arial, sans-serif;
+      overflow: hidden;
+    }
+    
+    .label-container {
+      width: ${pageWidth};
+      height: ${pageHeight};
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1mm;
+      box-sizing: border-box;
+    }
+    
+    .product-name {
+      width: 100%;
+      font-size: ${printSettings.fontSize}px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 1mm;
+      line-height: 1.1;
+      max-height: 8mm;
+      overflow: hidden;
+      word-wrap: break-word;
+    }
+    
+    .barcode-image {
+      width: auto;
+      max-width: 90%;
+      height: auto;
+      max-height: ${maxBarcodeHeight};
+      margin: 1mm auto;
+      display: block;
+      object-fit: contain;
+    }
+    
+    .barcode-text {
+      width: 100%;
+      font-size: ${Math.max(printSettings.fontSize - 2, 4)}px;
+      font-family: monospace;
+      text-align: center;
+      margin-top: 1mm;
+      font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+  <div class="label-container">
+    <div class="product-name">${printProduct.value.name}</div>
+    <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+    <div class="barcode-text">${printProduct.value.barcode}</div>
+  </div>
+  
+  <scr` + `ipt>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() {
+          window.close();
+        }, 2000);
+      }, 1500);
+    }
+  </scr` + `ipt>
+</body>
+</html>
     `
-
-    // Add print and close functions to window
-    window.printBarcodeContent = function() {
-      // Wait for image to load before printing
-      const img = printDiv.querySelector('img')
-      if (img && !img.complete) {
-        img.onload = function() {
-          window.print()
-        }
-        return
-      }
-      window.print()
-    }
     
-    window.closePrintOverlay = function() {
-      document.body.removeChild(printDiv)
-      if (barcodeImageUrl) {
-        URL.revokeObjectURL(barcodeImageUrl)
-      }
-    }
-
-    document.body.appendChild(printDiv)
-    toast.success('تم تحضير الباركود للطباعة. اضغط زر الطباعة في الأعلى.')
-
-    // Clean up URL object after a delay
-    if (barcodeImageUrl) {
-      setTimeout(() => {
-        if (document.getElementById('barcode-print-overlay')) {
-          URL.revokeObjectURL(barcodeImageUrl)
-        }
-      }, 30000) // Clean up after 30 seconds
-    }
-
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
+    
+    showPrintModal.value = false
+    toast.success('تم إرسال الباركود للطباعة')
+    
   } catch (error) {
     console.error('Print error:', error)
-    toast.error('حدث خطأ أثناء تحضير الطباعة')
+    toast.error('حدث خطأ أثناء الطباعة')
   } finally {
     loading.value = false
   }

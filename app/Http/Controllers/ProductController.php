@@ -39,11 +39,11 @@ class ProductController extends Controller
             'sort' => $request->sort ?? 'created',
         ];
         
-        // Start the Product query with sales count
+        // Start the Product query with sales count using subquery
         $ProductQuery = Product::with('roles')
-            ->leftJoin('order_items', 'products.id', '=', 'order_items.product_id')
-            ->select('products.*', \DB::raw('COALESCE(SUM(order_items.quantity), 0) as total_sales'))
-            ->groupBy('products.id');
+            ->leftJoin(\DB::raw('(SELECT product_id, SUM(quantity) as total_quantity FROM order_items GROUP BY product_id) as order_items'), 
+                'products.id', '=', 'order_items.product_id')
+            ->select('products.*', \DB::raw('COALESCE(order_items.total_quantity, 0) as total_sales'));
 
         // Apply search filter
         $ProductQuery->when($filters['search'], function ($query, $search) {
