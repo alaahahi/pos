@@ -56,7 +56,7 @@
         </div>
       </div>
       <div class="row mt-2">
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="form-check">
             <input 
               class="form-check-input" 
@@ -70,7 +70,7 @@
             </label>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
           <div class="form-check">
             <input 
               class="form-check-input" 
@@ -84,10 +84,71 @@
             </label>
           </div>
         </div>
-        <div class="col-md-4">
+        <div class="col-md-3">
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="showBarcodeNumber"
+              v-model="barcodeSettings.showBarcodeNumber"
+              @change="updateBarcode"
+            >
+            <label class="form-check-label" for="showBarcodeNumber">
+              عرض رقم الباركود
+            </label>
+          </div>
+        </div>
+        <div class="col-md-3">
           <button class="btn btn-sm btn-info" @click="showPrinterInfo">
             <i class="bi bi-info-circle"></i> معلومات الطابعة
           </button>
+        </div>
+      </div>
+      
+      <!-- Price Settings -->
+      <div class="row mt-3" v-if="barcodeSettings.showPrice">
+        <div class="col-md-6">
+          <label class="form-label"><strong><i class="bi bi-currency-dollar"></i> سعر البيع</strong></label>
+          <input 
+            type="number" 
+            class="form-control" 
+            min="0" 
+            step="0.01" 
+            v-model.number="barcodeSettings.price"
+            placeholder="أدخل سعر البيع"
+          >
+        </div>
+        <div class="col-md-6">
+          <div class="form-check mt-4">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="showPrice"
+              v-model="barcodeSettings.showPrice"
+              @change="updateBarcode"
+            >
+            <label class="form-check-label" for="showPrice">
+              عرض سعر البيع
+            </label>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Show Price Checkbox (when price is not shown) -->
+      <div class="row mt-2" v-if="!barcodeSettings.showPrice">
+        <div class="col-md-6">
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="showPrice"
+              v-model="barcodeSettings.showPrice"
+              @change="updateBarcode"
+            >
+            <label class="form-check-label" for="showPrice">
+              عرض سعر البيع
+            </label>
+          </div>
         </div>
       </div>
       
@@ -159,7 +220,10 @@ const barcodeSettings = ref({
   highQuality: true,
   pageWidth: 38,    // mm
   pageHeight: 26,   // mm
-  copies: 1         // عدد النسخ
+  copies: 1,        // عدد النسخ
+  showBarcodeNumber: true,  // عرض رقم الباركود تحت الباركود
+  showPrice: false,         // عرض سعر البيع
+  price: 0                 // سعر البيع
 })
 
 // Show printer information
@@ -259,7 +323,8 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
     <div class="label-container">
       <div class="product-name">${productName}</div>
       <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-      <div class="barcode-text">${barcodeData}</div>
+      ${barcodeSettings.value.showBarcodeNumber ? `<div class="barcode-text">${barcodeData}</div>` : ''}
+      ${barcodeSettings.value.showPrice && barcodeSettings.value.price > 0 ? `<div class="price-text">${barcodeSettings.value.price} ريال</div>` : ''}
     </div>
   </div>
     `
@@ -334,6 +399,15 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       text-align: center;
       margin-top: 1mm;
       font-weight: bold;
+    }
+    .price-text {
+      width: 100%;
+      font-size: ${Math.max(barcodeSettings.value.fontSize - 1, 5)}px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 1mm;
+      font-weight: bold;
+      color: #dc3545;
     }
   </style>
 </head>

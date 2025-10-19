@@ -526,7 +526,7 @@
               </div>
               
               <div class="row mt-3">
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="form-check">
                     <input 
                       class="form-check-input" 
@@ -539,7 +539,7 @@
                     </label>
                   </div>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <div class="form-check">
                     <input 
                       class="form-check-input" 
@@ -549,6 +549,64 @@
                     >
                     <label class="form-check-label" for="printHighQuality">
                       جودة عالية (SVG)
+                    </label>
+                  </div>
+                </div>
+                <div class="col-md-4">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="showBarcodeNumber"
+                      v-model="printSettings.showBarcodeNumber"
+                    >
+                    <label class="form-check-label" for="showBarcodeNumber">
+                      عرض رقم الباركود
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Price Settings -->
+              <div class="row mt-3" v-if="printSettings.showPrice">
+                <div class="col-md-6">
+                  <label class="form-label"><strong><i class="bi bi-currency-dollar"></i> سعر البيع</strong></label>
+                  <input 
+                    type="number" 
+                    class="form-control" 
+                    min="0" 
+                    step="0.01" 
+                    v-model.number="printSettings.price"
+                    placeholder="أدخل سعر البيع"
+                  >
+                </div>
+                <div class="col-md-6">
+                  <div class="form-check mt-4">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="showPrice"
+                      v-model="printSettings.showPrice"
+                    >
+                    <label class="form-check-label" for="showPrice">
+                      عرض سعر البيع
+                    </label>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Show Price Checkbox (when price is not shown) -->
+              <div class="row mt-2" v-if="!printSettings.showPrice">
+                <div class="col-md-6">
+                  <div class="form-check">
+                    <input 
+                      class="form-check-input" 
+                      type="checkbox" 
+                      id="showPrice"
+                      v-model="printSettings.showPrice"
+                    >
+                    <label class="form-check-label" for="showPrice">
+                      عرض سعر البيع
                     </label>
                   </div>
                 </div>
@@ -613,7 +671,10 @@ const printSettings = reactive({
   highQuality: true,
   pageWidth: 38,
   pageHeight: 26,
-  copies: 1  // عدد النسخ
+  copies: 1,  // عدد النسخ
+  showBarcodeNumber: true,  // عرض رقم الباركود تحت الباركود
+  showPrice: false,         // عرض سعر البيع
+  price: 0                  // سعر البيع
 });
 
 // Add barcode validation
@@ -856,7 +917,8 @@ const confirmPrint = async () => {
     <div class="label-container">
       <div class="product-name">${printProduct.value.name}</div>
       <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-      <div class="barcode-text">${printProduct.value.barcode}</div>
+      ${printSettings.showBarcodeNumber ? `<div class="barcode-text">${printProduct.value.barcode}</div>` : ''}
+      ${printSettings.showPrice && printSettings.price > 0 ? `<div class="price-text">${printSettings.price} دينار</div>` : ''}
     </div>
   </div>
       `
@@ -939,6 +1001,16 @@ const confirmPrint = async () => {
       text-align: center;
       margin-top: 1mm;
       font-weight: bold;
+    }
+    
+    .price-text {
+      width: 100%;
+      font-size: ${Math.max(printSettings.fontSize - 1, 5)}px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 1mm;
+      font-weight: bold;
+      color: #dc3545;
     }
   </style>
 </head>

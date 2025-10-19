@@ -373,7 +373,7 @@
                       v-model="batchPrintSettings.height"
                     >
                     <small class="text-muted">{{ batchPrintSettings.height }}px</small>
-                </div>
+                  </div>
                 <div class="col-md-6">
                     <label class="form-label">حجم الخط</label>
                     <input 
@@ -385,11 +385,11 @@
                       v-model="batchPrintSettings.fontSize"
                     >
                     <small class="text-muted">{{ batchPrintSettings.fontSize }}px</small>
-                  </div>
+                </div>
                 </div>
                 
                 <div class="row mt-3">
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <div class="form-check">
                       <input 
                         class="form-check-input" 
@@ -402,7 +402,7 @@
                       </label>
                     </div>
                   </div>
-                  <div class="col-md-6">
+                  <div class="col-md-4">
                     <div class="form-check">
                       <input 
                         class="form-check-input" 
@@ -412,6 +412,64 @@
                       >
                       <label class="form-check-label" for="batchHighQuality">
                         جودة عالية (SVG)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-4">
+                    <div class="form-check">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="showBarcodeNumber"
+                        v-model="batchPrintSettings.showBarcodeNumber"
+                      >
+                      <label class="form-check-label" for="showBarcodeNumber">
+                        عرض رقم الباركود
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Price Settings -->
+                <div class="row mt-3" v-if="batchPrintSettings.showPrice">
+                <div class="col-md-6">
+                    <label class="form-label"><strong><i class="bi bi-currency-dollar"></i> سعر البيع</strong></label>
+                    <input 
+                      type="number" 
+                      class="form-control" 
+                      min="0" 
+                      step="0.01" 
+                      v-model.number="batchPrintSettings.price"
+                      placeholder="أدخل سعر البيع"
+                    >
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check mt-4">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="showPrice"
+                        v-model="batchPrintSettings.showPrice"
+                      >
+                      <label class="form-check-label" for="showPrice">
+                        عرض سعر البيع
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <!-- Show Price Checkbox (when price is not shown) -->
+                <div class="row mt-2" v-if="!batchPrintSettings.showPrice">
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="showPrice"
+                        v-model="batchPrintSettings.showPrice"
+                      >
+                      <label class="form-check-label" for="showPrice">
+                        عرض سعر البيع
                       </label>
                     </div>
                   </div>
@@ -599,7 +657,11 @@ const batchPrintSettings = reactive({
   landscape: true,
   highQuality: true,
   pageWidth: 38,    // mm
-  pageHeight: 26    // mm
+  pageHeight: 26,   // mm
+  copies: 1,        // عدد النسخ
+  showBarcodeNumber: true,  // عرض رقم الباركود تحت الباركود
+  showPrice: false,         // عرض سعر البيع
+  price: 0                  // سعر البيع
 })
 
 const printerSettings = reactive({
@@ -833,7 +895,8 @@ const printBatchBarcodes = async (results) => {
           <div class="label-container">
             <div class="product-name">${result.product.name}</div>
             <img class="barcode-image" src="${result.svgUrl}" alt="Barcode">
-            <div class="barcode-text">${result.product.barcode}</div>
+            ${batchPrintSettings.showBarcodeNumber ? `<div class="barcode-text">${result.product.barcode}</div>` : ''}
+            ${batchPrintSettings.showPrice && batchPrintSettings.price > 0 ? `<div class="price-text">${batchPrintSettings.price} دينار</div>` : ''}
           </div>
           </div>
         `
@@ -931,6 +994,16 @@ const printBatchBarcodes = async (results) => {
       text-align: center;
       margin-top: 1mm;
       font-weight: bold;
+    }
+    
+    .price-text {
+      width: 100%;
+      font-size: ${Math.max(batchPrintSettings.fontSize - 1, 5)}px;
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin-top: 1mm;
+      font-weight: bold;
+      color: #dc3545;
     }
     
     @media screen {
