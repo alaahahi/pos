@@ -186,9 +186,7 @@ const generateBarcodeWithJsBarcode = () => {
       format: "CODE128",
       width: barcodeSettings.value.width,
       height: barcodeSettings.value.height,
-      displayValue: true,
-      fontSize: barcodeSettings.value.fontSize,
-      textMargin: 3,
+      displayValue: false,
       margin: barcodeSettings.value.margin,
       background: "#ffffff",
       lineColor: "#000000"
@@ -257,19 +255,11 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       width: ${barcodeSettings.value.landscape ? '38mm' : '28mm'};
       height: ${barcodeSettings.value.landscape ? '28mm' : '35mm'};
       display: flex;
-      flex-direction: ${barcodeSettings.value.landscape ? 'row' : 'column'};
+      flex-direction: column;
       justify-content: center;
       align-items: center;
       padding: 1mm;
       box-sizing: border-box;
-    }
-    .product-info {
-      display: flex;
-      flex-direction: column;
-      justify-content: center;
-      align-items: center;
-      flex: 1;
-      padding: 0 1mm;
     }
     .product-name {
       font-size: ${barcodeSettings.value.fontSize}px;
@@ -299,17 +289,9 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
 </head>
 <body>
   <div class="label-container">
-    ${barcodeSettings.value.landscape ? `
-      <div class="product-info">
-        <div class="product-name">${productName}</div>
-        <div class="barcode-text">${barcodeData}</div>
-      </div>
-      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-    ` : `
-      <div class="product-name">${productName}</div>
-      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-      <div class="barcode-text">${barcodeData}</div>
-    `}
+    <div class="product-name">${productName}</div>
+    <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+    <div class="barcode-text">${barcodeData}</div>
   </div>
   <scr` + `ipt>
     window.onload = function() {
