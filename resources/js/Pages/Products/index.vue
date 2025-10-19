@@ -433,6 +433,20 @@
               <strong><i class="bi bi-box"></i> المنتج:</strong> {{ printProduct?.name }}
             </div>
             
+            <!-- Copies Input -->
+            <div class="mb-3">
+              <label class="form-label"><strong><i class="bi bi-files"></i> عدد النسخ</strong></label>
+              <input 
+                type="number" 
+                class="form-control" 
+                min="1" 
+                max="100" 
+                v-model.number="printSettings.copies"
+                placeholder="أدخل عدد النسخ المطلوبة"
+              >
+              <small class="text-muted">سيتم طباعة {{ printSettings.copies }} نسخة من الباركود</small>
+            </div>
+            
             <!-- Barcode Settings Panel -->
             <div class="barcode-settings p-3" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
               <h6 class="mb-3"><i class="bi bi-sliders"></i> إعدادات الباركود</h6>
@@ -576,7 +590,7 @@
             </button>
             <button type="button" class="btn btn-success" @click="confirmPrint" :disabled="loading">
               <span v-if="loading" class="spinner-border spinner-border-sm me-2"></span>
-              <i class="bi bi-printer"></i> {{ translations.print || 'طباعة' }}
+              <i class="bi bi-printer"></i> {{ translations.print || 'طباعة' }} ({{ printSettings.copies }})
             </button>
           </div>
         </div>
@@ -625,7 +639,8 @@ const printSettings = reactive({
   landscape: true,
   highQuality: true,
   pageWidth: 38,
-  pageHeight: 26
+  pageHeight: 26,
+  copies: 1  // عدد النسخ
 });
 
 // Add barcode validation
@@ -860,6 +875,20 @@ const confirmPrint = async () => {
     const pageSize = printSettings.landscape ? `${pageWidth} ${pageHeight}` : `${pageHeight} ${pageWidth}`
     const maxBarcodeHeight = printSettings.landscape ? '18mm' : '22mm'
     
+    // Generate HTML for multiple copies
+    let labelsHtml = ''
+    for (let i = 0; i < printSettings.copies; i++) {
+      labelsHtml += `
+  <div class="label-page">
+    <div class="label-container">
+      <div class="product-name">${printProduct.value.name}</div>
+      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+      <div class="barcode-text">${printProduct.value.barcode}</div>
+    </div>
+  </div>
+      `
+    }
+    
     const htmlContent = `
 <!DOCTYPE html>
 <html lang="ar">
@@ -885,10 +914,16 @@ const confirmPrint = async () => {
     body {
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    
+    .label-page {
       width: ${pageWidth};
       height: ${pageHeight};
-      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
+      page-break-after: always;
     }
     
     .label-container {
@@ -935,11 +970,7 @@ const confirmPrint = async () => {
   </style>
 </head>
 <body>
-  <div class="label-container">
-    <div class="product-name">${printProduct.value.name}</div>
-    <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-    <div class="barcode-text">${printProduct.value.barcode}</div>
-  </div>
+  ${labelsHtml}
   
   <scr` + `ipt>
     window.onload = function() {
@@ -959,7 +990,7 @@ const confirmPrint = async () => {
     printWindow.document.close()
     
     showPrintModal.value = false
-    toast.success('تم إرسال الباركود للطباعة')
+    toast.success(`تم إرسال ${printSettings.copies} نسخة من الباركود للطباعة`)
     
   } catch (error) {
     console.error('Print error:', error)
