@@ -8,6 +8,100 @@
       <span v-if="loading" class="spinner-border spinner-border-sm me-1"></span>
       <i class="bi bi-printer"></i> {{ translations.print }}
     </button>
+
+    <!-- Barcode Settings Panel -->
+    <div class="barcode-settings mt-2">
+      <div class="row">
+        <div class="col-md-3">
+          <label class="form-label">عرض الخط</label>
+          <input 
+            type="range" 
+            class="form-range" 
+            min="1" 
+            max="5" 
+            step="0.1" 
+            v-model="barcodeSettings.width"
+            @input="updateBarcode"
+          >
+          <small class="text-muted">{{ barcodeSettings.width }}</small>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">ارتفاع الباركود</label>
+          <input 
+            type="range" 
+            class="form-range" 
+            min="30" 
+            max="150" 
+            step="5" 
+            v-model="barcodeSettings.height"
+            @input="updateBarcode"
+          >
+          <small class="text-muted">{{ barcodeSettings.height }}px</small>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">حجم الخط</label>
+          <input 
+            type="range" 
+            class="form-range" 
+            min="6" 
+            max="20" 
+            step="1" 
+            v-model="barcodeSettings.fontSize"
+            @input="updateBarcode"
+          >
+          <small class="text-muted">{{ barcodeSettings.fontSize }}px</small>
+        </div>
+        <div class="col-md-3">
+          <label class="form-label">الهوامش</label>
+          <input 
+            type="range" 
+            class="form-range" 
+            min="0" 
+            max="10" 
+            step="1" 
+            v-model="barcodeSettings.margin"
+            @input="updateBarcode"
+          >
+          <small class="text-muted">{{ barcodeSettings.margin }}px</small>
+        </div>
+      </div>
+      <div class="row mt-2">
+        <div class="col-md-6">
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="landscapeMode"
+              v-model="barcodeSettings.landscape"
+              @change="updateBarcode"
+            >
+            <label class="form-check-label" for="landscapeMode">
+              طباعة بالعرض (Landscape)
+            </label>
+          </div>
+        </div>
+        <div class="col-md-6">
+          <div class="form-check">
+            <input 
+              class="form-check-input" 
+              type="checkbox" 
+              id="highQuality"
+              v-model="barcodeSettings.highQuality"
+              @change="updateBarcode"
+            >
+            <label class="form-check-label" for="highQuality">
+              جودة عالية
+            </label>
+          </div>
+        </div>
+      </div>
+    </div>
+    
+    <!-- Preview -->
+    <div class="barcode-preview mt-3" v-if="previewUrl">
+      <img :src="previewUrl" alt="Barcode Preview" class="img-fluid border">
+    </div>
+    
     <canvas ref="barcodeCanvas" style="display: none;"></canvas>
   </div>
 </template>
@@ -44,6 +138,17 @@ const props = defineProps({
 
 const loading = ref(false)
 const barcodeCanvas = ref(null)
+const previewUrl = ref('')
+
+// Barcode settings with reactive values
+const barcodeSettings = ref({
+  width: 2,
+  height: 80,
+  fontSize: 10,
+  margin: 2,
+  landscape: true,
+  highQuality: true
+})
 
 const printBarcode = async () => {
   if (!props.barcodeData) {
@@ -68,14 +173,23 @@ const generateBarcodeWithJsBarcode = () => {
   try {
     const canvas = document.createElement('canvas')
     
+    // Set high resolution canvas for better quality
+    const scale = barcodeSettings.value.highQuality ? 3 : 2
+    canvas.width = 400 * scale
+    canvas.height = 200 * scale
+    
+    // Scale the context for high DPI
+    const ctx = canvas.getContext('2d')
+    ctx.scale(scale, scale)
+    
     JsBarcode(canvas, props.barcodeData, {
       format: "CODE128",
-      width: 1.5,
-      height: 60,
+      width: barcodeSettings.value.width,
+      height: barcodeSettings.value.height,
       displayValue: true,
-      fontSize: 8,
-      textMargin: 2,
-      margin: 5,
+      fontSize: barcodeSettings.value.fontSize,
+      textMargin: 3,
+      margin: barcodeSettings.value.margin,
       background: "#ffffff",
       lineColor: "#000000"
     })
@@ -84,6 +198,17 @@ const generateBarcodeWithJsBarcode = () => {
   } catch (error) {
     console.error('JsBarcode generation error:', error)
     throw error
+  }
+}
+
+// Update barcode preview when settings change
+const updateBarcode = () => {
+  if (props.barcodeData) {
+    try {
+      previewUrl.value = generateBarcodeWithJsBarcode()
+    } catch (error) {
+      console.error('Preview update error:', error)
+    }
   }
 }
 
@@ -98,7 +223,7 @@ const printBarcodeDirectly = async (barcodeImageUrl) => {
     printWindow.document.write(htmlContent)
     printWindow.document.close()
     toast.success('تم إرسال الباركود للطباعة')
-    
+
   } catch (error) {
     console.error('Direct print error:', error)
     throw error
@@ -106,33 +231,48 @@ const printBarcodeDirectly = async (barcodeImageUrl) => {
 }
 
 const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData = '') => {
+  const orientation = barcodeSettings.value.landscape ? 'landscape' : 'portrait'
+  const pageSize = barcodeSettings.value.landscape ? '38mm 28mm' : '28mm 35mm'
+  
   return `<!DOCTYPE html>
 <html lang="ar">
 <head>
   <meta charset="UTF-8">
   <title>طباعة الباركود</title>
   <style>
-    @page { size: 28mm 35mm; margin: 0; }
+    @page { 
+      size: ${pageSize}; 
+      margin: 0; 
+      orientation: ${orientation};
+    }
     body {
       margin: 0;
       padding: 0;
-    width: 38mm;
-        height: 28mm;
+      width: ${barcodeSettings.value.landscape ? '38mm' : '28mm'};
+      height: ${barcodeSettings.value.landscape ? '28mm' : '35mm'};
       font-family: Arial, sans-serif;
       overflow: hidden;
     }
     .label-container {
-      width: 28mm;
-      height: 35mm;
+      width: ${barcodeSettings.value.landscape ? '38mm' : '28mm'};
+      height: ${barcodeSettings.value.landscape ? '28mm' : '35mm'};
       display: flex;
-      flex-direction: column;
+      flex-direction: ${barcodeSettings.value.landscape ? 'row' : 'column'};
       justify-content: center;
       align-items: center;
       padding: 1mm;
       box-sizing: border-box;
     }
+    .product-info {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      flex: 1;
+      padding: 0 1mm;
+    }
     .product-name {
-      font-size: 6px;
+      font-size: ${barcodeSettings.value.fontSize}px;
       font-weight: bold;
       text-align: center;
       margin-bottom: 1mm;
@@ -144,12 +284,12 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
     .barcode-image {
       width: 100%;
       height: auto;
-      max-height: 20mm;
+      max-height: ${barcodeSettings.value.landscape ? '20mm' : '25mm'};
       margin: 1mm 0;
       object-fit: contain;
     }
     .barcode-text {
-      font-size: 5px;
+      font-size: ${Math.max(barcodeSettings.value.fontSize - 2, 4)}px;
       font-family: monospace;
       text-align: center;
       margin-top: 1mm;
@@ -159,9 +299,17 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
 </head>
 <body>
   <div class="label-container">
-    <div class="product-name">${productName}</div>
-    <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-    <div class="barcode-text">${barcodeData}</div>
+    ${barcodeSettings.value.landscape ? `
+      <div class="product-info">
+        <div class="product-name">${productName}</div>
+        <div class="barcode-text">${barcodeData}</div>
+      </div>
+      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+    ` : `
+      <div class="product-name">${productName}</div>
+      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+      <div class="barcode-text">${barcodeData}</div>
+    `}
   </div>
   <scr` + `ipt>
     window.onload = function() {
@@ -178,7 +326,10 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
 };
 
 onMounted(() => {
-  // Initialize any required setup
+  // Initialize barcode preview
+  if (props.barcodeData) {
+    updateBarcode()
+  }
 })
 </script>
 
@@ -199,5 +350,35 @@ onMounted(() => {
 .spinner-border-sm {
   width: 1rem;
   height: 1rem;
+}
+
+.barcode-settings {
+  background: #f8f9fa;
+  padding: 15px;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.barcode-settings .form-label {
+  font-weight: bold;
+  color: #495057;
+  margin-bottom: 5px;
+}
+
+.barcode-settings .form-range {
+  margin-bottom: 5px;
+}
+
+.barcode-preview {
+  text-align: center;
+  padding: 10px;
+  background: white;
+  border-radius: 8px;
+  border: 1px solid #dee2e6;
+}
+
+.barcode-preview img {
+  max-width: 100%;
+  height: auto;
 }
 </style>
