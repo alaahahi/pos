@@ -171,34 +171,27 @@ const printBarcode = async () => {
 
 const generateBarcodeWithJsBarcode = () => {
   try {
-    const canvas = document.createElement('canvas')
+    // Use SVG instead of Canvas for perfect quality
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
     
-    // Set very high resolution canvas for crisp display and print
-    const scale = barcodeSettings.value.highQuality ? 4 : 3
-    const baseWidth = 500
-    const baseHeight = 250
-    
-    canvas.width = baseWidth * scale
-    canvas.height = baseHeight * scale
-    
-    // Scale the context for high DPI
-    const ctx = canvas.getContext('2d')
-    ctx.scale(scale, scale)
-    
-    // Enable image smoothing for better quality
-    ctx.imageSmoothingEnabled = false
-    
-    JsBarcode(canvas, props.barcodeData, {
+    JsBarcode(svg, props.barcodeData, {
       format: "CODE128",
       width: barcodeSettings.value.width,
       height: barcodeSettings.value.height,
       displayValue: false,
       margin: barcodeSettings.value.margin,
       background: "#ffffff",
-      lineColor: "#000000"
+      lineColor: "#000000",
+      xmlDocument: document
     })
     
-    return canvas.toDataURL('image/png')
+    // Convert SVG to data URL
+    const svgData = new XMLSerializer().serializeToString(svg)
+    const svgBlob = new Blob([svgData], { type: 'image/svg+xml;charset=utf-8' })
+    const svgUrl = URL.createObjectURL(svgBlob)
+    
+    // For compatibility, also return as data URL
+    return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
   } catch (error) {
     console.error('JsBarcode generation error:', error)
     throw error
@@ -284,9 +277,6 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       margin: 1mm auto;
       display: block;
       object-fit: contain;
-      image-rendering: -webkit-optimize-contrast;
-      image-rendering: crisp-edges;
-      image-rendering: pixelated;
     }
     .barcode-text {
       font-size: ${Math.max(barcodeSettings.value.fontSize - 2, 4)}px;
@@ -372,8 +362,5 @@ onMounted(() => {
 .barcode-preview img {
   max-width: 100%;
   height: auto;
-  image-rendering: -webkit-optimize-contrast;
-  image-rendering: crisp-edges;
-  image-rendering: pixelated;
 }
 </style>
