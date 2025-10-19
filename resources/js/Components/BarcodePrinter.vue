@@ -143,7 +143,7 @@ const previewUrl = ref('')
 // Barcode settings with reactive values
 const barcodeSettings = ref({
   width: 2,
-  height: 80,
+  height: 90,
   fontSize: 10,
   margin: 2,
   landscape: true,
@@ -173,14 +173,20 @@ const generateBarcodeWithJsBarcode = () => {
   try {
     const canvas = document.createElement('canvas')
     
-    // Set high resolution canvas for better quality
-    const scale = barcodeSettings.value.highQuality ? 3 : 2
-    canvas.width = 400 * scale
-    canvas.height = 200 * scale
+    // Set very high resolution canvas for crisp display and print
+    const scale = barcodeSettings.value.highQuality ? 4 : 3
+    const baseWidth = 500
+    const baseHeight = 250
+    
+    canvas.width = baseWidth * scale
+    canvas.height = baseHeight * scale
     
     // Scale the context for high DPI
     const ctx = canvas.getContext('2d')
     ctx.scale(scale, scale)
+    
+    // Enable image smoothing for better quality
+    ctx.imageSmoothingEnabled = false
     
     JsBarcode(canvas, props.barcodeData, {
       format: "CODE128",
@@ -272,11 +278,15 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       word-wrap: break-word;
     }
     .barcode-image {
-      width: 100%;
+      max-width: 90%;
       height: auto;
       max-height: ${barcodeSettings.value.landscape ? '20mm' : '25mm'};
-      margin: 1mm 0;
+      margin: 1mm auto;
+      display: block;
       object-fit: contain;
+      image-rendering: -webkit-optimize-contrast;
+      image-rendering: crisp-edges;
+      image-rendering: pixelated;
     }
     .barcode-text {
       font-size: ${Math.max(barcodeSettings.value.fontSize - 2, 4)}px;
@@ -362,5 +372,8 @@ onMounted(() => {
 .barcode-preview img {
   max-width: 100%;
   height: auto;
+  image-rendering: -webkit-optimize-contrast;
+  image-rendering: crisp-edges;
+  image-rendering: pixelated;
 }
 </style>
