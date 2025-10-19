@@ -363,18 +363,6 @@
                 
               <div class="row">
                 <div class="col-md-6">
-                    <label class="form-label">عرض الخط</label>
-                    <input 
-                      type="range" 
-                      class="form-range" 
-                      min="1" 
-                      max="5" 
-                      step="0.1" 
-                      v-model="batchPrintSettings.width"
-                    >
-                    <small class="text-muted">{{ batchPrintSettings.width }}</small>
-                  </div>
-                  <div class="col-md-6">
                     <label class="form-label">ارتفاع الباركود</label>
                     <input 
                       type="range" 
@@ -386,9 +374,6 @@
                     >
                     <small class="text-muted">{{ batchPrintSettings.height }}px</small>
                 </div>
-                </div>
-                
-                <div class="row mt-2">
                 <div class="col-md-6">
                     <label class="form-label">حجم الخط</label>
                     <input 
@@ -400,18 +385,6 @@
                       v-model="batchPrintSettings.fontSize"
                     >
                     <small class="text-muted">{{ batchPrintSettings.fontSize }}px</small>
-                  </div>
-                  <div class="col-md-6">
-                    <label class="form-label">الهوامش</label>
-                    <input 
-                      type="range" 
-                      class="form-range" 
-                      min="0" 
-                      max="10" 
-                      step="1" 
-                      v-model="batchPrintSettings.margin"
-                    >
-                    <small class="text-muted">{{ batchPrintSettings.margin }}px</small>
                   </div>
                 </div>
                 

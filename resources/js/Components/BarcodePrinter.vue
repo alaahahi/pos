@@ -11,21 +11,24 @@
 
     <!-- Barcode Settings Panel -->
     <div class="barcode-settings mt-2">
+      <!-- Copies Input -->
+      <div class="mb-3">
+        <label class="form-label"><strong><i class="bi bi-files"></i> عدد النسخ</strong></label>
+        <input 
+          type="number" 
+          class="form-control" 
+          min="1" 
+          max="100" 
+          v-model.number="barcodeSettings.copies"
+          placeholder="أدخل عدد النسخ المطلوبة"
+        >
+        <small class="text-muted">سيتم طباعة {{ barcodeSettings.copies }} نسخة من الباركود</small>
+      </div>
+      
+      <hr>
+      
       <div class="row">
-        <div class="col-md-3">
-          <label class="form-label">عرض الخط</label>
-          <input 
-            type="range" 
-            class="form-range" 
-            min="1" 
-            max="5" 
-            step="0.1" 
-            v-model="barcodeSettings.width"
-            @input="updateBarcode"
-          >
-          <small class="text-muted">{{ barcodeSettings.width }}</small>
-        </div>
-        <div class="col-md-3">
+        <div class="col-md-6">
           <label class="form-label">ارتفاع الباركود</label>
           <input 
             type="range" 
@@ -38,7 +41,7 @@
           >
           <small class="text-muted">{{ barcodeSettings.height }}px</small>
         </div>
-        <div class="col-md-3">
+        <div class="col-md-6">
           <label class="form-label">حجم الخط</label>
           <input 
             type="range" 
@@ -50,19 +53,6 @@
             @input="updateBarcode"
           >
           <small class="text-muted">{{ barcodeSettings.fontSize }}px</small>
-        </div>
-        <div class="col-md-3">
-          <label class="form-label">الهوامش</label>
-          <input 
-            type="range" 
-            class="form-range" 
-            min="0" 
-            max="10" 
-            step="1" 
-            v-model="barcodeSettings.margin"
-            @input="updateBarcode"
-          >
-          <small class="text-muted">{{ barcodeSettings.margin }}px</small>
         </div>
       </div>
       <div class="row mt-2">
@@ -168,7 +158,8 @@ const barcodeSettings = ref({
   landscape: true,
   highQuality: true,
   pageWidth: 38,    // mm
-  pageHeight: 26    // mm
+  pageHeight: 26,   // mm
+  copies: 1         // عدد النسخ
 })
 
 // Show printer information
@@ -260,6 +251,20 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
   const pageSize = barcodeSettings.value.landscape ? `${pageWidth} ${pageHeight}` : `${pageHeight} ${pageWidth}`
   const maxBarcodeHeight = barcodeSettings.value.landscape ? '18mm' : '22mm'
   
+  // Generate HTML for multiple copies
+  let labelsHtml = ''
+  for (let i = 0; i < barcodeSettings.value.copies; i++) {
+    labelsHtml += `
+  <div class="label-page">
+    <div class="label-container">
+      <div class="product-name">${productName}</div>
+      <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
+      <div class="barcode-text">${barcodeData}</div>
+    </div>
+  </div>
+    `
+  }
+  
   return `<!DOCTYPE html>
 <html lang="ar">
 <head>
@@ -282,10 +287,15 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
     body {
       margin: 0;
       padding: 0;
+      font-family: Arial, sans-serif;
+    }
+    .label-page {
       width: ${pageWidth};
       height: ${pageHeight};
-      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
       overflow: hidden;
+      page-break-after: always;
     }
     .label-container {
       width: ${pageWidth};
@@ -328,11 +338,7 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
   </style>
 </head>
 <body>
-  <div class="label-container">
-    <div class="product-name">${productName}</div>
-    <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode">
-    <div class="barcode-text">${barcodeData}</div>
-  </div>
+  ${labelsHtml}
   <scr` + `ipt>
     window.onload = function() {
       setTimeout(function() {
