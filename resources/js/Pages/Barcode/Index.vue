@@ -301,30 +301,157 @@
                   </div>
                 </div>
               </div>
+              
               <div class="mb-3">
                 <label class="form-label">{{ translations.quantity_per_product }}</label>
                 <input type="number" class="form-control" v-model="batchPrintQuantity" min="1" max="10" value="1">
               </div>
-              <div class="mb-3">
-                <label class="form-label">{{ translations.barcode_type }}</label>
-                <select class="form-select" v-model="batchPrintSettings.type">
-                  <option value="PNG">PNG</option>
-                  <option value="SVG">SVG</option>
-                  <option value="JPG">JPG</option>
-                </select>
-              </div>
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">{{ translations.width }}</label>
-                    <input type="number" class="form-control" v-model="batchPrintSettings.width" min="1" max="10">
+              
+              <!-- Barcode Settings Panel - Same as BarcodePrinter -->
+              <div class="barcode-settings mt-3 p-3" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
+                <h6 class="mb-3"><i class="bi bi-sliders"></i> إعدادات الباركود</h6>
+                
+                <!-- Paper Size Settings -->
+                <div class="row mb-2">
+                  <div class="col-md-6">
+                    <label class="form-label"><strong>📏 عرض الورق (mm)</strong></label>
+                    <input 
+                      type="number" 
+                      class="form-control form-control-sm" 
+                      min="20" 
+                      max="80" 
+                      step="1" 
+                      v-model.number="batchPrintSettings.pageWidth"
+                    >
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label"><strong>📏 ارتفاع الورق (mm)</strong></label>
+                    <input 
+                      type="number" 
+                      class="form-control form-control-sm" 
+                      min="20" 
+                      max="80" 
+                      step="1" 
+                      v-model.number="batchPrintSettings.pageHeight"
+                    >
                   </div>
                 </div>
+                
+                <!-- Quick Size Buttons -->
+              <div class="mb-3">
+                  <small class="text-muted">أحجام شائعة:</small>
+                  <div class="btn-group btn-group-sm mt-1" role="group">
+                    <button type="button" class="btn btn-outline-primary" @click="batchPrintSettings.pageWidth = 38; batchPrintSettings.pageHeight = 26">
+                      <strong>38×26</strong>
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" @click="batchPrintSettings.pageWidth = 35; batchPrintSettings.pageHeight = 28">
+                      35×28
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" @click="batchPrintSettings.pageWidth = 38; batchPrintSettings.pageHeight = 28">
+                      38×28
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" @click="batchPrintSettings.pageWidth = 40; batchPrintSettings.pageHeight = 30">
+                      40×30
+                    </button>
+                    <button type="button" class="btn btn-outline-secondary" @click="batchPrintSettings.pageWidth = 50; batchPrintSettings.pageHeight = 30">
+                      50×30
+                    </button>
+              </div>
+                </div>
+                
+                <hr>
+                
+              <div class="row">
                 <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">{{ translations.height }}</label>
-                    <input type="number" class="form-control" v-model="batchPrintSettings.height" min="10" max="200">
+                    <label class="form-label">عرض الخط</label>
+                    <input 
+                      type="range" 
+                      class="form-range" 
+                      min="1" 
+                      max="5" 
+                      step="0.1" 
+                      v-model="batchPrintSettings.width"
+                    >
+                    <small class="text-muted">{{ batchPrintSettings.width }}</small>
                   </div>
+                  <div class="col-md-6">
+                    <label class="form-label">ارتفاع الباركود</label>
+                    <input 
+                      type="range" 
+                      class="form-range" 
+                      min="30" 
+                      max="150" 
+                      step="5" 
+                      v-model="batchPrintSettings.height"
+                    >
+                    <small class="text-muted">{{ batchPrintSettings.height }}px</small>
+                </div>
+                </div>
+                
+                <div class="row mt-2">
+                <div class="col-md-6">
+                    <label class="form-label">حجم الخط</label>
+                    <input 
+                      type="range" 
+                      class="form-range" 
+                      min="6" 
+                      max="20" 
+                      step="1" 
+                      v-model="batchPrintSettings.fontSize"
+                    >
+                    <small class="text-muted">{{ batchPrintSettings.fontSize }}px</small>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">الهوامش</label>
+                    <input 
+                      type="range" 
+                      class="form-range" 
+                      min="0" 
+                      max="10" 
+                      step="1" 
+                      v-model="batchPrintSettings.margin"
+                    >
+                    <small class="text-muted">{{ batchPrintSettings.margin }}px</small>
+                  </div>
+                </div>
+                
+                <div class="row mt-3">
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="batchLandscapeMode"
+                        v-model="batchPrintSettings.landscape"
+                      >
+                      <label class="form-check-label" for="batchLandscapeMode">
+                        طباعة بالعرض (Landscape)
+                      </label>
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="form-check">
+                      <input 
+                        class="form-check-input" 
+                        type="checkbox" 
+                        id="batchHighQuality"
+                        v-model="batchPrintSettings.highQuality"
+                      >
+                      <label class="form-check-label" for="batchHighQuality">
+                        جودة عالية (SVG)
+                      </label>
+                    </div>
+                  </div>
+                </div>
+                
+                <div class="alert alert-info mt-3 mb-0" style="font-size: 0.9em;">
+                  <strong><i class="bi bi-info-circle"></i> للطابعة الحرارية MHT-L58G:</strong>
+                  <ul class="mb-0 mt-2" style="font-size: 0.85em;">
+                    <li><strong>حجم الورق المحدد:</strong> {{ batchPrintSettings.pageWidth }}mm × {{ batchPrintSettings.pageHeight }}mm</li>
+                    <li><strong>اتجاه:</strong> {{ batchPrintSettings.landscape ? 'أفقي (Landscape)' : 'عمودي (Portrait)' }}</li>
+                    <li><strong>حجم الطباعة:</strong> {{ batchPrintSettings.landscape ? `${batchPrintSettings.pageWidth}mm × ${batchPrintSettings.pageHeight}mm` : `${batchPrintSettings.pageHeight}mm × ${batchPrintSettings.pageWidth}mm` }}</li>
+                    <li>⚠️ تأكد من ضبط نفس الحجم في إعدادات الطابعة</li>
+                  </ul>
                 </div>
               </div>
             </div>
@@ -491,9 +618,15 @@ const printSettings = reactive({
 })
 
 const batchPrintSettings = reactive({
-  type: 'PNG',
+  type: 'SVG',
   width: 2,
-  height: 30
+  height: 70,
+  fontSize: 10,
+  margin: 2,
+  landscape: true,
+  highQuality: true,
+  pageWidth: 38,    // mm
+  pageHeight: 26    // mm
 })
 
 const printerSettings = reactive({
@@ -681,148 +814,189 @@ const confirmBatchPrint = async () => {
 
 const printBatchBarcodes = async (results) => {
   try {
-    // Create a temporary div for batch printing
-    const printDiv = document.createElement('div')
-    printDiv.id = 'batch-barcode-print-overlay'
-    printDiv.style.position = 'fixed'
-    printDiv.style.top = '0'
-    printDiv.style.left = '0'
-    printDiv.style.width = '100%'
-    printDiv.style.height = '100%'
-    printDiv.style.backgroundColor = 'white'
-    printDiv.style.zIndex = '9999'
-    printDiv.style.padding = '20px'
-    printDiv.style.textAlign = 'center'
-    printDiv.style.fontFamily = 'Arial, sans-serif'
-    printDiv.style.overflow = 'auto'
-
+    // Import JsBarcode dynamically if needed
+    const JsBarcode = (await import('jsbarcode')).default
+    
+    // Generate SVG barcodes for all products
+    const barcodesWithSVG = []
+    for (const result of results) {
+      if (result.success && result.product) {
+        const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+        
+        JsBarcode(svg, result.product.barcode, {
+          format: "CODE128",
+          width: batchPrintSettings.width,
+          height: batchPrintSettings.height,
+          displayValue: false,
+          margin: batchPrintSettings.margin,
+          background: "#ffffff",
+          lineColor: "#000000",
+          xmlDocument: document
+        })
+        
+        const svgData = new XMLSerializer().serializeToString(svg)
+        const barcodeImageUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+        
+        barcodesWithSVG.push({
+          ...result,
+          svgUrl: barcodeImageUrl
+        })
+      }
+    }
+    
+    // Create print window
+    const printWindow = window.open('', '_blank', 'width=400,height=600')
+    
+    if (!printWindow) {
+      toast.error('فشل فتح نافذة الطباعة. يرجى السماح بالنوافذ المنبثقة.')
+      return
+    }
+    
     let barcodeHtml = ''
     
-    for (const result of results) {
-      if (result.success) {
-        const barcodeImageUrl = `data:image/png;base64,${result.data}`
-        
+    for (const result of barcodesWithSVG) {
         barcodeHtml += `
-          <div class="barcode-container" style="border: 2px solid #000; padding: 20px; margin: 20px 0; background: white; page-break-after: always;">
-            <div class="product-name" style="font-size: 18px; font-weight: bold; margin-bottom: 15px; color: #2c3e50;">${result.product.name}</div>
-            <img class="barcode-image" src="${barcodeImageUrl}" alt="Barcode" style="max-width: 100%; height: auto; border: 1px solid #ccc;">
-            <div class="barcode-text" style="font-size: 14px; margin-top: 15px; font-family: monospace; color: #666;">${result.product.barcode}</div>
-            <div class="price-text" style="font-size: 16px; font-weight: bold; margin-top: 10px; color: #2c3e50;">${result.product.price} دينار</div>
+        <div class="label-page">
+          <div class="label-container">
+            <div class="product-name">${result.product.name}</div>
+            <img class="barcode-image" src="${result.svgUrl}" alt="Barcode">
+            <div class="barcode-text">${result.product.barcode}</div>
+          </div>
           </div>
         `
-      }
     }
 
-    printDiv.innerHTML = `
+    const orientation = batchPrintSettings.landscape ? 'landscape' : 'portrait'
+    const pageWidth = `${batchPrintSettings.pageWidth}mm`
+    const pageHeight = `${batchPrintSettings.pageHeight}mm`
+    const pageSize = batchPrintSettings.landscape ? `${pageWidth} ${pageHeight}` : `${pageHeight} ${pageWidth}`
+    const maxBarcodeHeight = batchPrintSettings.landscape ? '18mm' : '22mm'
+    
+    const htmlContent = `
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8">
+  <title>طباعة الباركودات</title>
       <style>
+    /* Optimized for thermal printers - Batch Print with Dynamic Settings */
+    @page { 
+      size: ${pageSize}; 
+      margin: 0; 
+      orientation: ${orientation};
+    }
+    
         @media print {
-          body { margin: 0; padding: 0; }
-          .print-container { 
-            max-width: 100% !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 20px !important; 
-            border: none !important;
-            box-shadow: none !important;
-          }
-          .barcode-container { 
-            max-width: 100% !important; 
-            width: 100% !important; 
-            margin: 0 !important; 
-            padding: 30px !important; 
-            border: 2px solid #000 !important;
-            background: white !important;
-            page-break-after: always !important;
-          }
-          .barcode-image { 
-            width: 100% !important; 
-            height: auto !important; 
-            min-height: 300px !important; 
-            max-height: 500px !important;
-            border: 1px solid #000 !important;
-          }
-          .product-name { 
-            font-size: 24px !important; 
-            font-weight: bold !important; 
-            margin-bottom: 20px !important; 
-            text-align: center !important;
-          }
-          .barcode-text { 
-            font-size: 18px !important; 
-            margin-top: 20px !important; 
-            font-family: monospace !important; 
-            text-align: center !important;
-            font-weight: bold !important;
-          }
-          .price-text {
-            font-size: 20px !important;
-            font-weight: bold !important;
-            margin-top: 15px !important;
-            text-align: center !important;
-            color: #2c3e50 !important;
-          }
-          .no-print { display: none !important; }
-        }
-      </style>
-      <div class="print-container" style="max-width: 400px; margin: 50px auto; border: 2px solid #333; padding: 30px; background: white; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">
-        <h3 style="margin-bottom: 20px; color: #333;">طباعة الباركود المجمعة</h3>
-        
-        ${barcodeHtml}
-        
-        <div class="no-print" style="margin-top: 30px;">
-          <button onclick="printBatchContent()" style="padding: 12px 25px; background: #28a745; color: white; border: none; border-radius: 5px; cursor: pointer; margin-right: 15px; font-size: 16px;">
-            <i class="bi bi-printer"></i> طباعة الكل
-          </button>
-          <button onclick="closeBatchPrintOverlay()" style="padding: 12px 25px; background: #6c757d; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 16px;">
-            <i class="bi bi-x"></i> إلغاء
-          </button>
-        </div>
-        
-        <div class="no-print" style="margin-top: 20px; font-size: 12px; color: #666;">
-          <p>💡 نصيحة: اختر "Microsoft Print to PDF" لطباعة إلى ملف PDF</p>
-        </div>
-      </div>
-    `
-
-    // Add print and close functions to window
-    window.printBatchContent = function() {
-      // Wait for all images to load before printing
-      const images = printDiv.querySelectorAll('img')
-      let loadedImages = 0
-      
-      if (images.length === 0) {
-        window.print()
-        return
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
       }
-      
-      images.forEach(img => {
-        if (img.complete) {
-          loadedImages++
-        } else {
-          img.onload = function() {
-            loadedImages++
-            if (loadedImages === images.length) {
-              window.print()
-            }
-          }
-        }
-      })
-      
-      if (loadedImages === images.length) {
-        window.print()
+      body {
+        margin: 0;
+        padding: 0;
+      }
+      .label-page {
+        width: ${pageWidth};
+        height: ${pageHeight};
+        page-break-after: always;
       }
     }
     
-    window.closeBatchPrintOverlay = function() {
-      document.body.removeChild(printDiv)
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: Arial, sans-serif;
     }
-
-    document.body.appendChild(printDiv)
-    toast.success('تم تحضير الباركودات للطباعة المجمعة. اضغط زر الطباعة في الأعلى.')
+    
+    .label-page {
+      width: ${pageWidth};
+      height: ${pageHeight};
+      margin: 0;
+      padding: 0;
+      overflow: hidden;
+      page-break-after: always;
+    }
+    
+    .label-container {
+      width: ${pageWidth};
+      height: ${pageHeight};
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      align-items: center;
+      padding: 1mm;
+      box-sizing: border-box;
+    }
+    
+    .product-name {
+      width: 100%;
+      font-size: ${batchPrintSettings.fontSize}px;
+      font-weight: bold;
+      text-align: center;
+      margin-bottom: 1mm;
+      line-height: 1.1;
+      max-height: 8mm;
+      overflow: hidden;
+      word-wrap: break-word;
+    }
+    
+    .barcode-image {
+      width: auto;
+      max-width: 90%;
+      height: auto;
+      max-height: ${maxBarcodeHeight};
+      margin: 1mm auto;
+      display: block;
+      object-fit: contain;
+    }
+    
+    .barcode-text {
+      width: 100%;
+      font-size: ${Math.max(batchPrintSettings.fontSize - 2, 4)}px;
+      font-family: monospace;
+      text-align: center;
+      margin-top: 1mm;
+      font-weight: bold;
+    }
+    
+    @media screen {
+      body {
+        padding: 20px;
+        background: #f5f5f5;
+      }
+      .label-page {
+        border: 1px solid #ccc;
+        margin: 10px;
+        background: white;
+        display: inline-block;
+      }
+    }
+  </style>
+</head>
+<body>
+  ${barcodeHtml}
+  
+  <scr` + `ipt>
+    window.onload = function() {
+      setTimeout(function() {
+        window.print();
+        setTimeout(function() {
+          window.close();
+        }, 2000);
+      }, 1500);
+    }
+  </scr` + `ipt>
+</body>
+</html>
+    `
+    
+    printWindow.document.write(htmlContent)
+    printWindow.document.close()
 
   } catch (error) {
-    console.error('Batch print overlay error:', error)
-    toast.error('حدث خطأ أثناء تحضير الطباعة المجمعة')
+    console.error('Batch print error:', error)
+    toast.error('حدث خطأ أثناء طباعة الباركودات')
   }
 }
 

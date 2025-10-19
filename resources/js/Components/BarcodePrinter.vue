@@ -66,7 +66,7 @@
         </div>
       </div>
       <div class="row mt-2">
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="form-check">
             <input 
               class="form-check-input" 
@@ -80,7 +80,7 @@
             </label>
           </div>
         </div>
-        <div class="col-md-6">
+        <div class="col-md-4">
           <div class="form-check">
             <input 
               class="form-check-input" 
@@ -94,6 +94,24 @@
             </label>
           </div>
         </div>
+        <div class="col-md-4">
+          <button class="btn btn-sm btn-info" @click="showPrinterInfo">
+            <i class="bi bi-info-circle"></i> معلومات الطابعة
+          </button>
+        </div>
+      </div>
+      
+      <!-- Printer Info Alert -->
+      <div class="alert alert-info mt-3" v-if="printerInfo">
+        <h6><i class="bi bi-printer"></i> معلومات الطابعة الحرارية:</h6>
+        <ul class="mb-0">
+          <li><strong>الطابعة:</strong> Thermal Printer (MHT-L58G)</li>
+          <li><strong>حجم الورق المحدد:</strong> {{ barcodeSettings.pageWidth }}mm × {{ barcodeSettings.pageHeight }}mm</li>
+          <li><strong>الاتجاه:</strong> {{ barcodeSettings.landscape ? 'أفقي (Landscape)' : 'عمودي (Portrait)' }}</li>
+          <li><strong>حجم الطباعة:</strong> {{ barcodeSettings.landscape ? `${barcodeSettings.pageWidth}mm × ${barcodeSettings.pageHeight}mm` : `${barcodeSettings.pageHeight}mm × ${barcodeSettings.pageWidth}mm` }}</li>
+          <li><strong>دقة الطباعة الموصى بها:</strong> 203 DPI</li>
+          <li>⚠️ تأكد من ضبط نفس الحجم في إعدادات الطابعة</li>
+        </ul>
       </div>
     </div>
     
@@ -139,16 +157,24 @@ const props = defineProps({
 const loading = ref(false)
 const barcodeCanvas = ref(null)
 const previewUrl = ref('')
+const printerInfo = ref(false)
 
 // Barcode settings with reactive values
 const barcodeSettings = ref({
   width: 2,
-  height: 90,
+  height: 70,
   fontSize: 10,
   margin: 2,
   landscape: true,
-  highQuality: true
+  highQuality: true,
+  pageWidth: 38,    // mm
+  pageHeight: 26    // mm
 })
+
+// Show printer information
+const showPrinterInfo = () => {
+  printerInfo.value = !printerInfo.value
+}
 
 const printBarcode = async () => {
   if (!props.barcodeData) {
@@ -229,7 +255,10 @@ const printBarcodeDirectly = async (barcodeImageUrl) => {
 
 const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData = '') => {
   const orientation = barcodeSettings.value.landscape ? 'landscape' : 'portrait'
-  const pageSize = barcodeSettings.value.landscape ? '38mm 28mm' : '28mm 35mm'
+  const pageWidth = `${barcodeSettings.value.pageWidth}mm`
+  const pageHeight = `${barcodeSettings.value.pageHeight}mm`
+  const pageSize = barcodeSettings.value.landscape ? `${pageWidth} ${pageHeight}` : `${pageHeight} ${pageWidth}`
+  const maxBarcodeHeight = barcodeSettings.value.landscape ? '18mm' : '22mm'
   
   return `<!DOCTYPE html>
 <html lang="ar">
@@ -237,22 +266,30 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
   <meta charset="UTF-8">
   <title>طباعة الباركود</title>
   <style>
+    /* Optimized for thermal printers like MHT-L58G */
     @page { 
       size: ${pageSize}; 
       margin: 0; 
       orientation: ${orientation};
     }
+    @media print {
+      * {
+        -webkit-print-color-adjust: exact !important;
+        print-color-adjust: exact !important;
+        color-adjust: exact !important;
+      }
+    }
     body {
       margin: 0;
       padding: 0;
-      width: ${barcodeSettings.value.landscape ? '38mm' : '28mm'};
-      height: ${barcodeSettings.value.landscape ? '28mm' : '35mm'};
+      width: ${pageWidth};
+      height: ${pageHeight};
       font-family: Arial, sans-serif;
       overflow: hidden;
     }
     .label-container {
-      width: ${barcodeSettings.value.landscape ? '38mm' : '28mm'};
-      height: ${barcodeSettings.value.landscape ? '28mm' : '35mm'};
+      width: ${pageWidth};
+      height: ${pageHeight};
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -261,6 +298,7 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       box-sizing: border-box;
     }
     .product-name {
+      width: 100%;
       font-size: ${barcodeSettings.value.fontSize}px;
       font-weight: bold;
       text-align: center;
@@ -271,14 +309,16 @@ const createPrintHTML = (barcodeImageUrl, productName = 'Product', barcodeData =
       word-wrap: break-word;
     }
     .barcode-image {
+      width: auto;
       max-width: 90%;
       height: auto;
-      max-height: ${barcodeSettings.value.landscape ? '20mm' : '25mm'};
+      max-height: ${maxBarcodeHeight};
       margin: 1mm auto;
       display: block;
       object-fit: contain;
     }
     .barcode-text {
+      width: 100%;
       font-size: ${Math.max(barcodeSettings.value.fontSize - 2, 4)}px;
       font-family: monospace;
       text-align: center;
