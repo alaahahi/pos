@@ -639,6 +639,7 @@
                     step="0.01" 
                     v-model.number="printSettings.price"
                     placeholder="أدخل سعر البيع"
+                    @input="updateBarcodePreview"
                   >
                 </div>
                 <div class="col-md-6">

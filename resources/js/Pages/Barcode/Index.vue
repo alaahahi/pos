@@ -502,6 +502,7 @@
                       step="0.01" 
                       v-model.number="batchPrintSettings.price"
                       placeholder="أدخل سعر البيع"
+                      @input="updateBatchBarcodePreview"
                     >
                   </div>
                   <div class="col-md-6">

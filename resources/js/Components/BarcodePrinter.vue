@@ -91,7 +91,6 @@
               type="checkbox" 
               id="showBarcodeNumber"
               v-model="barcodeSettings.showBarcodeNumber"
-              @change="updateBarcode"
             >
             <label class="form-check-label" for="showBarcodeNumber">
               عرض رقم الباركود
@@ -116,6 +115,7 @@
             step="0.01" 
             v-model.number="barcodeSettings.price"
             placeholder="أدخل سعر البيع"
+            @input="updateBarcode"
           >
         </div>
         <div class="col-md-6">
@@ -125,7 +125,6 @@
               type="checkbox" 
               id="showPrice"
               v-model="barcodeSettings.showPrice"
-              @change="updateBarcode"
             >
             <label class="form-check-label" for="showPrice">
               عرض سعر البيع
@@ -143,7 +142,6 @@
               type="checkbox" 
               id="showPrice"
               v-model="barcodeSettings.showPrice"
-              @change="updateBarcode"
             >
             <label class="form-check-label" for="showPrice">
               عرض سعر البيع
@@ -166,9 +164,63 @@
       </div>
     </div>
     
-    <!-- Preview -->
-    <div class="barcode-preview mt-3" v-if="previewUrl">
-      <img :src="previewUrl" alt="Barcode Preview" class="img-fluid border">
+    <!-- Enhanced Preview -->
+    <div class="barcode-preview mt-3 p-3 text-center" v-if="previewUrl" style="background: white; border: 2px dashed #dee2e6; border-radius: 8px;">
+      <h6 class="mb-3"><i class="bi bi-eye"></i> معاينة الباركود</h6>
+      <div class="preview-container" :style="{ 
+        width: `${barcodeSettings.pageWidth * 3.78}px`, 
+        height: `${barcodeSettings.pageHeight * 3.78}px`,
+        margin: '0 auto',
+        border: '1px solid #ccc',
+        display: 'flex',
+        flexDirection: 'column',
+        justifyContent: 'center',
+        alignItems: 'center',
+        padding: '8px',
+        background: '#fff'
+      }">
+        <div class="product-name" :style="{ 
+          fontSize: `${barcodeSettings.fontSize}px`, 
+          fontWeight: 'bold',
+          textAlign: 'center',
+          marginBottom: '4px',
+          maxHeight: '30px',
+          overflow: 'hidden',
+          wordWrap: 'break-word',
+          width: '100%'
+        }">
+          {{ productName }}
+        </div>
+        <img :src="previewUrl" alt="Barcode Preview" 
+          :style="{ 
+            maxWidth: '90%', 
+            height: 'auto',
+            maxHeight: barcodeSettings.landscape ? '68px' : '83px',
+            margin: '4px auto'
+          }"
+        >
+        <div v-if="barcodeSettings.showBarcodeNumber" class="barcode-text" :style="{ 
+          fontSize: `${Math.max(barcodeSettings.fontSize - 2, 4)}px`, 
+          fontFamily: 'monospace',
+          textAlign: 'center',
+          marginTop: '4px',
+          fontWeight: 'bold',
+          width: '100%'
+        }">
+          {{ barcodeData }}
+        </div>
+        <div v-if="barcodeSettings.showPrice && barcodeSettings.price > 0" class="price-text" :style="{ 
+          fontSize: `${Math.max(barcodeSettings.fontSize - 1, 5)}px`, 
+          textAlign: 'center',
+          marginTop: '4px',
+          fontWeight: 'bold',
+          color: '#dc3545',
+          width: '100%'
+        }">
+          {{ barcodeSettings.price }} دينار
+        </div>
+      </div>
+      <small class="text-muted mt-2 d-block">الحجم الفعلي: {{ barcodeSettings.pageWidth }}mm × {{ barcodeSettings.pageHeight }}mm</small>
     </div>
     
     <canvas ref="barcodeCanvas" style="display: none;"></canvas>
