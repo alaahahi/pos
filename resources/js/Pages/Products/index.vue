@@ -433,6 +433,65 @@
               <strong><i class="bi bi-box"></i> المنتج:</strong> {{ printProduct?.name }}
             </div>
             
+            <!-- Barcode Preview -->
+            <div class="barcode-preview mb-3 p-3 text-center" style="background: white; border: 2px dashed #dee2e6; border-radius: 8px;">
+              <h6 class="mb-3"><i class="bi bi-eye"></i> معاينة الباركود</h6>
+              <div class="preview-container" :style="{ 
+                width: `${printSettings.pageWidth * 3.78}px`, 
+                height: `${printSettings.pageHeight * 3.78}px`,
+                margin: '0 auto',
+                border: '1px solid #ccc',
+                display: 'flex',
+                flexDirection: 'column',
+                justifyContent: 'center',
+                alignItems: 'center',
+                padding: '8px',
+                background: '#fff'
+              }">
+                <div class="product-name" :style="{ 
+                  fontSize: `${printSettings.fontSize}px`, 
+                  fontWeight: 'bold',
+                  textAlign: 'center',
+                  marginBottom: '4px',
+                  maxHeight: '30px',
+                  overflow: 'hidden',
+                  wordWrap: 'break-word',
+                  width: '100%'
+                }">
+                  {{ printProduct?.name }}
+                </div>
+                <img v-if="previewBarcodeUrl" :src="previewBarcodeUrl" alt="Barcode Preview" 
+                  :style="{ 
+                    maxWidth: '90%', 
+                    height: 'auto',
+                    maxHeight: printSettings.landscape ? '68px' : '83px',
+                    margin: '4px auto'
+                  }"
+                >
+                <div v-if="printSettings.showBarcodeNumber" class="barcode-text" :style="{ 
+                  fontSize: `${Math.max(printSettings.fontSize - 2, 4)}px`, 
+                  fontFamily: 'monospace',
+                  textAlign: 'center',
+                  marginTop: '4px',
+                  fontWeight: 'bold',
+                  width: '100%'
+                }">
+                  {{ printProduct?.barcode }}
+                </div>
+                <div v-if="printSettings.showPrice && printSettings.price > 0" class="price-text" :style="{ 
+                  fontSize: `${Math.max(printSettings.fontSize - 1, 5)}px`, 
+                  textAlign: 'center',
+                  marginTop: '4px',
+                  fontWeight: 'bold',
+                  color: '#dc3545',
+                  width: '100%'
+                }">
+                  {{ printSettings.price }} دينار
+                </div>
+              </div>
+              <small class="text-muted mt-2 d-block">الحجم الفعلي: {{ printSettings.pageWidth }}mm × {{ printSettings.pageHeight }}mm</small>
+            </div>
+            
             <!-- Copies Input -->
             <div class="mb-3">
               <label class="form-label"><strong><i class="bi bi-files"></i> عدد النسخ</strong></label>
@@ -508,6 +567,7 @@
                     max="150" 
                     step="5" 
                     v-model="printSettings.height"
+                    @input="updateBarcodePreview"
                   >
                   <small class="text-muted">{{ printSettings.height }}px</small>
                 </div>
@@ -520,6 +580,7 @@
                     max="20" 
                     step="1" 
                     v-model="printSettings.fontSize"
+                    @input="updateBarcodePreview"
                   >
                   <small class="text-muted">{{ printSettings.fontSize }}px</small>
                 </div>
@@ -660,6 +721,7 @@ const previewImage = ref(null);
 const selectedProduct = ref(null);
 const showPrintModal = ref(false);
 const printProduct = ref(null);
+const previewBarcodeUrl = ref('');
 
 // Barcode print settings
 const printSettings = reactive({
@@ -869,7 +931,36 @@ const printBarcode = (product) => {
   }
   
   printProduct.value = product
+  printSettings.price = product.selling_price || 0
   showPrintModal.value = true
+  
+  // Generate barcode preview
+  updateBarcodePreview()
+}
+
+const updateBarcodePreview = async () => {
+  if (!printProduct.value || !printProduct.value.barcode) return
+  
+  try {
+    const JsBarcode = (await import('jsbarcode')).default
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    
+    JsBarcode(svg, printProduct.value.barcode, {
+      format: "CODE128",
+      width: printSettings.width,
+      height: printSettings.height,
+      displayValue: false,
+      margin: printSettings.margin,
+      background: "#ffffff",
+      lineColor: "#000000",
+      xmlDocument: document
+    })
+    
+    const svgData = new XMLSerializer().serializeToString(svg)
+    previewBarcodeUrl.value = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+  } catch (error) {
+    console.error('Preview generation error:', error)
+  }
 }
 
 const confirmPrint = async () => {

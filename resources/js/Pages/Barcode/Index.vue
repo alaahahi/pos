@@ -41,7 +41,7 @@
                     <button 
                       type="button" 
                       class="btn btn-success" 
-                      @click="showBatchPrintModal = true"
+                      @click="openBatchPrintModal"
                       :disabled="selectedProducts.length === 0"
                     >
                       {{ translations.batch_print }} ({{ selectedProducts.length }})
@@ -307,6 +307,65 @@
                 <input type="number" class="form-control" v-model="batchPrintQuantity" min="1" max="10" value="1">
               </div>
               
+              <!-- Barcode Preview -->
+              <div class="barcode-preview mb-3 p-3 text-center" style="background: white; border: 2px dashed #dee2e6; border-radius: 8px;" v-if="selectedProducts.length > 0">
+                <h6 class="mb-3"><i class="bi bi-eye"></i> معاينة الباركود (أول منتج)</h6>
+                <div class="preview-container" :style="{ 
+                  width: `${batchPrintSettings.pageWidth * 3.78}px`, 
+                  height: `${batchPrintSettings.pageHeight * 3.78}px`,
+                  margin: '0 auto',
+                  border: '1px solid #ccc',
+                  display: 'flex',
+                  flexDirection: 'column',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  padding: '8px',
+                  background: '#fff'
+                }">
+                  <div class="product-name" :style="{ 
+                    fontSize: `${batchPrintSettings.fontSize}px`, 
+                    fontWeight: 'bold',
+                    textAlign: 'center',
+                    marginBottom: '4px',
+                    maxHeight: '30px',
+                    overflow: 'hidden',
+                    wordWrap: 'break-word',
+                    width: '100%'
+                  }">
+                    {{ getProductName(selectedProducts[0]) }}
+                  </div>
+                  <img v-if="batchPreviewBarcodeUrl" :src="batchPreviewBarcodeUrl" alt="Barcode Preview" 
+                    :style="{ 
+                      maxWidth: '90%', 
+                      height: 'auto',
+                      maxHeight: batchPrintSettings.landscape ? '68px' : '83px',
+                      margin: '4px auto'
+                    }"
+                  >
+                  <div v-if="batchPrintSettings.showBarcodeNumber" class="barcode-text" :style="{ 
+                    fontSize: `${Math.max(batchPrintSettings.fontSize - 2, 4)}px`, 
+                    fontFamily: 'monospace',
+                    textAlign: 'center',
+                    marginTop: '4px',
+                    fontWeight: 'bold',
+                    width: '100%'
+                  }">
+                    {{ getProductByID(selectedProducts[0])?.barcode }}
+                  </div>
+                  <div v-if="batchPrintSettings.showPrice && batchPrintSettings.price > 0" class="price-text" :style="{ 
+                    fontSize: `${Math.max(batchPrintSettings.fontSize - 1, 5)}px`, 
+                    textAlign: 'center',
+                    marginTop: '4px',
+                    fontWeight: 'bold',
+                    color: '#dc3545',
+                    width: '100%'
+                  }">
+                    {{ batchPrintSettings.price }} دينار
+                  </div>
+                </div>
+                <small class="text-muted mt-2 d-block">الحجم الفعلي: {{ batchPrintSettings.pageWidth }}mm × {{ batchPrintSettings.pageHeight }}mm</small>
+              </div>
+              
               <!-- Barcode Settings Panel - Same as BarcodePrinter -->
               <div class="barcode-settings mt-3 p-3" style="background: #f8f9fa; border-radius: 8px; border: 1px solid #dee2e6;">
                 <h6 class="mb-3"><i class="bi bi-sliders"></i> إعدادات الباركود</h6>
@@ -371,6 +430,7 @@
                       max="150" 
                       step="5" 
                       v-model="batchPrintSettings.height"
+                      @input="updateBatchBarcodePreview"
                     >
                     <small class="text-muted">{{ batchPrintSettings.height }}px</small>
                   </div>
@@ -383,6 +443,7 @@
                       max="20" 
                       step="1" 
                       v-model="batchPrintSettings.fontSize"
+                      @input="updateBatchBarcodePreview"
                     >
                     <small class="text-muted">{{ batchPrintSettings.fontSize }}px</small>
                 </div>
@@ -627,6 +688,7 @@ const searchForm = reactive({
 
 const selectedProducts = ref([])
 const selectedProduct = ref(null)
+const batchPreviewBarcodeUrl = ref('')
 
 // Modal states
 const showGenerateModal = ref(false)
@@ -693,6 +755,43 @@ const toggleAllProducts = () => {
 const getProductName = (productId) => {
   const product = props.products.data.find(p => p.id === productId)
   return product ? product.name : ''
+}
+
+const getProductByID = (productId) => {
+  return props.products.data.find(p => p.id === productId)
+}
+
+const openBatchPrintModal = () => {
+  showBatchPrintModal.value = true
+  updateBatchBarcodePreview()
+}
+
+const updateBatchBarcodePreview = async () => {
+  if (selectedProducts.value.length === 0) return
+  
+  const firstProduct = getProductByID(selectedProducts.value[0])
+  if (!firstProduct || !firstProduct.barcode) return
+  
+  try {
+    const JsBarcode = (await import('jsbarcode')).default
+    const svg = document.createElementNS("http://www.w3.org/2000/svg", "svg")
+    
+    JsBarcode(svg, firstProduct.barcode, {
+      format: "CODE128",
+      width: batchPrintSettings.width,
+      height: batchPrintSettings.height,
+      displayValue: false,
+      margin: batchPrintSettings.margin,
+      background: "#ffffff",
+      lineColor: "#000000",
+      xmlDocument: document
+    })
+    
+    const svgData = new XMLSerializer().serializeToString(svg)
+    batchPreviewBarcodeUrl.value = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svgData)))
+  } catch (error) {
+    console.error('Batch preview generation error:', error)
+  }
 }
 
 const generateBarcode = async (product) => {
