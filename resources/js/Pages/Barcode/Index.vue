@@ -421,7 +421,20 @@
                 <hr>
                 
               <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                    <label class="form-label">عرض الخط</label>
+                    <input 
+                      type="range" 
+                      class="form-range" 
+                      min="1" 
+                      max="5" 
+                      step="0.1" 
+                      v-model="batchPrintSettings.width"
+                      @input="updateBatchBarcodePreview"
+                    >
+                    <small class="text-muted">{{ batchPrintSettings.width }}</small>
+                  </div>
+                <div class="col-md-4">
                     <label class="form-label">ارتفاع الباركود</label>
                     <input 
                       type="range" 
@@ -434,7 +447,7 @@
                     >
                     <small class="text-muted">{{ batchPrintSettings.height }}px</small>
                   </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                     <label class="form-label">حجم الخط</label>
                     <input 
                       type="range" 
@@ -446,7 +459,7 @@
                       @input="updateBatchBarcodePreview"
                     >
                     <small class="text-muted">{{ batchPrintSettings.fontSize }}px</small>
-                </div>
+                  </div>
                 </div>
                 
                 <div class="row mt-3">
@@ -516,13 +529,13 @@
                       <label class="form-check-label" for="showPrice">
                         عرض سعر البيع
                       </label>
-                    </div>
+                </div>
                   </div>
                 </div>
                 
                 <!-- Show Price Checkbox (when price is not shown) -->
                 <div class="row mt-2" v-if="!batchPrintSettings.showPrice">
-                  <div class="col-md-6">
+                <div class="col-md-6">
                     <div class="form-check">
                       <input 
                         class="form-check-input" 
@@ -533,7 +546,7 @@
                       <label class="form-check-label" for="showPrice">
                         عرض سعر البيع
                       </label>
-                    </div>
+                  </div>
                   </div>
                 </div>
                 

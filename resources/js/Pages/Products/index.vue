@@ -558,7 +558,20 @@
               <hr>
               
               <div class="row">
-                <div class="col-md-6">
+                <div class="col-md-4">
+                  <label class="form-label">عرض الخط</label>
+                  <input 
+                    type="range" 
+                    class="form-range" 
+                    min="1" 
+                    max="5" 
+                    step="0.1" 
+                    v-model="printSettings.width"
+                    @input="updateBarcodePreview"
+                  >
+                  <small class="text-muted">{{ printSettings.width }}</small>
+                </div>
+                <div class="col-md-4">
                   <label class="form-label">ارتفاع الباركود</label>
                   <input 
                     type="range" 
@@ -571,7 +584,7 @@
                   >
                   <small class="text-muted">{{ printSettings.height }}px</small>
                 </div>
-                <div class="col-md-6">
+                <div class="col-md-4">
                   <label class="form-label">حجم الخط</label>
                   <input 
                     type="range" 
