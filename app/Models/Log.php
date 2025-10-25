@@ -25,7 +25,8 @@ class Log extends Model
     protected $casts = [
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
-        'created_at' => 'date:Y-m-d - H:i',
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
     ];
 
     public function user(): BelongsTo

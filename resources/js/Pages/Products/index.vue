@@ -850,7 +850,8 @@ const formatPrice = (price, currency = 'IQD') => {
 // Format date
 const formatDate = (date) => {
   if (!date) return '-';
-  return new Date(date).toLocaleDateString('ar-SA');
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
+  return new Date(date).toLocaleDateString('en-US', options);
 };
 
 // Get low stock count

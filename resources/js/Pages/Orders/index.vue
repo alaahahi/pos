@@ -302,7 +302,8 @@ const Delete = (id) => {
 
 // دالة لتنسيق التاريخ بشكل مناسب
 const formatDate = (date) => {
-  const options = { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit', second: '2-digit' };
+  if (!date) return '-';
+  const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true };
   return new Date(date).toLocaleDateString('en-US', options);
 };
 </script>

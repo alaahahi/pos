@@ -392,7 +392,7 @@ const formatDate = (date) => {
 }
 
 const formatNumber = (number) => {
-  return new Intl.NumberFormat('ar-SA').format(number)
+  return new Intl.NumberFormat('en-US').format(number)
 }
 
 onMounted(() => {
