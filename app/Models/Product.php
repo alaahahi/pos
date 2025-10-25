@@ -57,7 +57,7 @@ class Product extends Model
             // التحقق من وجود الملف فعلياً
             $fullPath = storage_path("app/public/{$imagePath}");
             if (file_exists($fullPath)) {
-                return asset("storage/{$imagePath}");
+                return asset("/public/storage/{$imagePath}");
             }
             
             // إذا لم يوجد الملف، إرجاع لوغو الشركة
