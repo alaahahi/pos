@@ -131,6 +131,7 @@ class OrderController extends Controller
             'products' => $products,
             'defaultCustomer' => $defaultCustomer,
             'defaultCurrency' => $this->defaultCurrency,
+            'companyLogo' => env('COMPANY_LOGO', 'dashboard-assets/img/logo.png'),
             'todaySales' => [
                 'orders_count' => $todaySales->orders_count ?? 0,
                 'total_sales' => $todaySales->total_sales ?? 0,

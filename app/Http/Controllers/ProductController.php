@@ -151,7 +151,8 @@ class ProductController extends Controller
             $path = $request->file('image')->store('products', 'public');
             $validated['image'] = $path;
         } else {
-            $validated['image'] = 'products/default_product.png';
+            // لا نحفظ مسار افتراضي، نترك null
+            $validated['image'] = null;
         }
         
         // إنشاء المنتج
@@ -234,7 +235,7 @@ class ProductController extends Controller
         
         // التعامل مع رفع الصورة الجديدة
         if ($request->hasFile('image')) {
-            // حذف الصورة القديمة إذا لم تكن الصورة الافتراضية
+            // حذف الصورة القديمة إذا كانت موجودة وليست null
             if ($product->image && $product->image !== 'products/default_product.png') {
                 Storage::disk('public')->delete($product->image);
             }

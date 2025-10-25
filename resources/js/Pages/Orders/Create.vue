@@ -126,7 +126,7 @@
 
             <div class="product-image">
               <img 
-                :src="product.image_url || '/dashboard-assets/img/product-placeholder.svg'" 
+                :src="product.image_url || `/${companyLogo}`" 
                 :alt="product.name"
                 @error="handleImageError"
               />
@@ -550,6 +550,7 @@ const props = defineProps({
   defaultCustomer: Object,
   translations: Object,
   defaultCurrency: String,
+  companyLogo: String,
   categories: Array,
   todaySales: Object,
 });
@@ -856,7 +857,7 @@ const getProductModel = (productId) => {
 };
 
 const handleImageError = (event) => {
-  event.target.src = '/dashboard-assets/img/product-placeholder.svg';
+  event.target.src = `/${props.companyLogo}`;
 };
 
 const toggleFullscreen = () => {
@@ -1282,6 +1283,7 @@ onUnmounted(() => {
   overflow: hidden;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
   height: 100%;
+  min-height: 176px;
   display: flex;
   flex-direction: column;
 }

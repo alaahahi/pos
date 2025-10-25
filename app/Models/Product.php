@@ -42,13 +42,30 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
+        // الحصول على لوغو الشركة من .env
+        $companyLogo = env('COMPANY_LOGO', 'dashboard-assets/img/logo.png');
+        
         // إذا كانت هناك صورة محفوظة
         if (isset($this->attributes['image']) && $this->attributes['image']) {
-            return asset("storage/{$this->attributes['image']}");
+            $imagePath = $this->attributes['image'];
+            
+            // إذا كانت الصورة هي default_product.png (غير موجودة)
+            if ($imagePath === 'products/default_product.png') {
+                return asset($companyLogo);
+            }
+            
+            // التحقق من وجود الملف فعلياً
+            $fullPath = storage_path("app/public/{$imagePath}");
+            if (file_exists($fullPath)) {
+                return asset("storage/{$imagePath}");
+            }
+            
+            // إذا لم يوجد الملف، إرجاع لوغو الشركة
+            return asset($companyLogo);
         }
         
-        // إرجاع الصورة الافتراضية
-        return asset('dashboard-assets/img/product-placeholder.svg');
+        // إرجاع لوغو الشركة كصورة افتراضية
+        return asset($companyLogo);
     }
 
     /**
