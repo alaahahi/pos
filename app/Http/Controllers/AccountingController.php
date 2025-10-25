@@ -779,123 +779,100 @@ class AccountingController extends Controller
  
     public function delTransactions(Request $request)
     {
-        $transaction_id = $request->id ?? 0;
-        $originalTransaction = Transactions::find($transaction_id);
-        $wallet_id=$originalTransaction->wallet_id;
-        $refundTransaction = 'مرتجع حذف حركة';
-         $wallet=Wallet::find($wallet_id);
-        if (!$originalTransaction) {
-          return response()->json(['message' => 'Transaction not found'], 404);
-          }
-        if($originalTransaction->currency=='$'){
-            if($originalTransaction->type=='inUserBox' || $originalTransaction->type=='outUserBox')
-            {
-                $wallet->decrement('balance', $originalTransaction->amount);
-                $all=  Transactions::where('parent_id',$transaction_id)->get();
-      
-                $firstTransaction=Transactions::where('parent_id',$transaction_id)->first();
-                if ($all->isNotEmpty()) { // Check if there are records in the collection
-                  foreach ($all as $transaction) {
-                      if($transaction->currency=='$'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $transaction->delete();
-                      }
-                      if($transaction->currency=='IQD'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $transaction->delete();
-                      }
-                  }
-              }
-            }else{
-                $wallet->decrement('balance', $originalTransaction->amount);
-                $all=  Transactions::where('parent_id',$transaction_id)->get();
-      
-                $firstTransaction=Transactions::where('parent_id',$transaction_id)->first();
-                if ($all->isNotEmpty()) { // Check if there are records in the collection
-                  foreach ($all as $transaction) {
-                      if($transaction->currency=='$'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $wallet->decrement('balance', $transaction->amount);
-                          $transaction->delete();
-                      }
-                      if($transaction->currency=='IQD'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $wallet->decrement('balance_dinar', $transaction->amount);
-                          $transaction->delete();
-                      }
-                  }
-              }
+        DB::beginTransaction();
+        
+        try {
+            $transaction_id = $request->id ?? 0;
+            $originalTransaction = Transactions::find($transaction_id);
+            
+            if (!$originalTransaction) {
+                return response()->json(['message' => 'Transaction not found'], 404);
+            }
+            
+            $wallet_id = $originalTransaction->wallet_id;
+            $wallet = Wallet::find($wallet_id);
+            
+            if (!$wallet) {
+                return response()->json(['message' => 'Wallet not found'], 404);
             }
 
-        }
-        if($originalTransaction->currency=='IQD'){
-            if($originalTransaction->type=='inUserBox'|| $originalTransaction->type=='outUserBox')
-            {
-                $wallet->decrement('balance_dinar', $originalTransaction->amount);
-                $all=  Transactions::where('parent_id',$transaction_id)->get();
-                $firstTransaction=Transactions::where('parent_id',$transaction_id)->first();
-      
-                if ($all->isNotEmpty()) { // Check if there are records in the collection
-                  foreach ($all as $transaction) {
-                      if($transaction->currency=='$'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $transaction->delete();
-                      }
-                      if($transaction->currency=='IQD'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $transaction->delete();
-                      }
-                  }
-              }
-            }else{
-                $wallet->decrement('balance_dinar', $originalTransaction->amount);
-                $all=  Transactions::where('parent_id',$transaction_id)->get();
-                $firstTransaction=Transactions::where('parent_id',$transaction_id)->first();
-      
-                if ($all->isNotEmpty()) { // Check if there are records in the collection
-                  foreach ($all as $transaction) {
-                      if($transaction->currency=='$'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $wallet->decrement('balance', $transaction->amount);
-                          $transaction->delete();
-                      }
-                      if($transaction->currency=='IQD'){
-                          $wallet_id = $transaction->wallet_id;
-                          $wallet = Wallet::find($wallet_id);
-                          $wallet->decrement('balance_dinar', $transaction->amount);
-                          $transaction->delete();
-                      }
-                  }
-              }
+            // عكس تأثير المعاملة الأصلية على المحفظة
+            // إذا كانت amount موجبة (إيداع)، نطرحها
+            // إذا كانت amount سالبة (سحب)، نضيفها (عن طريق طرح القيمة السالبة)
+            $this->reverseTransactionEffect($originalTransaction, $wallet);
+
+            // معالجة المعاملات الفرعية
+            $childTransactions = Transactions::where('parent_id', $transaction_id)->get();
+            
+            if ($childTransactions->isNotEmpty()) {
+                foreach ($childTransactions as $childTransaction) {
+                    $childWallet = Wallet::find($childTransaction->wallet_id);
+                    
+                    if ($childWallet) {
+                        // عكس تأثير المعاملة الفرعية على محفظتها
+                        $this->reverseTransactionEffect($childTransaction, $childWallet);
+                    }
+                    
+                    // حذف المعاملة الفرعية
+                    $childTransaction->delete();
+                }
             }
 
-
-        }
-     
-  
- 
-         
-        if($originalTransaction){
-            foreach ($originalTransaction->TransactionsImages as $transactionsImage) {
-                // Delete the image file from the public directory
-                File::delete(public_path('uploads/' . $transactionsImage->name));
-                File::delete(public_path('uploadsResized/' . $transactionsImage->name));
-    
-                // Delete the image record from the database
-                $transactionsImage->delete();
+            // حذف الصور المرتبطة بالمعاملة
+            if ($originalTransaction->TransactionsImages) {
+                foreach ($originalTransaction->TransactionsImages as $transactionsImage) {
+                    // حذف ملف الصورة من المجلد العام
+                    File::delete(public_path('uploads/' . $transactionsImage->name));
+                    File::delete(public_path('uploadsResized/' . $transactionsImage->name));
+        
+                    // حذف سجل الصورة من قاعدة البيانات
+                    $transactionsImage->delete();
+                }
             }
+
+            // حذف المعاملة الأصلية
+            $originalTransaction->delete();
+            
+            DB::commit();
+            
+            return response()->json(['message' => 'Transaction deleted successfully']);
+            
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'message' => 'Error deleting transaction',
+                'error' => $e->getMessage()
+            ], 500);
         }
- 
- 
-        $originalTransaction->delete();
-    
-        return response()->json(['message' => 'del ok']);;
+    }
+
+    /**
+     * عكس تأثير المعاملة على المحفظة
+     * 
+     * @param Transactions $transaction
+     * @param Wallet $wallet
+     * @return void
+     */
+    private function reverseTransactionEffect($transaction, $wallet)
+    {
+        $amount = $transaction->amount;
+        $currency = $transaction->currency;
+        
+        // تحديد الحقل المناسب في المحفظة
+        if ($currency == '$' || $currency == 'USD') {
+            $balanceField = 'balance';
+        } elseif ($currency == 'IQD') {
+            $balanceField = 'balance_dinar';
+        } else {
+            // افتراضي: استخدام balance
+            $balanceField = 'balance';
+        }
+        
+        // عكس تأثير المعاملة
+        // إذا كانت amount موجبة (تم إضافتها للمحفظة)، نطرحها
+        // إذا كانت amount سالبة (تم طرحها من المحفظة)، نضيفها
+        $newBalance = $wallet->$balanceField - $amount;
+        $wallet->update([$balanceField => $newBalance]);
     }
     }

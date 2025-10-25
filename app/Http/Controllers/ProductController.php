@@ -390,6 +390,35 @@ class ProductController extends Controller
     }
 
     /**
+     * البحث في المنتجات بالاسم أو الباركود أو الموديل
+     * 
+     * @param Request $request
+     * @return \Illuminate\Http\JsonResponse
+     */
+    public function searchProducts(Request $request)
+    {
+        $query = $request->input('query');
+        
+        if (empty($query)) {
+            return response()->json([]);
+        }
+
+        // البحث في المنتجات النشطة فقط
+        $products = Product::where('is_active', 1)
+            ->where(function ($q) use ($query) {
+                $q->where('name', 'LIKE', "%{$query}%")
+                  ->orWhere('barcode', 'LIKE', "%{$query}%")
+                  ->orWhere('model', 'LIKE', "%{$query}%");
+            })
+            ->select('id', 'name', 'model', 'price', 'barcode', 'quantity', 'image', 'is_featured', 'is_best_selling')
+            ->limit(50) // تحديد النتائج بـ 50 منتج
+            ->get();
+
+        // استخدام image_url accessor من Model (سيتم إضافته تلقائياً)
+        return response()->json($products);
+    }
+
+    /**
      * Check if the product is available in the stock
      * 
      * @param int $product_id

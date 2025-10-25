@@ -718,45 +718,53 @@ const clearAll = () => {
   filteredProducts.value = props.products.filter(product => product.is_featured);
 };
 
-const searchProducts = () => {
-  console.log('Search query:', searchQuery.value);
-  console.log('Available products:', props.products.length);
-  
+const searchProducts = debounce(async () => {
   if (!searchQuery.value.trim()) {
     // Apply current filter when search is cleared
     filterByType(selectedFilter.value);
     return;
   }
 
-  const query = searchQuery.value.toLowerCase();
-  let baseProducts = [];
-  
-  // Apply current filter first
-  if (selectedFilter.value === 'featured') {
-    baseProducts = props.products.filter(product => product.is_featured);
-  } else if (selectedFilter.value === 'best_selling') {
-    baseProducts = props.products.filter(product => product.is_best_selling);
-  } else {
-    // If no filter is selected, search in all products
-    baseProducts = [...props.products];
+  try {
+    loadingProducts.value = true;
+    
+    // البحث في الباك إند
+    const response = await axios.get('/api/products-search', {
+      params: {
+        query: searchQuery.value.trim()
+      }
+    });
+
+    if (response.data && response.data.length > 0) {
+      filteredProducts.value = response.data;
+      
+      // حفظ المنتجات الجديدة في الكاش
+      response.data.forEach(product => {
+        if (product.barcode && !cachedProducts.value.has(product.barcode)) {
+          cachedProducts.value.set(product.barcode, product);
+        }
+      });
+    } else {
+      filteredProducts.value = [];
+      toast.info("لا توجد نتائج للبحث", {
+        timeout: 2000,
+        position: "bottom-right",
+        rtl: true
+      });
+    }
+  } catch (error) {
+    console.error('خطأ في البحث:', error);
+    toast.error("خطأ في البحث عن المنتجات", {
+      timeout: 3000,
+      position: "bottom-right",
+      rtl: true
+    });
+    // في حالة الخطأ، ارجع للبحث المحلي
+    filterByType(selectedFilter.value);
+  } finally {
+    loadingProducts.value = false;
   }
-  
-  console.log('Base products after filter:', baseProducts.length);
-  
-  // Then apply search
-  const searchResults = baseProducts.filter(product => {
-    const nameMatch = product.name && product.name.toLowerCase().includes(query);
-    const modelMatch = product.model && product.model.toLowerCase().includes(query);
-    const barcodeMatch = product.barcode && product.barcode.toLowerCase().includes(query);
-    
-    console.log(`Product: ${product.name}, Name match: ${nameMatch}, Model match: ${modelMatch}, Barcode match: ${barcodeMatch}`);
-    
-    return nameMatch || modelMatch || barcodeMatch;
-  });
-  
-  console.log('Search results:', searchResults.length);
-  filteredProducts.value = searchResults;
-};
+}, 300);
 
 const handleSearchEnter = () => {
   if (filteredProducts.value.length === 1) {
