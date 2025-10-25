@@ -90,8 +90,7 @@ class OrderController extends Controller
         });
         $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
         // Get featured and best-selling products only
-        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode', 'is_featured', 'is_best_selling', 'sales_count')
-            ->where('is_active', true)
+        $products = Product::where('is_active', true)
             ->where(function($query) {
                 $query->where('is_featured', true)
                       ->orWhere('is_best_selling', true);
@@ -105,7 +104,7 @@ class OrderController extends Controller
                     'price' => $product->price,
                     'quantity' => $product->quantity,
                     'max_quantity' => $product->quantity,
-                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'image_url' => $product->image_url, // استخدام accessor من Model
                     'barcode' => $product->barcode,
                     'is_featured' => $product->is_featured,
                     'is_best_selling' => $product->is_best_selling,
@@ -294,8 +293,7 @@ class OrderController extends Controller
         $orderedProductIds = $order->products->pluck('id')->toArray();
 
         // Fetch products that are not in the order
-        $products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')
-            ->whereNotIn('id', $orderedProductIds)
+        $products = Product::whereNotIn('id', $orderedProductIds)
             ->get()
             ->map(function ($product) {
                 return [
@@ -305,11 +303,11 @@ class OrderController extends Controller
                     'price' => $product->price,
                     'quantity' => $product->quantity,
                     'max_quantity' => $product->quantity,
-                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'image_url' => $product->image_url, // استخدام accessor من Model
                     'barcode' => $product->barcode,
                 ];
             });
-            $all_products = Product::select('id', 'name', 'model', 'price', 'quantity', 'image', 'barcode')->get()->map(function ($product) {
+            $all_products = Product::get()->map(function ($product) {
                 return [
                     'id' => $product->id,
                     'name' => $product->name,
@@ -317,7 +315,7 @@ class OrderController extends Controller
                     'price' => $product->price,
                     'quantity' => $product->quantity,
                     'max_quantity' => $product->quantity,
-                    'image_url' => $product->image ? asset("storage/{$product->image}") : null,
+                    'image_url' => $product->image_url, // استخدام accessor من Model
                     'barcode' => $product->barcode,
                 ];
             });

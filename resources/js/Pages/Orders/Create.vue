@@ -104,26 +104,52 @@
             v-for="product in filteredProducts" 
             :key="product.id"
             @click="addProductToCart(product)"
-            :class="['product-card', { 'out-of-stock': product.quantity <= 0 }]"
+            :class="[
+              'product-card', 
+              { 'out-of-stock': product.quantity <= 0 },
+              { 'low-stock': product.quantity > 0 && product.quantity <= 5 },
+              { 'in-stock': product.quantity > 5 }
+            ]"
           >
+            <!-- Stock Badge - Always Visible -->
+            <div 
+              :class="[
+                'product-stock-badge',
+                { 'badge-danger': product.quantity <= 5 && product.quantity > 0 },
+                { 'badge-out': product.quantity <= 0 },
+                { 'badge-success': product.quantity > 5 }
+              ]"
+            >
+              <i class="bi bi-box-seam"></i>
+              {{ product.quantity }}
+            </div>
+
             <div class="product-image">
               <img 
                 :src="product.image_url || '/dashboard-assets/img/product-placeholder.svg'" 
                 :alt="product.name"
                 @error="handleImageError"
               />
-              <div class="product-stock-badge" v-if="product.quantity <= 5">
-                {{ product.quantity }}
-              </div>
             </div>
+            
             <div class="product-info">
-              <h6 class="product-name">{{ product.name }}</h6>
-              <p class="product-model">{{ product.model }}</p>
-              <div class="product-price">
-                {{ defaultCurrency }} {{ Math.round(product.price) }}
-              </div>
-              <div class="product-stock">
-                المخزون: {{ product.quantity }}
+              <h6 class="product-name" :title="product.name">{{ product.name }}</h6>
+              <p class="product-model" v-if="product.model">{{ product.model }}</p>
+              <div class="product-details">
+                <div class="product-price">
+                  <i class="bi bi-tag-fill"></i>
+                  {{ defaultCurrency }} {{ Math.round(product.price).toLocaleString() }}
+                </div>
+                <div 
+                  :class="[
+                    'product-stock-text',
+                    { 'text-danger': product.quantity <= 5 && product.quantity > 0 },
+                    { 'text-success': product.quantity > 5 }
+                  ]"
+                >
+                  <i class="bi bi-box"></i>
+                  {{ product.quantity }}
+                </div>
               </div>
             </div>
           </div>
@@ -1217,39 +1243,117 @@ onUnmounted(() => {
 }
 
 .pos-products-grid {
-  padding:5px;
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 1rem;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 1.5rem;
+  padding: 1.5rem;
   overflow-y: auto;
   flex: 1;
-  padding-right: 0.5rem;
+  align-content: start;
+}
+
+/* Scrollbar Styling */
+.pos-products-grid::-webkit-scrollbar {
+  width: 8px;
+}
+
+.pos-products-grid::-webkit-scrollbar-track {
+  background: #f1f1f1;
+  border-radius: 10px;
+}
+
+.pos-products-grid::-webkit-scrollbar-thumb {
+  background: #667eea;
+  border-radius: 10px;
+}
+
+.pos-products-grid::-webkit-scrollbar-thumb:hover {
+  background: #5568d3;
 }
 
 .product-card {
   background: white;
   border: 2px solid #e9ecef;
-  border-radius: 15px;
-  padding: 1rem;
+  border-radius: 16px;
+  padding: 1.25rem;
   cursor: pointer;
-  transition: all 0.3s ease;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+.product-card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.product-card:hover::before {
+  opacity: 1;
 }
 
 .product-card:hover {
   border-color: #667eea;
-  transform: translateY(-2px);
-  box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+  transform: translateY(-6px);
+  box-shadow: 0 12px 35px rgba(102, 126, 234, 0.25);
 }
 
 .product-card.out-of-stock {
   opacity: 0.6;
   cursor: not-allowed;
+  background: #f8f9fa;
+  border-color: #dc3545;
+  position: relative;
+}
+
+.product-card.out-of-stock::after {
+  content: 'نفذت الكمية';
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) rotate(-15deg);
+  background: rgba(220, 53, 69, 0.95);
+  color: white;
+  padding: 8px 20px;
+  border-radius: 8px;
+  font-weight: 700;
+  font-size: 0.85rem;
+  z-index: 5;
+  box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
 }
 
 .product-card.out-of-stock:hover {
   transform: none;
-  border-color: #dc3545;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.product-card.low-stock {
+  border-color: #ff9800;
+  background: linear-gradient(135deg, #fffbf0 0%, #fff8e1 100%);
+  box-shadow: 0 2px 12px rgba(255, 152, 0, 0.15);
+}
+
+.product-card.low-stock:hover {
+  border-color: #f57c00;
+  box-shadow: 0 12px 35px rgba(255, 152, 0, 0.3);
+}
+
+.product-card.in-stock {
+  border-color: #e9ecef;
+}
+
+.product-card.in-stock:hover {
+  border-color: #667eea;
 }
 
 .product-image {
@@ -1266,18 +1370,46 @@ onUnmounted(() => {
 
 .product-stock-badge {
   position: absolute;
-  top: -5px;
-  right: -5px;
-  background: #dc3545;
+  top: 8px;
+  right: 8px;
   color: white;
-  border-radius: 50%;
-  width: 25px;
-  height: 25px;
+  border-radius: 20px;
+  padding: 4px 10px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 0.8rem;
-  font-weight: bold;
+  gap: 4px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  transition: all 0.3s ease;
+}
+
+.product-stock-badge i {
+  font-size: 0.7rem;
+}
+
+.product-stock-badge.badge-danger {
+  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
+  animation: pulse 2s infinite;
+}
+
+.product-stock-badge.badge-out {
+  background: linear-gradient(135deg, #6c757d 0%, #5a6268 100%);
+}
+
+.product-stock-badge.badge-success {
+  background: linear-gradient(135deg, #51cf66 0%, #37b24d 100%);
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.05);
+  }
 }
 
 .product-info {
@@ -1288,26 +1420,74 @@ onUnmounted(() => {
   font-weight: 600;
   margin-bottom: 0.25rem;
   color: #2c3e50;
-  font-size: 0.9rem;
-  line-height: 1.2;
+  font-size: 0.95rem;
+  line-height: 1.3;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  min-height: 2.6rem;
 }
 
 .product-model {
   color: #6c757d;
-  font-size: 0.8rem;
+  font-size: 0.75rem;
   margin-bottom: 0.5rem;
+  font-weight: 500;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.product-details {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+  padding-top: 0.5rem;
+  border-top: 1px solid #e9ecef;
 }
 
 .product-price {
-  font-weight: bold;
-  color: #28a745;
-  font-size: 1.1rem;
-  margin-bottom: 0.25rem;
+  font-weight: 700;
+  color: #667eea;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
 }
 
-.product-stock {
+.product-price i {
+  font-size: 0.85rem;
+  color: #667eea;
+}
+
+.product-stock-text {
+  font-size: 0.85rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.product-stock-text i {
   font-size: 0.8rem;
-  color: #6c757d;
+}
+
+.product-stock-text.text-danger {
+  color: #dc3545;
+  background: #fff5f5;
+}
+
+.product-stock-text.text-success {
+  color: #28a745;
+  background: #f0fdf4;
 }
 
 /* Cart Panel */

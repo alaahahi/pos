@@ -42,9 +42,13 @@ class Product extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return isset($this->attributes['image']) && $this->attributes['image'] 
-            ? asset("storage/{$this->attributes['image']}") 
-            : null;
+        // إذا كانت هناك صورة محفوظة
+        if (isset($this->attributes['image']) && $this->attributes['image']) {
+            return asset("storage/{$this->attributes['image']}");
+        }
+        
+        // إرجاع الصورة الافتراضية
+        return asset('dashboard-assets/img/product-placeholder.svg');
     }
 
     /**
