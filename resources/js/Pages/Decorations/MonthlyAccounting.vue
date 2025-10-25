@@ -1,20 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
-    <!-- breadcrumb-->
-    <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white">المحاسبة الشهرية للديكورات</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link dark:text-white" :href="route('decorations.dashboard')">
-              الديكورات
-            </Link>
-          </li>
-          <li class="breadcrumb-item active">المحاسبة الشهرية</li>
-        </ol>
-      </nav>
-    </div>
-    <!-- End breadcrumb-->
+    
 
     <section class="section">
       <div class="row">

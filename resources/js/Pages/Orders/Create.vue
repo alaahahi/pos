@@ -25,7 +25,6 @@
     </div>
 
 
-
     <!-- Main POS Layout -->
     <div class="pos-container">
       <!-- Left Panel - Products -->
@@ -1881,9 +1880,8 @@ onUnmounted(() => {
     border-color: #667eea;
     color: white;
   }
-  
- 
-  
+
+
   .empty-cart,
   .no-products {
     color: #999;

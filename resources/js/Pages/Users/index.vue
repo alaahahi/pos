@@ -1,22 +1,7 @@
 <template>
 
   <AuthenticatedLayout :translations="translations">
-    <!-- breadcrumb-->
-    <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white">{{ translations.users }}</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link dark:text-white" :href="route('dashboard')">
-            {{ translations.Home }}
-            </Link>
-          </li>
-          <li class="breadcrumb-item active dark:text-white ">{{ translations.users }} </li>
-
-        </ol>
-      </nav>
-    </div>
-    <!-- End breadcrumb-->
+    
 
     <section class="section dashboard">
       <div class="card">
@@ -132,7 +117,6 @@
 </template>
 
 
-
 <script setup>
 
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
@@ -144,7 +128,6 @@ import { reactive } from 'vue'
 
 const props = defineProps({ users: Object, translations: Array })
 const page = usePage()
-
 
 
 const filterForm = reactive({

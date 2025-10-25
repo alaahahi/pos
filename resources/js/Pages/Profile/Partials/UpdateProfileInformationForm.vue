@@ -6,8 +6,6 @@ import TextInput from '@/Components/TextInput.vue';
 import { Link, useForm, usePage } from '@inertiajs/vue3';
 
 
-
-
 defineProps({
     translations:Array,
     mustVerifyEmail: {

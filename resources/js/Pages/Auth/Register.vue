@@ -109,7 +109,6 @@
                 <InputError class="mt-2" :message="form.errors.password_confirmation" />
                     </div>
 
-             
 
                     <InputError  :message="form.errors.is_active" />
     

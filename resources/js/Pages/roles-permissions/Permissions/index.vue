@@ -1,26 +1,8 @@
 <template>
 
     <AuthenticatedLayout :translations="translations">
-  
-  
-      <!-- breadcrumb-->
-      <div class="pagetitle dark:text-white">
-        <h1 class="dark:text-white">{{ translations.permissions }}</h1>
-        <nav>
-          <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-              <Link class="nav-link dark:text-white" :href="route('dashboard')">
-            {{translations.Home}}
-              </Link>
-            </li>
-            <li class="breadcrumb-item active dark:text-white">{{ translations.permissions }}  </li>
-  
-          </ol>
-        </nav>
-      </div>
-      <!-- End breadcrumb-->
 
-      
+
       <section class="section dashboard">
         <div class="card">
           <div class="card-body">
@@ -72,9 +54,8 @@
   
     </AuthenticatedLayout>
   </template>
-  
-  
-  
+
+
   <script setup>
   import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
   import Pagination from '@/Components/Pagination.vue';
@@ -84,15 +65,13 @@
 const page = usePage()
   
   const props = defineProps({ permissions: Object, translations:Array })
-  
-  
-   
+
+
   const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 }
 
-  
-  
+
   const Delete = (id) => {
     Swal.fire({
    title: props.translations.are_your_sure,

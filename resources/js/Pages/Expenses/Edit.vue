@@ -1,25 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
-    <!-- breadcrumb-->
-    <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white">تعديل المصروف</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link dark:text-white" :href="route('dashboard')">
-              {{ translations.Home }}
-            </Link>
-          </li>
-          <li class="breadcrumb-item">
-            <Link class="nav-link dark:text-white" :href="route('expenses.index')">
-              المصاريف
-            </Link>
-          </li>
-          <li class="breadcrumb-item active dark:text-white">تعديل</li>
-        </ol>
-      </nav>
-    </div>
-    <!-- End breadcrumb-->
+    
 
     <section class="section dashboard">
       <div class="card">

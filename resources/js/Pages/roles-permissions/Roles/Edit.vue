@@ -1,24 +1,8 @@
 <template>
 
     <AuthenticatedLayout :translations="translations">
-  
-      <!-- breadcrumb-->
-      <div class="pagetitle dark:text-white">
-        <h1 class="dark:text-white">      {{ translations.roles }}</h1>
-        <nav>
-          <ol class="breadcrumb">
-            <li class="breadcrumb-item">
-              <Link class="nav-link dark:text-white" :href="route('dashboard')">
-                {{ translations.Home }}
-              </Link>
-            </li>
-            <li class="breadcrumb-item active dark:text-white">      {{ translations.roles }}</li>
-            <li class="breadcrumb-item active dark:text-white">      {{ translations.edit }}</li>
-          </ol>
-        </nav>
-      </div>
-      <!-- End breadcrumb-->
-  
+
+
       <section class="section dashboard">
   
         <div class="row">
@@ -53,16 +37,14 @@
           </div>
   
         </div>
-  
-  
-  
+
+
       </section>
   
     </AuthenticatedLayout>
   </template>
-  
-  
-  
+
+
   <script setup>
   import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
   import { useForm } from '@inertiajs/vue3'
@@ -81,10 +63,8 @@ const show_loader = ref(false);
   const form = useForm({
     name: props.role.name,
   })
-  
 
 
-  
 const update = () => {
   show_loader.value = true; 
   form.put(route('roles.update', { role: props.role.id }), {
@@ -98,5 +78,4 @@ const update = () => {
 };
 
 
-  
   </script>

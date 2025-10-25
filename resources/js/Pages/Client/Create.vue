@@ -1,22 +1,7 @@
 <template>
   <AuthenticatedLayout :translations="translations">
 
-    <!-- breadcrumb-->
-    <div class="pagetitle">
-      <h1> {{ translations.customers }}</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link" :href="route('dashboard')">
-              {{ translations.Home }}
-            </Link>
-          </li>
-          <li class="breadcrumb-item active"> {{ translations.customers }}</li>
-          <li class="breadcrumb-item active"> {{ translations.create }}</li>
-        </ol>
-      </nav>
-    </div>
-    <!-- End breadcrumb-->
+    
 
     <section class="section dashboard">
 

@@ -1,20 +1,6 @@
 <template>
   <AuthenticatedLayout :translations="translations">
-    <!-- breadcrumb-->
-    <div class="pagetitle dark:text-white">
-      <h1 class="dark:text-white">{{ translations.products }}</h1>
-      <nav>
-        <ol class="breadcrumb">
-          <li class="breadcrumb-item">
-            <Link class="nav-link dark:text-white" :href="route('dashboard')">
-              {{ translations.home }}
-            </Link>
-          </li>
-          <li class="breadcrumb-item active dark:text-white">{{ translations.products }}</li>
-        </ol>
-      </nav>
-    </div>
-    <!-- End breadcrumb-->
+    
 
     <section class="section dashboard">
       <!-- Statistics Cards -->
@@ -35,7 +21,6 @@
             </div>
           </div>
         </div>
-
 
 
         <div class="col-xl-3 col-md-6">
