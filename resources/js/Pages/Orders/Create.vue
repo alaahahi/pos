@@ -1420,7 +1420,7 @@ onUnmounted(() => {
 .product-name {
   font-weight: 600;
   margin-bottom: 0.25rem;
-  color: #2c3e50;
+  color: #fff;
   font-size: 0.95rem;
   line-height: 1.3;
   overflow: hidden;
