@@ -47,7 +47,6 @@ Route::post('salesDebtUser',[AccountingController::class, 'salesDebtUser'])->nam
 Route::get('getIndexAccountsSelas',[AccountingController::class, 'getIndexAccountsSelas'])->name('getIndexAccountsSelas');
 Route::post('add-to-box',[BoxesController::class, 'addToBox'])->name('add-to-box');
 Route::post('drop-from-box',[BoxesController::class, 'dropFromBox'])->name('drop-from-box');
-Route::post('deleteTransactions',[AccountingController::class, 'delTransactions'])->name('deleteTransactions');
 Route::get('products/{barcode}', [ProductController::class, 'findByBarcode']);
 Route::get('products-search', [ProductController::class, 'searchProducts'])->name('products.search');
 Route::get('check-stock/{product_id}', [ProductController::class, 'checkStock'])->name('check-stock');

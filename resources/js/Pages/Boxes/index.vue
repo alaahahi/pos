@@ -655,7 +655,7 @@ const Delete = (id, amount) => {
   }).then((result) => {
     if (result.isConfirmed) {
       loading.value = true;
-      axios.post('api/delTransactions/?id=' + id)
+      axios.post('api/delTransactions', { id: id })
       .then(response => {
           router.reload({ only: ['transactions', 'mainBox'] });
           toast.success("تم حذف المعاملة بنجاح", {
