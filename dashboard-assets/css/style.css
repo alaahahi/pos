@@ -626,9 +626,17 @@ input[type="number"] {
   background-color: #fff;
 }
 
+/* Hide sidebar by default on mobile */
 @media (max-width: 1199px) {
   .sidebar {
-    left: -300px;
+    left: auto !important;
+    right: -300px !important;
+  }
+  
+  /* Show sidebar only when toggle-sidebar class is added */
+  body.toggle-sidebar .sidebar {
+    left: auto !important;
+    right: 0 !important;
   }
 }
 
@@ -650,11 +658,6 @@ input[type="number"] {
   }
 }
 
-@media (max-width: 1199px) {
-  .toggle-sidebar .sidebar {
-    left: 0 !important;
-  }
-}
 
 @media (min-width: 1200px) {
 

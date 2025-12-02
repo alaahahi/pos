@@ -101,11 +101,6 @@ table,
     margin-left: 8px !important;
 }
 
-@media (max-width: 1199px) {
-    .toggle-sidebar .sidebar {
-        left: 59px !important;
-    }
-}
 
 @media (max-width: 992px) {
     .col-md-3 .btn,

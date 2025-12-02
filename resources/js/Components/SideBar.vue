@@ -404,6 +404,13 @@ const hasPermission = (permission) => {
   return page.props.auth_permissions.includes(permission);
 }
 
+// Close sidebar on mobile when clicking a link
+const closeSidebarOnMobile = () => {
+  if (window.innerWidth < 1200) {
+    document.body.classList.remove('toggle-sidebar');
+  }
+};
+
 // Auto-expand decoration submenu if on decoration pages
 onMounted(() => {
   nextTick(() => {
@@ -415,6 +422,12 @@ onMounted(() => {
         decorationsNav.classList.remove('collapse')
       }
     }
+    
+    // Add click listeners to all sidebar links to close sidebar on mobile
+    const sidebarLinks = document.querySelectorAll('#sidebar .nav-link')
+    sidebarLinks.forEach(link => {
+      link.addEventListener('click', closeSidebarOnMobile)
+    })
   })
 })
 

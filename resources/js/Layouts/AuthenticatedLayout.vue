@@ -2,9 +2,18 @@
 <template>
 
     <!-- ======= Header ======= -->
-    <header id="header" class="header fixed-top d-flex align-items-center  bg-gray-100 dark:bg-gray-800">   
+    <header id="header" class="header fixed-top d-flex align-items-center justify-content-between bg-gray-100 dark:bg-gray-800">   
 
-        <div class="d-flex align-items-center justify-content-between">
+        <div class="d-flex align-items-center">
+            <!-- Hamburger Menu Button (Mobile Only) -->
+            <button 
+                @click="toggleSidebar" 
+                class="mobile-menu-toggle d-lg-none btn btn-link p-0 text-gray-600 dark:text-gray-400 me-3"
+                type="button"
+                aria-label="Toggle sidebar"
+            >
+                <i class="bi bi-list fs-3"></i>
+            </button>
             <Link class="logo d-flex align-items-center" :href="route('dashboard')">
             <img src="/dashboard-assets/img/WEDOO  LOGO PNG.webp" alt="">
             <span class="d-none d-lg-block dark:text-white">{{ translations.app_name || 'WEDOO EVENTS' }}</span>
@@ -232,6 +241,13 @@
 
     </header>
 
+    <!-- Sidebar Overlay (Mobile Only) -->
+    <div 
+        v-if="isSidebarOpen" 
+        @click="closeSidebar"
+        class="sidebar-overlay d-lg-none"
+    ></div>
+
     <!-- Include the Sidebar here -->
     <Sidebar :translations="translations" :permissions=" page.props.Permissions" />
 
@@ -255,29 +271,74 @@
 
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import DarkModeToggle from '@/Components/DarkToggle.vue';
 
 defineProps({translations: Object})
 
 const showingNavigationDropdown = ref(false);
+const isSidebarOpen = ref(false);
 
 // Access window.translations safely
 const translations = computed(() => window.translations || {});
-</script>
 
+// Toggle sidebar function
+const toggleSidebar = () => {
+    isSidebarOpen.value = !isSidebarOpen.value;
+    if (isSidebarOpen.value) {
+        document.body.classList.add('toggle-sidebar');
+    } else {
+        document.body.classList.remove('toggle-sidebar');
+    }
+};
+
+// Close sidebar function
+const closeSidebar = () => {
+    isSidebarOpen.value = false;
+    document.body.classList.remove('toggle-sidebar');
+};
+
+// Close sidebar when clicking outside on mobile
+const handleResize = () => {
+    if (window.innerWidth >= 1200) {
+        isSidebarOpen.value = false;
+        document.body.classList.remove('toggle-sidebar');
+    }
+};
+
+onMounted(() => {
+    window.addEventListener('resize', handleResize);
+    // Ensure sidebar is hidden by default on mobile
+    if (window.innerWidth < 1200) {
+        document.body.classList.remove('toggle-sidebar');
+        isSidebarOpen.value = false;
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', handleResize);
+});
+
+// Change language function
+const changeLanguage = (event) => {
+    const selectedLanguage = event.target.value;
+    const currentUrl = window.location.origin;
+    const newUrl = `${currentUrl}/lang/change?lang=${selectedLanguage}`;
+    window.location.href = newUrl;
+};
+</script>
 
 <script>
 import Sidebar from '@/Components/SideBar.vue';
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
+const page = usePage()
+
 const flashSuccess = computed(
     () => page.props.flash.success,
 )
-
-const page = usePage()
 
 const user = computed(
     () => page.props.auth,
@@ -286,33 +347,6 @@ const user = computed(
 const notificationCount = computed(
   () => Math.min(page.props.auth.notificationCount, 9),
 )
-
-
-
-const changeLanguage = (event) => {
-    const selectedLanguage = event.target.value;
-    const currentUrl = window.location.origin; // Get the current app URL
-    const newUrl = `${currentUrl}/lang/change?lang=${selectedLanguage}`; // Construct the new URL
-    window.location.href = newUrl; // Redirect to the new URL
-};
-
-
-
-const isBodyActive = ref(false);
-
-const toggleBodyClass = () => {
-    // alert(1);
-      isBodyActive.value = !isBodyActive.value;
-
-      if (isBodyActive.value) {
-        document.body.classList.add('toggle-sidebar');
-
-      } else {
-        document.body.classList.remove('toggle-sidebar');
-      }
-    };
-
-
     
 export default {
     components: {
@@ -325,3 +359,49 @@ export default {
   },
 };
 </script>
+
+<style scoped>
+/* Sidebar Overlay for Mobile */
+.sidebar-overlay {
+    position: fixed;
+    top: 60px;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(0, 0, 0, 0.5);
+    z-index: 995;
+    transition: opacity 0.3s ease;
+}
+
+/* Hamburger Menu Button Styles */
+.mobile-menu-toggle {
+    border: none;
+    background: transparent;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 40px;
+    min-height: 40px;
+}
+
+.mobile-menu-toggle:hover {
+    opacity: 0.7;
+    transform: scale(1.1);
+}
+
+.mobile-menu-toggle:focus {
+    outline: none;
+    box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3);
+    border-radius: 4px;
+}
+
+.dark .mobile-menu-toggle {
+    color: #d1d5db;
+}
+
+.dark .mobile-menu-toggle:hover {
+    color: #ffffff;
+}
+</style>

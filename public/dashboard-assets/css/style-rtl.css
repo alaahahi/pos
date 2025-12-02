@@ -1,8 +1,8 @@
-.sidebar {
-    left: 0;
-}
-
 @media (min-width: 1200px) {
+    .sidebar {
+        left: 0;
+    }
+    
     #main,
     #footer {
         margin-left: 300px;
@@ -19,15 +19,17 @@ select,
     text-align: center;
 }
 
+/* Hide sidebar by default on mobile */
 @media (max-width: 1199px) {
     .sidebar {
-        left: -300px;
+        left: auto !important;
+        right: -300px !important;
     }
-}
-
-@media (max-width: 1199px) {
-    .toggle-sidebar .sidebar {
-        left: 0 !important;
+    
+    /* Show sidebar only when toggle-sidebar class is added */
+    body.toggle-sidebar .sidebar {
+        left: auto !important;
+        right: 0 !important;
     }
 }
 
