@@ -152,6 +152,17 @@ class BoxesController extends Controller
             'translations' => __('messages'),
         ]);
     }
+
+    /**
+     * Update the specified resource (placeholder - not used in current implementation)
+     */
+    public function update(Request $request, Box $box)
+    {
+        // This method is required by the route but not actively used
+        // The actual box updates happen through wallet transactions
+        return redirect()->route('boxes.index')
+            ->with('success', 'تم التحديث بنجاح');
+    }
     public function addToBox(Request $request)
     {
         $request->validate([

@@ -66,9 +66,32 @@
       </div>
     </div>
 
+
     <!-- Actions Section -->
      <section class="section dashboard">
       <div class="card main-card">
+        <!-- Tabs Navigation -->
+        <div class="tabs-navigation">
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'transactions' }"
+            @click="activeTab = 'transactions'"
+          >
+            <i class="bi bi-list-ul"></i>
+            المعاملات
+          </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'close' }"
+            @click="activeTab = 'close'"
+          >
+            <i class="bi bi-calendar-check"></i>
+            الإغلاق اليومي والشهري
+          </button>
+        </div>
+
+        <!-- Transactions Tab Content -->
+        <div v-show="activeTab === 'transactions'" class="tab-content">
         <div class="card-header-custom">
           <div class="actions-wrapper">
             <!-- Primary Actions -->
@@ -353,11 +376,143 @@
             </table>
           </div>
         </div>
-      </div>
-      </div>
+        </div>
       
-      <!-- Pagination -->
-      <Pagination :links="transactions?.links" />
+        <!-- Pagination -->
+        <Pagination :links="transactions?.links" />
+        </div>
+
+        <!-- Close Tab Content -->
+        <div v-show="activeTab === 'close'" class="tab-content">
+          <div class="close-section">
+            <div class="close-grid">
+              <!-- Daily Close Card -->
+              <div class="close-card daily-close">
+                <div class="close-card-header">
+                  <div class="close-card-title">
+                    <i class="bi bi-calendar-day"></i>
+                    <h3>إغلاق يومي</h3>
+                  </div>
+                  <span class="close-status" :class="dailyClose?.status === 'closed' ? 'closed' : 'open'">
+                    {{ dailyClose?.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                  </span>
+                </div>
+                <div class="close-card-body">
+                  <div class="close-info-row">
+                    <span class="close-label">المبيعات:</span>
+                    <span class="close-value">
+                      {{ updateResults(dailyClose?.total_sales_usd ?? 0) }} USD / 
+                      {{ updateResults(dailyClose?.total_sales_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">المصاريف:</span>
+                    <span class="close-value">
+                      {{ updateResults(dailyClose?.total_expenses_usd ?? 0) }} USD / 
+                      {{ updateResults(dailyClose?.total_expenses_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">الرصيد الافتتاحي:</span>
+                    <span class="close-value">
+                      {{ updateResults(dailyClose?.opening_balance_usd ?? 0) }} USD / 
+                      {{ updateResults(dailyClose?.opening_balance_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row highlight">
+                    <span class="close-label">الرصيد الختامي:</span>
+                    <span class="close-value">
+                      {{ updateResults(dailyClose?.closing_balance_usd ?? 0) }} USD / 
+                      {{ updateResults(dailyClose?.closing_balance_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">عدد الطلبات:</span>
+                    <span class="close-value">{{ dailyClose?.total_orders ?? 0 }}</span>
+                  </div>
+                </div>
+                <div class="close-card-footer">
+                  <button 
+                    v-if="dailyClose?.status === 'open'"
+                    class="btn-close-action"
+                    @click="handleCloseDaily"
+                    :disabled="loading"
+                  >
+                    <i class="bi bi-lock-fill"></i>
+                    إغلاق اليوم
+                  </button>
+                  <span v-else class="closed-badge">
+                    <i class="bi bi-check-circle"></i>
+                    تم الإغلاق في {{ formatDate(dailyClose?.closed_at) }}
+                  </span>
+                </div>
+              </div>
+
+              <!-- Monthly Close Card -->
+              <div class="close-card monthly-close">
+                <div class="close-card-header">
+                  <div class="close-card-title">
+                    <i class="bi bi-calendar-month"></i>
+                    <h3>إغلاق شهري - {{ monthlyClose?.month_name || getMonthName(monthlyClose?.month) }}</h3>
+                  </div>
+                  <span class="close-status" :class="monthlyClose?.status === 'closed' ? 'closed' : 'open'">
+                    {{ monthlyClose?.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                  </span>
+                </div>
+                <div class="close-card-body">
+                  <div class="close-info-row">
+                    <span class="close-label">المبيعات:</span>
+                    <span class="close-value">
+                      {{ updateResults(monthlyClose?.total_sales_usd ?? 0) }} USD / 
+                      {{ updateResults(monthlyClose?.total_sales_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">المصاريف:</span>
+                    <span class="close-value">
+                      {{ updateResults(monthlyClose?.total_expenses_usd ?? 0) }} USD / 
+                      {{ updateResults(monthlyClose?.total_expenses_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">الرصيد الافتتاحي:</span>
+                    <span class="close-value">
+                      {{ updateResults(monthlyClose?.opening_balance_usd ?? 0) }} USD / 
+                      {{ updateResults(monthlyClose?.opening_balance_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row highlight">
+                    <span class="close-label">الرصيد الختامي:</span>
+                    <span class="close-value">
+                      {{ updateResults(monthlyClose?.closing_balance_usd ?? 0) }} USD / 
+                      {{ updateResults(monthlyClose?.closing_balance_iqd ?? 0) }} IQD
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">عدد الطلبات:</span>
+                    <span class="close-value">{{ monthlyClose?.total_orders ?? 0 }}</span>
+                  </div>
+                </div>
+                <div class="close-card-footer">
+                  <button 
+                    v-if="monthlyClose?.status === 'open'"
+                    class="btn-close-action"
+                    @click="handleCloseMonthly"
+                    :disabled="loading"
+                  >
+                    <i class="bi bi-lock-fill"></i>
+                    إغلاق الشهر
+                  </button>
+                  <span v-else class="closed-badge">
+                    <i class="bi bi-check-circle"></i>
+                    تم الإغلاق في {{ formatDate(monthlyClose?.closed_at) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
     </section>
 
     <!-- Modals -->
@@ -494,6 +649,7 @@ let showImagesModal = ref(false);
 let tranId = ref(0);
 let selectedImages = ref([]);
 let loading = ref(false);
+let activeTab = ref('transactions');
  
 const props = defineProps({
   boxes: Object, 
@@ -503,7 +659,9 @@ const props = defineProps({
   exchangeRate: {
     type: Number,
     default: 1500
-  }
+  },
+  dailyClose: Object,
+  monthlyClose: Object
 });
 
 const page = usePage();
@@ -754,6 +912,137 @@ const calculateTotalOutIQD = () => {
     .filter(t => (t.type === 'out' || t.type === 'outUser') && t.currency === 'IQD')
     .reduce((sum, t) => sum + Math.abs(parseFloat(t.amount) || 0), 0);
   return updateResults(total);
+};
+
+// Close Daily Function
+const handleCloseDaily = () => {
+  Swal.fire({
+    title: 'تأكيد إغلاق اليوم',
+    html: `
+      <p>هل أنت متأكد من إغلاق اليوم؟</p>
+      <div style="text-align: right; margin-top: 1rem;">
+        <p><strong>المبيعات:</strong> ${updateResults(props.dailyClose?.total_sales_usd ?? 0)} USD / ${updateResults(props.dailyClose?.total_sales_iqd ?? 0)} IQD</p>
+        <p><strong>المصاريف:</strong> ${updateResults(props.dailyClose?.total_expenses_usd ?? 0)} USD / ${updateResults(props.dailyClose?.total_expenses_iqd ?? 0)} IQD</p>
+        <p><strong>الرصيد الختامي:</strong> ${updateResults(props.dailyClose?.closing_balance_usd ?? 0)} USD / ${updateResults(props.dailyClose?.closing_balance_iqd ?? 0)} IQD</p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#667eea',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'نعم، إغلاق',
+    cancelButtonText: 'إلغاء',
+    input: 'textarea',
+    inputPlaceholder: 'ملاحظات (اختياري)',
+    inputAttributes: {
+      'aria-label': 'ملاحظات'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      loading.value = true;
+      axios.post('/boxes/close-daily', {
+        date: props.dailyClose?.close_date || getTodayDate(),
+        notes: result.value || ''
+      })
+      .then(response => {
+        if (response.data.success) {
+          toast.success(response.data.message || 'تم إغلاق اليوم بنجاح', {
+            timeout: 3000,
+            position: "bottom-right",
+            rtl: true
+          });
+          router.reload({ only: ['dailyClose', 'monthlyClose', 'mainBox'] });
+        } else {
+          toast.error(response.data.message || 'حدث خطأ', {
+            timeout: 3000,
+            position: "bottom-right",
+            rtl: true
+          });
+        }
+      })
+      .catch(error => {
+        toast.error(error.response?.data?.message || 'حدث خطأ أثناء إغلاق اليوم', {
+          timeout: 3000,
+          position: "bottom-right",
+          rtl: true
+        });
+      })
+      .finally(() => {
+        loading.value = false;
+      });
+    }
+  });
+};
+
+// Close Monthly Function
+const handleCloseMonthly = () => {
+  Swal.fire({
+    title: 'تأكيد إغلاق الشهر',
+    html: `
+      <p>هل أنت متأكد من إغلاق الشهر الحالي؟</p>
+      <div style="text-align: right; margin-top: 1rem;">
+        <p><strong>المبيعات:</strong> ${updateResults(props.monthlyClose?.total_sales_usd ?? 0)} USD / ${updateResults(props.monthlyClose?.total_sales_iqd ?? 0)} IQD</p>
+        <p><strong>المصاريف:</strong> ${updateResults(props.monthlyClose?.total_expenses_usd ?? 0)} USD / ${updateResults(props.monthlyClose?.total_expenses_iqd ?? 0)} IQD</p>
+        <p><strong>الرصيد الختامي:</strong> ${updateResults(props.monthlyClose?.closing_balance_usd ?? 0)} USD / ${updateResults(props.monthlyClose?.closing_balance_iqd ?? 0)} IQD</p>
+      </div>
+    `,
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonColor: '#667eea',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'نعم، إغلاق',
+    cancelButtonText: 'إلغاء',
+    input: 'textarea',
+    inputPlaceholder: 'ملاحظات (اختياري)',
+    inputAttributes: {
+      'aria-label': 'ملاحظات'
+    }
+  }).then((result) => {
+    if (result.isConfirmed) {
+      loading.value = true;
+      axios.post('/boxes/close-monthly', {
+        year: props.monthlyClose?.year || new Date().getFullYear(),
+        month: props.monthlyClose?.month || new Date().getMonth() + 1,
+        notes: result.value || ''
+      })
+      .then(response => {
+        if (response.data.success) {
+          toast.success(response.data.message || 'تم إغلاق الشهر بنجاح', {
+            timeout: 3000,
+            position: "bottom-right",
+            rtl: true
+          });
+          router.reload({ only: ['dailyClose', 'monthlyClose', 'mainBox'] });
+        } else {
+          toast.error(response.data.message || 'حدث خطأ', {
+            timeout: 3000,
+            position: "bottom-right",
+            rtl: true
+          });
+        }
+      })
+      .catch(error => {
+        toast.error(error.response?.data?.message || 'حدث خطأ أثناء إغلاق الشهر', {
+          timeout: 3000,
+          position: "bottom-right",
+          rtl: true
+        });
+      })
+      .finally(() => {
+        loading.value = false;
+      });
+    }
+  });
+};
+
+// Get Month Name
+const getMonthName = (month) => {
+  const months = {
+    1: 'يناير', 2: 'فبراير', 3: 'مارس', 4: 'أبريل',
+    5: 'مايو', 6: 'يونيو', 7: 'يوليو', 8: 'أغسطس',
+    9: 'سبتمبر', 10: 'أكتوبر', 11: 'نوفمبر', 12: 'ديسمبر'
+  };
+  return months[month] || month;
 };
 </script>
 
@@ -1475,12 +1764,237 @@ const calculateTotalOutIQD = () => {
   }
 }
 
+/* Tabs Navigation */
+.tabs-navigation {
+  display: flex;
+  gap: 0.5rem;
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-bottom: 2px solid #e9ecef;
+  direction: rtl;
+}
+
+.tab-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1.5rem;
+  border: none;
+  background: transparent;
+  color: #6c757d;
+  font-weight: 500;
+  font-size: 0.95rem;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.3s ease;
+  position: relative;
+}
+
+.tab-btn:hover {
+  color: #667eea;
+  background: rgba(102, 126, 234, 0.05);
+}
+
+.tab-btn.active {
+  color: #667eea;
+  border-bottom-color: #667eea;
+  background: rgba(102, 126, 234, 0.1);
+}
+
+.tab-btn i {
+  font-size: 1.1rem;
+}
+
+.tab-content {
+  padding: 0;
+}
+
+/* Close Section */
+.close-section {
+  padding: 1.5rem;
+  direction: rtl;
+}
+
+.close-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 1.5rem;
+  direction: rtl;
+}
+
+.close-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+  overflow: hidden;
+  transition: all 0.3s ease;
+  border: 2px solid transparent;
+}
+
+.close-card:hover {
+  transform: translateY(-3px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.12);
+}
+
+.daily-close {
+  border-right: 4px solid #43e97b;
+}
+
+.monthly-close {
+  border-right: 4px solid #667eea;
+}
+
+.close-card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  padding: 1.25rem 1.5rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.daily-close .close-card-header {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.monthly-close .close-card-header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.close-card-title {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.close-card-title i {
+  font-size: 1.5rem;
+}
+
+.close-card-title h3 {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 600;
+}
+
+.close-status {
+  padding: 0.4rem 1rem;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.close-status.open {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+.close-status.closed {
+  background: rgba(255, 255, 255, 0.9);
+  color: #667eea;
+}
+
+.close-card-body {
+  padding: 1.5rem;
+}
+
+.close-info-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 0;
+  border-bottom: 1px solid #f0f0f0;
+}
+
+.close-info-row:last-child {
+  border-bottom: none;
+}
+
+.close-info-row.highlight {
+  background: #f8f9fa;
+  padding: 1rem;
+  border-radius: 8px;
+  margin-top: 0.5rem;
+  border: 2px solid #e9ecef;
+}
+
+.close-label {
+  font-weight: 600;
+  color: #495057;
+  font-size: 0.9rem;
+}
+
+.close-value {
+  font-weight: 700;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  text-align: left;
+}
+
+.close-card-footer {
+  padding: 1rem 1.5rem;
+  background: #f8f9fa;
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  justify-content: center;
+}
+
+.btn-close-action {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 2rem;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.daily-close .btn-close-action {
+  background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%);
+}
+
+.btn-close-action:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+.btn-close-action:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.closed-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.5rem 1rem;
+  background: #e9ecef;
+  color: #6c757d;
+  border-radius: 8px;
+  font-size: 0.9rem;
+}
+
+.closed-badge i {
+  color: #43e97b;
+}
+
+@media (max-width: 1200px) {
+  .close-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media print {
   .page-header,
   .statistics-section,
   .card-header-custom,
   .filters-section,
-  .actions-cell {
+  .actions-cell,
+  .close-section {
     display: none;
   }
 }
