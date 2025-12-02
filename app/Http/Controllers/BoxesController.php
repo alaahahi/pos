@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Box;
+use App\Models\DailyClose;
+use App\Models\MonthlyClose;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -122,12 +124,22 @@ class BoxesController extends Controller
         // Get system config for exchange rate
         $systemConfig = \App\Models\SystemConfig::first();
         
+        // Get today's daily close
+        $dailyClose = DailyClose::getToday();
+        $dailyClose->calculateDailyData();
+        
+        // Get current month's monthly close
+        $monthlyClose = MonthlyClose::getCurrentMonth();
+        $monthlyClose->calculateMonthlyData();
+        
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'transactions' => $transactions,
             'mainBox' => $mainBoxData,
             'exchangeRate' => $systemConfig ? $systemConfig->exchange_rate : 1500,
+            'dailyClose' => $dailyClose,
+            'monthlyClose' => $monthlyClose,
         ]);
     }
 
@@ -309,5 +321,138 @@ class BoxesController extends Controller
         $transactions = $transactionsQuery->paginate(10);
         $transactions->appends(request()->query());
         return response()->json($transactions);
+    }
+
+    /**
+     * Close daily sales
+     */
+    public function closeDaily(Request $request)
+    {
+        $request->validate([
+            'date' => 'nullable|date',
+            'notes' => 'nullable|string',
+        ]);
+
+        try {
+            $date = $request->date ? Carbon::parse($request->date) : today();
+            
+            $dailyClose = DailyClose::firstOrCreate(
+                ['close_date' => $date->format('Y-m-d')],
+                ['status' => 'open']
+            );
+
+            if ($dailyClose->status === 'closed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'اليوم مغلق بالفعل'
+                ], 400);
+            }
+
+            // Calculate and close
+            $dailyClose->calculateDailyData();
+            if ($request->notes) {
+                $dailyClose->notes = $request->notes;
+            }
+            $dailyClose->close();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إغلاق اليوم بنجاح',
+                'data' => $dailyClose
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Close monthly sales
+     */
+    public function closeMonthly(Request $request)
+    {
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:2100',
+            'month' => 'nullable|integer|min:1|max:12',
+            'notes' => 'nullable|string',
+        ]);
+
+        try {
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? now()->month;
+            
+            $monthlyClose = MonthlyClose::firstOrCreate(
+                [
+                    'year' => $year,
+                    'month' => $month,
+                ],
+                ['status' => 'open']
+            );
+
+            if ($monthlyClose->status === 'closed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الشهر مغلق بالفعل'
+                ], 400);
+            }
+
+            // Calculate and close
+            $monthlyClose->calculateMonthlyData();
+            if ($request->notes) {
+                $monthlyClose->notes = $request->notes;
+            }
+            $monthlyClose->close();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إغلاق الشهر بنجاح',
+                'data' => $monthlyClose
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * Get daily close data
+     */
+    public function getDailyClose(Request $request)
+    {
+        $date = $request->date ? Carbon::parse($request->date) : today();
+        
+        $dailyClose = DailyClose::firstOrCreate(
+            ['close_date' => $date->format('Y-m-d')],
+            ['status' => 'open']
+        );
+        
+        $dailyClose->calculateDailyData();
+        
+        return response()->json($dailyClose);
+    }
+
+    /**
+     * Get monthly close data
+     */
+    public function getMonthlyClose(Request $request)
+    {
+        $year = $request->year ?? now()->year;
+        $month = $request->month ?? now()->month;
+        
+        $monthlyClose = MonthlyClose::firstOrCreate(
+            [
+                'year' => $year,
+                'month' => $month,
+            ],
+            ['status' => 'open']
+        );
+        
+        $monthlyClose->calculateMonthlyData();
+        
+        return response()->json($monthlyClose);
     }
 }

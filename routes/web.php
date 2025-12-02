@@ -154,6 +154,12 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
   Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update');
+  Route::post('boxes/add-to-box', [BoxesController::class, 'addToBox'])->name('boxes.add-to-box');
+  Route::post('boxes/drop-from-box', [BoxesController::class, 'dropFromBox'])->name('boxes.drop-from-box');
+  Route::post('boxes/close-daily', [BoxesController::class, 'closeDaily'])->name('boxes.close-daily');
+  Route::post('boxes/close-monthly', [BoxesController::class, 'closeMonthly'])->name('boxes.close-monthly');
+  Route::get('boxes/daily-close', [BoxesController::class, 'getDailyClose'])->name('boxes.daily-close');
+  Route::get('boxes/monthly-close', [BoxesController::class, 'getMonthlyClose'])->name('boxes.monthly-close');
 
   // System Config routes
   Route::get('system-config', [SystemConfigController::class, 'index'])->name('system-config.index');

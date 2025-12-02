@@ -4,9 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Models\Expense;
 use App\Models\User;
+use App\Models\UserType;
 use App\Models\Box;
 use App\Models\SystemConfig;
 use App\Models\Transactions;
+use App\Http\Controllers\AccountingController;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Auth;
@@ -14,9 +16,19 @@ use Illuminate\Support\Facades\DB;
 
 class ExpenseController extends Controller
 {
-    public function __construct()
+    protected $accountingController;
+    protected $mainBox;
+    protected $userAccount;
+
+    public function __construct(AccountingController $accountingController)
     {
         $this->middleware('can:read expenses');
+        $this->accountingController = $accountingController;
+        $this->userAccount = UserType::where('name', 'account')->first()?->id;
+        $this->mainBox = User::with('wallet')
+            ->where('type_id', $this->userAccount)
+            ->where('email', 'mainBox@account.com')
+            ->first();
     }
 
     /**
@@ -179,52 +191,44 @@ class ExpenseController extends Controller
     }
 
     /**
-     * Update box balance based on expense
+     * Update box balance based on expense using wallet system
      */
     private function updateBoxBalance(Expense $expense, string $action)
     {
-        $box = Box::where('is_active', true)->first();
-        if (!$box) {
+        if (!$this->mainBox || !$this->mainBox->wallet) {
             return;
         }
 
-        // Update box balance based on currency
-        if ($expense->currency === 'USD') {
-            if ($action === 'create') {
-                $box->decrement('balance_usd', $expense->amount);
-                // Create transaction record
-                $this->createTransaction($expense, 'out', $box);
-            } elseif ($action === 'delete') {
-                $box->increment('balance_usd', $expense->amount);
-                // Create transaction record
-                $this->createTransaction($expense, 'in', $box);
-            }
-        } else { // IQD
-            if ($action === 'create') {
-                $box->decrement('balance', $expense->amount);
-                // Create transaction record
-                $this->createTransaction($expense, 'out', $box);
-            } elseif ($action === 'delete') {
-                $box->increment('balance', $expense->amount);
-                // Create transaction record
-                $this->createTransaction($expense, 'in', $box);
-            }
-        }
-    }
+        $currency = $expense->currency === 'USD' ? '$' : 'IQD';
+        $description = "مصروف: {$expense->title}" . ($expense->description ? " - {$expense->description}" : '');
+        $expenseDate = is_numeric($expense->expense_date) ? $expense->expense_date : strtotime($expense->expense_date);
 
-    /**
-     * Create transaction record for expense
-     */
-    private function createTransaction(Expense $expense, string $type, Box $box)
-    {
-        Transactions::create([
-            'amount' => $expense->amount,
-            'type' => $type,
-            'description' => "مصروف: {$expense->title}",
-            'currency' => $expense->currency,
-            'created' => $expense->expense_date,
-            'morphed_id' => $box->id,
-            'morphed_type' => 'App\Models\Box',
-        ]);
+        if ($action === 'create') {
+            // Decrease wallet balance (expense is outgoing)
+            $this->accountingController->decreaseWallet(
+                (int) round($expense->amount),
+                $description,
+                $this->mainBox->id,
+                $expense->id,
+                'App\Models\Expense',
+                0,
+                0,
+                $currency,
+                $expenseDate
+            );
+        } elseif ($action === 'delete') {
+            // Increase wallet balance (revert expense)
+            $this->accountingController->increaseWallet(
+                (int) round($expense->amount),
+                "إلغاء {$description}",
+                $this->mainBox->id,
+                $expense->id,
+                'App\Models\Expense',
+                0,
+                0,
+                $currency,
+                $expenseDate
+            );
+        }
     }
 }
