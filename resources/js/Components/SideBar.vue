@@ -30,6 +30,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read category')">
+    <Link  class="nav-link "  :href="route('categories.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/categories') }" >
+            <i class="bi bi-tags"></i>
+            <span>التصنيفات</span>
+               </Link>
+    </li>
+
     <!-- Decorations Section -->
     <li class="nav-item" v-if="hasPermission('read decoration')">
         <a class="nav-link " data-bs-target="#decorations-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations') && !$page.url.startsWith('/decoration-orders') && !$page.url.startsWith('/decoration-payments') && !$page.url.startsWith('/decoration-monthly-accounting') }" >
