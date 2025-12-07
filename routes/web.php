@@ -101,6 +101,10 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   // Categories routes
   Route::resource('categories', CategoryController::class);
   Route::get('categories/{category}/products', [CategoryController::class, 'getProducts'])->name('categories.products');
+  
+  // Permission Seeder API routes (for quick setup on server)
+  Route::post('api/permissions/add-category-permissions', [App\Http\Controllers\PermissionSeederController::class, 'addCategoryPermissions'])->name('api.permissions.add-category');
+  Route::post('api/permissions/run-category-seeder', [App\Http\Controllers\PermissionSeederController::class, 'runCategoryPermissionSeeder'])->name('api.permissions.run-category-seeder');
 
   // Products routes
   Route::resource('products', ProductController::class);
