@@ -692,6 +692,9 @@ class AccountingController extends Controller
             } else if (is_numeric($created) && $created > 10000) {
                 // Convert timestamp to datetime string
                 $created = date('Y-m-d H:i:s', $created);
+            } else if (is_string($created) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $created)) {
+                // Convert date string (YYYY-MM-DD) to datetime string
+                $created = $created . ' ' . date('H:i:s');
             }
             $user=  User::with('wallet')->find($user_id);
             if($id = $user->wallet->id){
@@ -723,6 +726,9 @@ class AccountingController extends Controller
         } else if (is_numeric($created) && $created > 10000) {
             // Convert timestamp to datetime string
             $created = date('Y-m-d H:i:s', $created);
+        } else if (is_string($created) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $created)) {
+            // Convert date string (YYYY-MM-DD) to datetime string
+            $created = $created . ' ' . date('H:i:s');
         }
 
         $user=  User::with('wallet')->find($user_id);

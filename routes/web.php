@@ -10,6 +10,7 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\CustomersController;
 use App\Http\Controllers\SuppliersController;
 use App\Http\Controllers\BoxesController;
+use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
@@ -97,6 +98,10 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
 
 
 
+  // Categories routes
+  Route::resource('categories', CategoryController::class);
+  Route::get('categories/{category}/products', [CategoryController::class, 'getProducts'])->name('categories.products');
+
   // Products routes
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
@@ -158,6 +163,7 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::post('boxes/close-monthly', [BoxesController::class, 'closeMonthly'])->name('boxes.close-monthly');
   Route::get('boxes/daily-close', [BoxesController::class, 'getDailyClose'])->name('boxes.daily-close');
   Route::get('boxes/monthly-close', [BoxesController::class, 'getMonthlyClose'])->name('boxes.monthly-close');
+  Route::get('boxes/closes-list', [BoxesController::class, 'closesList'])->name('boxes.closes-list');
   
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');

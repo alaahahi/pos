@@ -117,6 +117,13 @@ class UserRolePermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete product']);
         Permission::firstOrCreate(['name' => 'view product']);
 
+        // Category permissions
+        Permission::firstOrCreate(['name' => 'create category']);
+        Permission::firstOrCreate(['name' => 'read category']);
+        Permission::firstOrCreate(['name' => 'update category']);
+        Permission::firstOrCreate(['name' => 'delete category']);
+        Permission::firstOrCreate(['name' => 'view category']);
+
 
     // Create Roles 
         $superAdminRole = Role::firstOrCreate(['name' => 'superadmin']); //as super-admin
@@ -144,6 +151,8 @@ class UserRolePermissionSeeder extends Seeder
          $adminRole->givePermissionTo(['create customer', 'read customers', 'update customer', 'delete customer', 'view customer']);
          $adminRole->givePermissionTo(['create supplier', 'read supplier', 'update supplier', 'delete supplier', 'view supplier']);
          $adminRole->givePermissionTo(['create order', 'read order', 'update order', 'delete order', 'view order']);
+         $adminRole->givePermissionTo(['create category', 'read category', 'update category', 'delete category', 'view category']);
+         $adminRole->givePermissionTo(['create product', 'read product', 'update product', 'delete product', 'view product']);
          $adminRole->givePermissionTo(['create box', 'read boxes', 'update box', 'delete box', 'view box']);
          $adminRole->givePermissionTo(['create product', 'read product', 'update product', 'delete product', 'view product']);
          
@@ -157,6 +166,7 @@ class UserRolePermissionSeeder extends Seeder
          $staffRole->givePermissionTo(['read order', 'view order']);
          $staffRole->givePermissionTo(['read customers', 'view customer']);
          $staffRole->givePermissionTo(['read supplier', 'view supplier']);
+         $staffRole->givePermissionTo(['read category', 'view category']);
        
 //php artisan cache:forget spatie.permission.cache 
 

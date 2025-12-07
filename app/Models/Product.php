@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Permission\Traits\HasRoles;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use App\Services\LogService;
 
 class Product extends Model
@@ -33,6 +34,7 @@ class Product extends Model
         'is_featured',
         'is_best_selling',
         'sales_count',
+        'category_id',
     ];
 
     /**
@@ -74,6 +76,14 @@ class Product extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(\App\Models\Log::class, 'by_user_id');
+    }
+
+    /**
+     * Relationship with category.
+     */
+    public function category(): BelongsTo
+    {
+        return $this->belongsTo(Category::class);
     }
 
     /**

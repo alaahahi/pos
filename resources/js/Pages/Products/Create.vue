@@ -161,6 +161,35 @@
                       <InputError :message="form.errors.oe_number" />
                     </div>
                   </div>
+
+                  <!-- Category -->
+                  <div class="row mb-3">
+                    <label for="inputCategory" class="col-sm-2 col-form-label">التصنيف</label>
+                    <div class="col-sm-10">
+                      <div class="input-group">
+                        <span class="input-group-text">
+                          <i class="bi bi-tags"></i>
+                        </span>
+                        <select
+                          id="inputCategory"
+                          class="form-control"
+                          :class="{ 'is-invalid': form.errors.category_id }"
+                          v-model="form.category_id"
+                        >
+                          <option value="">اختر تصنيف (اختياري)</option>
+                          <option 
+                            v-for="category in categories" 
+                            :key="category.id" 
+                            :value="category.id"
+                          >
+                            {{ category.name }}
+                          </option>
+                        </select>
+                      </div>
+                      <div class="form-text">اختر تصنيف للمنتج لتسهيل البحث والفلترة</div>
+                      <InputError :message="form.errors.category_id" />
+                    </div>
+                  </div>
                 </div>
 
                 <!-- Step 2: Pricing -->
@@ -432,6 +461,10 @@ const profitMargin = ref(null);
 const profitPercentage = ref(null);
 
 const props = defineProps({
+  categories: {
+    type: Array,
+    default: () => []
+  },
   translations: Object,
 });
 
@@ -445,6 +478,7 @@ const form = useForm({
   notes: '',
   barcode: '',
   image: null,
+  category_id: null,
 });
 
 // Form validation

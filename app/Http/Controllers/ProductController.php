@@ -113,7 +113,15 @@ class ProductController extends Controller
     public function create()
     {
         $roles = Role::pluck('name', 'name')->all();
-        return Inertia('Products/Create', [ 'translations' => __('messages'),'roles' => $roles]);
+        $categories = \App\Models\Category::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
+        return Inertia('Products/Create', [
+            'translations' => __('messages'),
+            'roles' => $roles,
+            'categories' => $categories,
+        ]);
     }
 
     /**
@@ -132,6 +140,7 @@ class ProductController extends Controller
             'price' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode',
+            'category_id' => 'nullable|exists:categories,id',
         ]);
         
         // توليد barcode تلقائي إذا لم يتم إرساله
@@ -194,9 +203,14 @@ class ProductController extends Controller
     {
         $roles = Role::pluck('name', 'name')->all();
         $productRoles = $product->roles->pluck('name')->all();
+        $categories = \App\Models\Category::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get(['id', 'name']);
         return Inertia('Products/Edit', [
             'translations' => __('messages'),
             'product' => $product,
+            'categories' => $categories,
             'roles' => $roles,
             'productRoles' => $productRoles
         ]);
@@ -219,6 +233,7 @@ class ProductController extends Controller
             'price' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode,' . $product->id,
+            'category_id' => 'nullable|exists:categories,id',
         ]);
         
         // توليد barcode تلقائي إذا لم يتم إرساله ولم يكن موجودًا

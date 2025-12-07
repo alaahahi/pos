@@ -19,6 +19,10 @@ class DailyClose extends Model
         'close_date',
         'total_sales_usd',
         'total_sales_iqd',
+        'direct_deposits_usd',
+        'direct_deposits_iqd',
+        'direct_withdrawals_usd',
+        'direct_withdrawals_iqd',
         'total_expenses_usd',
         'total_expenses_iqd',
         'opening_balance_usd',
@@ -36,6 +40,10 @@ class DailyClose extends Model
         'close_date' => 'date',
         'total_sales_usd' => 'decimal:2',
         'total_sales_iqd' => 'decimal:2',
+        'direct_deposits_usd' => 'decimal:2',
+        'direct_deposits_iqd' => 'decimal:2',
+        'direct_withdrawals_usd' => 'decimal:2',
+        'direct_withdrawals_iqd' => 'decimal:2',
         'total_expenses_usd' => 'decimal:2',
         'total_expenses_iqd' => 'decimal:2',
         'opening_balance_usd' => 'decimal:2',
@@ -71,6 +79,7 @@ class DailyClose extends Model
     public function calculateDailyData()
     {
         $date = $this->close_date ?? today();
+        $dateString = Carbon::parse($date)->format('Y-m-d');
         $startDate = Carbon::parse($date)->startOfDay();
         $endDate = Carbon::parse($date)->endOfDay();
 
@@ -92,23 +101,146 @@ class DailyClose extends Model
         $this->total_orders = $orders->count();
         
         // Calculate sales amounts from transactions (orders payments)
-        $salesTransactions = Transactions::where('wallet_id', $walletId)
+        // Method 1: Find transactions by morphed_type (most accurate)
+        // Use whereDate since 'created' is a date field, not datetime
+        $salesTransactionsByOrder = Transactions::where('wallet_id', $walletId)
             ->where('type', 'in')
-            ->whereBetween('created', [$startDate, $endDate])
+            ->whereDate('created', $dateString)
             ->where(function($query) {
                 $query->where('morphed_type', Order::class)
-                      ->orWhere('description', 'LIKE', '%طلب%')
-                      ->orWhere('description', 'LIKE', '%order%');
+                      ->orWhere('morphed_type', 'App\\Models\\Order');
             })
             ->get();
+        
+        // Method 2: Find transactions by description (fallback for old transactions)
+        $salesTransactionsByDescription = Transactions::where('wallet_id', $walletId)
+            ->where('type', 'in')
+            ->whereDate('created', $dateString)
+            ->where(function($query) {
+                $query->where('description', 'LIKE', '%طلب%')
+                      ->orWhere('description', 'LIKE', '%order%')
+                      ->orWhere('description', 'LIKE', '%فاتورة%')
+                      ->orWhere('description', 'LIKE', '%invoice%');
+            })
+            ->get();
+        
+        // Combine both methods and remove duplicates
+        $allSalesTransactions = $salesTransactionsByOrder->merge($salesTransactionsByDescription)->unique('id');
 
-        $this->total_sales_usd = $salesTransactions->whereIn('currency', ['USD', '$'])->sum('amount');
-        $this->total_sales_iqd = $salesTransactions->where('currency', 'IQD')->sum('amount');
+        $this->total_sales_usd = $allSalesTransactions->whereIn('currency', ['USD', '$'])->sum('amount');
+        $this->total_sales_iqd = $allSalesTransactions->where('currency', 'IQD')->sum('amount');
+        
+        // If no transactions found at all but orders exist, calculate from orders total_paid as fallback
+        // Only use fallback if we found NO sales transactions (not just zero amounts)
+        if ($allSalesTransactions->isEmpty() && $orders->count() > 0) {
+            $ordersTotalPaid = $orders->sum('total_paid');
+            if ($ordersTotalPaid > 0) {
+                // Get default currency from environment
+                $defaultCurrency = env('DEFAULT_CURRENCY', 'IQD');
+                if ($defaultCurrency === 'USD' || $defaultCurrency === '$') {
+                    $this->total_sales_usd = $ordersTotalPaid;
+                } else {
+                    $this->total_sales_iqd = $ordersTotalPaid;
+                }
+            }
+        }
 
         // Calculate expenses for the day
+        // Method 1: From Expense table
         $expenses = Expense::whereDate('expense_date', $date)->get();
-        $this->total_expenses_usd = $expenses->where('currency', 'USD')->sum('amount');
-        $this->total_expenses_iqd = $expenses->where('currency', 'IQD')->sum('amount');
+        $expensesUsd = $expenses->where('currency', 'USD')->sum('amount');
+        $expensesIqd = $expenses->where('currency', 'IQD')->sum('amount');
+        
+        // Method 2: From transactions (only Expense model transactions)
+        // Note: Direct withdrawals are calculated separately, so we only count Expense model transactions here
+        // Use whereDate since 'created' is a date field, not datetime
+        $expenseModelTransactions = Transactions::where('wallet_id', $walletId)
+            ->where('type', 'out')
+            ->whereDate('created', $dateString)
+            ->where('morphed_type', Expense::class)
+            ->get();
+        
+        // Sum expenses from Expense model transactions (note: out transactions have negative amounts, so we use abs)
+        $expenseTransactionsUsd = abs($expenseModelTransactions->whereIn('currency', ['USD', '$'])->sum('amount'));
+        $expenseTransactionsIqd = abs($expenseModelTransactions->where('currency', 'IQD')->sum('amount'));
+        
+        // Total expenses = Expense table + Expense model transactions only
+        $this->total_expenses_usd = $expensesUsd + $expenseTransactionsUsd;
+        $this->total_expenses_iqd = $expensesIqd + $expenseTransactionsIqd;
+        
+        // Calculate additional income (deposits that are not sales)
+        // Get ALL incoming transactions first, then exclude sales
+        // Use whereDate since 'created' is a date field, not datetime
+        $allIncomingTransactions = Transactions::where('wallet_id', $walletId)
+            ->where('type', 'in')
+            ->whereDate('created', $dateString)
+            ->get();
+        
+        // Get sales transaction IDs to exclude
+        $salesTransactionIds = $allSalesTransactions->pluck('id')->toArray();
+        
+        // Filter out sales transactions - keep only additional income
+        // reject() removes items that return true, so we return true to EXCLUDE sales
+        $additionalIncomeTransactions = $allIncomingTransactions->reject(function($transaction) use ($salesTransactionIds) {
+            // Exclude if it's a sales transaction (already identified)
+            if (in_array($transaction->id, $salesTransactionIds)) {
+                return true; // EXCLUDE this transaction
+            }
+            
+            // Exclude if it's an order-related transaction
+            if ($transaction->morphed_type === Order::class || $transaction->morphed_type === 'App\\Models\\Order') {
+                return true; // EXCLUDE this transaction
+            }
+            
+            // Exclude if description contains sales-related keywords
+            $description = $transaction->description ?? '';
+            if (stripos($description, 'طلب') !== false || 
+                stripos($description, 'order') !== false ||
+                stripos($description, 'فاتورة') !== false ||
+                stripos($description, 'invoice') !== false ||
+                stripos($description, 'دفع نقدي') !== false ||
+                stripos($description, 'cash payment') !== false) {
+                return true; // EXCLUDE this transaction
+            }
+            
+            // Include everything else (direct additions, receipts, empty descriptions, etc.)
+            return false; // KEEP this transaction
+        });
+        
+        // Calculate direct deposits (additions to box) - separate from sales
+        $directDepositsUsd = $additionalIncomeTransactions->whereIn('currency', ['USD', '$'])->sum('amount');
+        $directDepositsIqd = $additionalIncomeTransactions->where('currency', 'IQD')->sum('amount');
+        
+        $this->direct_deposits_usd = $directDepositsUsd;
+        $this->direct_deposits_iqd = $directDepositsIqd;
+        
+        // Calculate direct withdrawals (from box) - separate from expenses
+        // Use whereDate since 'created' is a date field, not datetime
+        $directWithdrawalTransactions = Transactions::where('wallet_id', $walletId)
+            ->where('type', 'out')
+            ->whereDate('created', $dateString)
+            ->where(function($query) {
+                // Exclude expenses and sales-related transactions
+                $query->where('morphed_type', '!=', Order::class)
+                      ->where('morphed_type', '!=', 'App\\Models\\Order')
+                      ->where('morphed_type', '!=', Expense::class)
+                      ->where(function($q) {
+                          $q->where('description', 'NOT LIKE', '%طلب%')
+                            ->where('description', 'NOT LIKE', '%order%')
+                            ->where('description', 'NOT LIKE', '%فاتورة%')
+                            ->where('description', 'NOT LIKE', '%invoice%')
+                            ->where('description', 'NOT LIKE', '%مصروف%')
+                            ->where('description', 'NOT LIKE', '%expense%');
+                      });
+            })
+            ->get();
+        
+        // Direct withdrawals (note: out transactions have negative amounts, so we use abs)
+        $directWithdrawalsUsd = abs($directWithdrawalTransactions->whereIn('currency', ['USD', '$'])->sum('amount'));
+        $directWithdrawalsIqd = abs($directWithdrawalTransactions->where('currency', 'IQD')->sum('amount'));
+        
+        $this->direct_withdrawals_usd = $directWithdrawalsUsd;
+        $this->direct_withdrawals_iqd = $directWithdrawalsIqd;
 
         // Get opening balance (from previous day's closing balance)
         $previousDay = DailyClose::where('close_date', '<', $date)
@@ -138,8 +270,10 @@ class DailyClose extends Model
         }
 
         // Calculate closing balance
-        $this->closing_balance_usd = $this->opening_balance_usd + $this->total_sales_usd - $this->total_expenses_usd;
-        $this->closing_balance_iqd = $this->opening_balance_iqd + $this->total_sales_iqd - $this->total_expenses_iqd;
+        // Calculate closing balance
+        // Closing = Opening + Sales + Direct Deposits - Expenses - Direct Withdrawals
+        $this->closing_balance_usd = $this->opening_balance_usd + $this->total_sales_usd + $this->direct_deposits_usd - $this->total_expenses_usd - $this->direct_withdrawals_usd;
+        $this->closing_balance_iqd = $this->opening_balance_iqd + $this->total_sales_iqd + $this->direct_deposits_iqd - $this->total_expenses_iqd - $this->direct_withdrawals_iqd;
 
         return $this;
     }
@@ -171,6 +305,10 @@ class DailyClose extends Model
                 'status' => 'open',
                 'total_sales_usd' => 0,
                 'total_sales_iqd' => 0,
+                'direct_deposits_usd' => 0,
+                'direct_deposits_iqd' => 0,
+                'direct_withdrawals_usd' => 0,
+                'direct_withdrawals_iqd' => 0,
                 'total_expenses_usd' => 0,
                 'total_expenses_iqd' => 0,
             ]

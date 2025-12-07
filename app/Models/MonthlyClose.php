@@ -10,6 +10,7 @@ use App\Models\UserType;
 use App\Models\Order;
 use App\Models\Expense;
 use App\Models\Transactions;
+use App\Models\DailyClose;
 
 class MonthlyClose extends Model
 {
@@ -20,6 +21,10 @@ class MonthlyClose extends Model
         'month',
         'total_sales_usd',
         'total_sales_iqd',
+        'direct_deposits_usd',
+        'direct_deposits_iqd',
+        'direct_withdrawals_usd',
+        'direct_withdrawals_iqd',
         'total_expenses_usd',
         'total_expenses_iqd',
         'opening_balance_usd',
@@ -36,6 +41,10 @@ class MonthlyClose extends Model
     protected $casts = [
         'total_sales_usd' => 'decimal:2',
         'total_sales_iqd' => 'decimal:2',
+        'direct_deposits_usd' => 'decimal:2',
+        'direct_deposits_iqd' => 'decimal:2',
+        'direct_withdrawals_usd' => 'decimal:2',
+        'direct_withdrawals_iqd' => 'decimal:2',
         'total_expenses_usd' => 'decimal:2',
         'total_expenses_iqd' => 'decimal:2',
         'opening_balance_usd' => 'decimal:2',
@@ -85,42 +94,65 @@ class MonthlyClose extends Model
     {
         $startDate = Carbon::create($this->year, $this->month, 1)->startOfMonth();
         $endDate = Carbon::create($this->year, $this->month, 1)->endOfMonth();
+        $today = Carbon::today();
 
-        // Get main box user
-        $userAccount = UserType::where('name', 'account')->first();
-        $mainBoxUser = User::with('wallet')
-            ->where('type_id', $userAccount->id)
-            ->where('email', 'mainBox@account.com')
-            ->first();
-
-        if (!$mainBoxUser || !$mainBoxUser->wallet) {
-            return $this;
+        // Get today's daily close if it's within the month (may be open or closed)
+        $todayDailyClose = null;
+        if ($today->year == $this->year && $today->month == $this->month) {
+            $todayDailyClose = DailyClose::whereDate('close_date', $today)->first();
+            if ($todayDailyClose) {
+                // Recalculate today's data to ensure it's up to date
+                $todayDailyClose->calculateDailyData();
+            }
         }
 
-        $walletId = $mainBoxUser->wallet->id;
-
-        // Calculate sales (orders) for the month
-        $orders = Order::whereBetween('created_at', [$startDate, $endDate])->get();
-        $this->total_orders = $orders->count();
+        // Get all daily closes for the month (closed days only)
+        // Exclude today if it exists to avoid double counting
+        $closedDailyClosesQuery = DailyClose::whereBetween('close_date', [$startDate->copy()->startOfDay(), $endDate->copy()->endOfDay()])
+            ->where('status', 'closed');
         
-        // Calculate sales amounts from transactions (orders payments)
-        $salesTransactions = Transactions::where('wallet_id', $walletId)
-            ->where('type', 'in')
-            ->whereBetween('created', [$startDate, $endDate])
-            ->where(function($query) {
-                $query->where('morphed_type', Order::class)
-                      ->orWhere('description', 'LIKE', '%طلب%')
-                      ->orWhere('description', 'LIKE', '%order%');
-            })
-            ->get();
+        // Exclude today's close if it exists (whether open or closed) to avoid double counting
+        // We only count closed days, and if today is closed, it will be counted separately
+        if ($todayDailyClose) {
+            $closedDailyClosesQuery->whereDate('close_date', '!=', $today);
+        }
+        
+        $closedDailyCloses = $closedDailyClosesQuery->get();
 
-        $this->total_sales_usd = $salesTransactions->whereIn('currency', ['USD', '$'])->sum('amount');
-        $this->total_sales_iqd = $salesTransactions->where('currency', 'IQD')->sum('amount');
+        // Sum sales from closed daily closes (excluding today)
+        $totalSalesUsd = $closedDailyCloses->sum('total_sales_usd');
+        $totalSalesIqd = $closedDailyCloses->sum('total_sales_iqd');
+        $totalDirectDepositsUsd = $closedDailyCloses->sum('direct_deposits_usd');
+        $totalDirectDepositsIqd = $closedDailyCloses->sum('direct_deposits_iqd');
+        $totalDirectWithdrawalsUsd = $closedDailyCloses->sum('direct_withdrawals_usd');
+        $totalDirectWithdrawalsIqd = $closedDailyCloses->sum('direct_withdrawals_iqd');
+        $totalExpensesUsd = $closedDailyCloses->sum('total_expenses_usd');
+        $totalExpensesIqd = $closedDailyCloses->sum('total_expenses_iqd');
+        $totalOrders = $closedDailyCloses->sum('total_orders');
 
-        // Calculate expenses for the month
-        $expenses = Expense::whereBetween('expense_date', [$startDate, $endDate])->get();
-        $this->total_expenses_usd = $expenses->where('currency', 'USD')->sum('amount');
-        $this->total_expenses_iqd = $expenses->where('currency', 'IQD')->sum('amount');
+        // Add today's data ONLY if today is closed (to include it in monthly calculation)
+        // If today is open, it should not be included in monthly close
+        if ($todayDailyClose && $todayDailyClose->status === 'closed') {
+            $totalSalesUsd += $todayDailyClose->total_sales_usd;
+            $totalSalesIqd += $todayDailyClose->total_sales_iqd;
+            $totalDirectDepositsUsd += $todayDailyClose->direct_deposits_usd;
+            $totalDirectDepositsIqd += $todayDailyClose->direct_deposits_iqd;
+            $totalDirectWithdrawalsUsd += $todayDailyClose->direct_withdrawals_usd;
+            $totalDirectWithdrawalsIqd += $todayDailyClose->direct_withdrawals_iqd;
+            $totalExpensesUsd += $todayDailyClose->total_expenses_usd;
+            $totalExpensesIqd += $todayDailyClose->total_expenses_iqd;
+            $totalOrders += $todayDailyClose->total_orders;
+        }
+
+        $this->total_sales_usd = $totalSalesUsd;
+        $this->total_sales_iqd = $totalSalesIqd;
+        $this->direct_deposits_usd = $totalDirectDepositsUsd;
+        $this->direct_deposits_iqd = $totalDirectDepositsIqd;
+        $this->direct_withdrawals_usd = $totalDirectWithdrawalsUsd;
+        $this->direct_withdrawals_iqd = $totalDirectWithdrawalsIqd;
+        $this->total_expenses_usd = $totalExpensesUsd;
+        $this->total_expenses_iqd = $totalExpensesIqd;
+        $this->total_orders = $totalOrders;
 
         // Get opening balance (from previous month's closing balance)
         $previousMonth = MonthlyClose::where(function($query) {
@@ -137,26 +169,44 @@ class MonthlyClose extends Model
             $this->opening_balance_usd = $previousMonth->closing_balance_usd;
             $this->opening_balance_iqd = $previousMonth->closing_balance_iqd;
         } else {
-            // If no previous month, calculate from all transactions before this month
-            $openingTransactionsUSD = Transactions::where('wallet_id', $walletId)
-                ->where(function($query) {
-                    $query->where('currency', 'USD')->orWhere('currency', '$');
-                })
-                ->where('created', '<', $startDate)
-                ->sum('amount');
+            // If no previous month, get opening balance from first day of month's daily close
+            $firstDayClose = DailyClose::whereDate('close_date', $startDate)->first();
+            if ($firstDayClose) {
+                $this->opening_balance_usd = $firstDayClose->opening_balance_usd;
+                $this->opening_balance_iqd = $firstDayClose->opening_balance_iqd;
+            } else {
+                // Fallback: calculate from all transactions before this month
+                $userAccount = UserType::where('name', 'account')->first();
+                $mainBoxUser = User::with('wallet')
+                    ->where('type_id', $userAccount->id)
+                    ->where('email', 'mainBox@account.com')
+                    ->first();
 
-            $openingTransactionsIQD = Transactions::where('wallet_id', $walletId)
-                ->where('currency', 'IQD')
-                ->where('created', '<', $startDate)
-                ->sum('amount');
+                if ($mainBoxUser && $mainBoxUser->wallet) {
+                    $walletId = $mainBoxUser->wallet->id;
+                    $openingTransactionsUSD = Transactions::where('wallet_id', $walletId)
+                        ->where(function($query) {
+                            $query->where('currency', 'USD')->orWhere('currency', '$');
+                        })
+                        ->where('created', '<', $startDate)
+                        ->sum('amount');
 
-            $this->opening_balance_usd = $openingTransactionsUSD;
-            $this->opening_balance_iqd = $openingTransactionsIQD;
+                    $openingTransactionsIQD = Transactions::where('wallet_id', $walletId)
+                        ->where('currency', 'IQD')
+                        ->where('created', '<', $startDate)
+                        ->sum('amount');
+
+                    $this->opening_balance_usd = $openingTransactionsUSD;
+                    $this->opening_balance_iqd = $openingTransactionsIQD;
+                }
+            }
         }
 
         // Calculate closing balance
-        $this->closing_balance_usd = $this->opening_balance_usd + $this->total_sales_usd - $this->total_expenses_usd;
-        $this->closing_balance_iqd = $this->opening_balance_iqd + $this->total_sales_iqd - $this->total_expenses_iqd;
+        // Calculate closing balance
+        // Closing = Opening + Sales + Direct Deposits - Expenses - Direct Withdrawals
+        $this->closing_balance_usd = $this->opening_balance_usd + $this->total_sales_usd + $this->direct_deposits_usd - $this->total_expenses_usd - $this->direct_withdrawals_usd;
+        $this->closing_balance_iqd = $this->opening_balance_iqd + $this->total_sales_iqd + $this->direct_deposits_iqd - $this->total_expenses_iqd - $this->direct_withdrawals_iqd;
 
         return $this;
     }
@@ -207,6 +257,10 @@ class MonthlyClose extends Model
                 'status' => 'open',
                 'total_sales_usd' => 0,
                 'total_sales_iqd' => 0,
+                'direct_deposits_usd' => 0,
+                'direct_deposits_iqd' => 0,
+                'direct_withdrawals_usd' => 0,
+                'direct_withdrawals_iqd' => 0,
                 'total_expenses_usd' => 0,
                 'total_expenses_iqd' => 0,
             ]

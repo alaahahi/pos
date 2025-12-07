@@ -127,10 +127,12 @@ class BoxesController extends Controller
         // Get today's daily close
         $dailyClose = DailyClose::getToday();
         $dailyClose->calculateDailyData();
+        $dailyClose->save(); // Save calculated data
         
         // Get current month's monthly close
         $monthlyClose = MonthlyClose::getCurrentMonth();
         $monthlyClose->calculateMonthlyData();
+        $monthlyClose->save(); // Save calculated data
         
         return Inertia('Boxes/index', [
             'translations' => __('messages'),
@@ -226,7 +228,16 @@ class BoxesController extends Controller
                 );
             }
         }
- 
+        
+        // Update daily close after adding to box
+        $dailyClose = DailyClose::getToday();
+        $dailyClose->calculateDailyData();
+        $dailyClose->save();
+        
+        // Update monthly close
+        $monthlyClose = MonthlyClose::getCurrentMonth();
+        $monthlyClose->calculateMonthlyData();
+        $monthlyClose->save();
         
         return response()->json(['message' => 'Transaction added successfully']);
     }
@@ -442,6 +453,7 @@ class BoxesController extends Controller
         );
         
         $dailyClose->calculateDailyData();
+        $dailyClose->save(); // Save calculated data
         
         return response()->json($dailyClose);
     }
@@ -463,7 +475,72 @@ class BoxesController extends Controller
         );
         
         $monthlyClose->calculateMonthlyData();
+        $monthlyClose->save(); // Save calculated data
         
         return response()->json($monthlyClose);
+    }
+
+    /**
+     * Get list of daily and monthly closes with filters
+     */
+    public function closesList(Request $request)
+    {
+        $filters = [
+            'type' => $request->type ?? 'all', // 'daily', 'monthly', 'all'
+            'status' => $request->status ?? 'all', // 'open', 'closed', 'all'
+            'start_date' => $request->start_date,
+            'end_date' => $request->end_date,
+            'year' => $request->year,
+            'month' => $request->month,
+        ];
+
+        $dailyCloses = collect();
+        $monthlyCloses = collect();
+
+        // Get daily closes
+        if ($filters['type'] === 'all' || $filters['type'] === 'daily') {
+            $dailyQuery = DailyClose::query();
+
+            if ($filters['status'] !== 'all') {
+                $dailyQuery->where('status', $filters['status']);
+            }
+
+            if ($filters['start_date']) {
+                $dailyQuery->whereDate('close_date', '>=', $filters['start_date']);
+            }
+
+            if ($filters['end_date']) {
+                $dailyQuery->whereDate('close_date', '<=', $filters['end_date']);
+            }
+
+            $dailyCloses = $dailyQuery->orderBy('close_date', 'desc')->paginate(15);
+        }
+
+        // Get monthly closes
+        if ($filters['type'] === 'all' || $filters['type'] === 'monthly') {
+            $monthlyQuery = MonthlyClose::query();
+
+            if ($filters['status'] !== 'all') {
+                $monthlyQuery->where('status', $filters['status']);
+            }
+
+            if ($filters['year']) {
+                $monthlyQuery->where('year', $filters['year']);
+            }
+
+            if ($filters['month']) {
+                $monthlyQuery->where('month', $filters['month']);
+            }
+
+            $monthlyCloses = $monthlyQuery->orderBy('year', 'desc')
+                ->orderBy('month', 'desc')
+                ->paginate(15);
+        }
+
+        return response()->json([
+            'daily_closes' => $dailyCloses,
+            'monthly_closes' => $monthlyCloses,
+            'filters' => $filters,
+        ]);
     }
 }

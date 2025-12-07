@@ -89,12 +89,9 @@ class OrderController extends Controller
             ];
         });
         $defaultCustomer = Customer::where('name', 'زبون افتراضي')->select('id', 'name', 'phone')->first();
-        // Get featured and best-selling products only
+        // Get all active products with their categories
         $products = Product::where('is_active', true)
-            ->where(function($query) {
-                $query->where('is_featured', true)
-                      ->orWhere('is_best_selling', true);
-            })
+            ->with('category:id,name,color,icon')
             ->get()
             ->map(function ($product) {
                 return [
@@ -109,6 +106,28 @@ class OrderController extends Controller
                     'is_featured' => $product->is_featured,
                     'is_best_selling' => $product->is_best_selling,
                     'sales_count' => $product->sales_count,
+                    'category_id' => $product->category_id,
+                    'category' => $product->category ? [
+                        'id' => $product->category->id,
+                        'name' => $product->category->name,
+                        'color' => $product->category->color,
+                        'icon' => $product->category->icon,
+                    ] : null,
+                ];
+            });
+
+        // Get all active categories
+        $categories = \App\Models\Category::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get()
+            ->map(function ($category) {
+                return [
+                    'id' => $category->id,
+                    'name' => $category->name,
+                    'color' => $category->color,
+                    'icon' => $category->icon,
+                    'slug' => $category->slug,
                 ];
             });
 
@@ -129,6 +148,7 @@ class OrderController extends Controller
             'translations' => __('messages'),
             'customers' => $customers,
             'products' => $products,
+            'categories' => $categories,
             'defaultCustomer' => $defaultCustomer,
             'defaultCurrency' => $this->defaultCurrency,
             'companyLogo' => env('COMPANY_LOGO', 'dashboard-assets/img/logo.png'),
@@ -222,8 +242,8 @@ class OrderController extends Controller
                     $validated['total_paid'], // المبلغ المدفوع
                     'دفع نقدي فاتورة رقم ' . $order->id,
                     $this->mainBox->id, // الصندوق الرئيسي
-                    $this->mainBox->id, // صندوق النظام
-                    'App\Models\User',
+                    $order->id, // ربط المعاملة بالطلب
+                    Order::class, // نوع النموذج المرتبط
                     0,
                     0,
                     $this->defaultCurrency,
@@ -428,8 +448,8 @@ class OrderController extends Controller
                      $validated['total_paid'], // المبلغ المدفوع
                      'دفع نقدي فاتورة رقم ' . $order->id, // الوصف
                      $this->mainBox->id, // الصندوق الرئيسي للعميل
-                     $this->mainBox->id, // صندوق النظام أو المستخدم الأساسي
-                     'App\Models\User',
+                     $order->id, // ربط المعاملة بالطلب
+                     Order::class, // نوع النموذج المرتبط
                      0,
                      0,
                      $this->defaultCurrency,

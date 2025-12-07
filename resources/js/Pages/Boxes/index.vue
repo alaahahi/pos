@@ -88,6 +88,14 @@
             <i class="bi bi-calendar-check"></i>
             الإغلاق اليومي والشهري
           </button>
+          <button 
+            class="tab-btn" 
+            :class="{ active: activeTab === 'closes-list' }"
+            @click="activeTab = 'closes-list'; loadClosesList()"
+          >
+            <i class="bi bi-list-check"></i>
+            قائمة الإغلاقات
+          </button>
         </div>
 
         <!-- Transactions Tab Content -->
@@ -401,29 +409,43 @@
                   <div class="close-info-row">
                     <span class="close-label">المبيعات:</span>
                     <span class="close-value">
-                      {{ updateResults(dailyClose?.total_sales_usd ?? 0) }} USD / 
-                      {{ updateResults(dailyClose?.total_sales_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.total_sales_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.total_sales_iqd ?? 0) }} IQD</span>
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">إضافة مباشرة:</span>
+                    <span class="close-value">
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.direct_deposits_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.direct_deposits_iqd ?? 0) }} IQD</span>
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">سحب مباشر:</span>
+                    <span class="close-value">
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.direct_withdrawals_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.direct_withdrawals_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
                     <span class="close-label">المصاريف:</span>
                     <span class="close-value">
-                      {{ updateResults(dailyClose?.total_expenses_usd ?? 0) }} USD / 
-                      {{ updateResults(dailyClose?.total_expenses_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.total_expenses_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.total_expenses_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
                     <span class="close-label">الرصيد الافتتاحي:</span>
                     <span class="close-value">
-                      {{ updateResults(dailyClose?.opening_balance_usd ?? 0) }} USD / 
-                      {{ updateResults(dailyClose?.opening_balance_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.opening_balance_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.opening_balance_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row highlight">
                     <span class="close-label">الرصيد الختامي:</span>
                     <span class="close-value">
-                      {{ updateResults(dailyClose?.closing_balance_usd ?? 0) }} USD / 
-                      {{ updateResults(dailyClose?.closing_balance_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(dailyClose?.closing_balance_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(dailyClose?.closing_balance_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
@@ -463,29 +485,43 @@
                   <div class="close-info-row">
                     <span class="close-label">المبيعات:</span>
                     <span class="close-value">
-                      {{ updateResults(monthlyClose?.total_sales_usd ?? 0) }} USD / 
-                      {{ updateResults(monthlyClose?.total_sales_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.total_sales_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.total_sales_iqd ?? 0) }} IQD</span>
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">إضافة مباشرة:</span>
+                    <span class="close-value">
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.direct_deposits_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.direct_deposits_iqd ?? 0) }} IQD</span>
+                    </span>
+                  </div>
+                  <div class="close-info-row">
+                    <span class="close-label">سحب مباشر:</span>
+                    <span class="close-value">
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.direct_withdrawals_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.direct_withdrawals_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
                     <span class="close-label">المصاريف:</span>
                     <span class="close-value">
-                      {{ updateResults(monthlyClose?.total_expenses_usd ?? 0) }} USD / 
-                      {{ updateResults(monthlyClose?.total_expenses_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.total_expenses_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.total_expenses_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
                     <span class="close-label">الرصيد الافتتاحي:</span>
                     <span class="close-value">
-                      {{ updateResults(monthlyClose?.opening_balance_usd ?? 0) }} USD / 
-                      {{ updateResults(monthlyClose?.opening_balance_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.opening_balance_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.opening_balance_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row highlight">
                     <span class="close-label">الرصيد الختامي:</span>
                     <span class="close-value">
-                      {{ updateResults(monthlyClose?.closing_balance_usd ?? 0) }} USD / 
-                      {{ updateResults(monthlyClose?.closing_balance_iqd ?? 0) }} IQD
+                      <span class="currency-badge usd">{{ updateResults(monthlyClose?.closing_balance_usd ?? 0) }} USD</span>
+                      <span class="currency-badge iqd">{{ updateResults(monthlyClose?.closing_balance_iqd ?? 0) }} IQD</span>
                     </span>
                   </div>
                   <div class="close-info-row">
@@ -514,6 +550,198 @@
         </div>
       </div>
     </section>
+
+    <!-- Closes List Tab Content -->
+    <div v-show="activeTab === 'closes-list'" class="tab-content">
+      <div class="card-header-custom">
+        <div class="actions-wrapper">
+          <h3 class="card-title">قائمة الإغلاقات</h3>
+        </div>
+      </div>
+
+      <!-- Filters Section -->
+      <div class="filters-section" style="margin-bottom: 1.5rem;">
+        <div class="row g-3">
+          <div class="col-md-3">
+            <label class="form-label">النوع</label>
+            <select v-model="closesFilters.type" @change="loadClosesList" class="form-select">
+              <option value="all">الكل</option>
+              <option value="daily">يومي</option>
+              <option value="monthly">شهري</option>
+            </select>
+          </div>
+          <div class="col-md-3">
+            <label class="form-label">الحالة</label>
+            <select v-model="closesFilters.status" @change="loadClosesList" class="form-select">
+              <option value="all">الكل</option>
+              <option value="open">مفتوح</option>
+              <option value="closed">مغلق</option>
+            </select>
+          </div>
+          <div class="col-md-2" v-if="closesFilters.type === 'all' || closesFilters.type === 'daily'">
+            <label class="form-label">من تاريخ</label>
+            <input type="date" v-model="closesFilters.start_date" @change="loadClosesList" class="form-control">
+          </div>
+          <div class="col-md-2" v-if="closesFilters.type === 'all' || closesFilters.type === 'daily'">
+            <label class="form-label">إلى تاريخ</label>
+            <input type="date" v-model="closesFilters.end_date" @change="loadClosesList" class="form-control">
+          </div>
+          <div class="col-md-2" v-if="closesFilters.type === 'all' || closesFilters.type === 'monthly'">
+            <label class="form-label">السنة</label>
+            <input type="number" v-model="closesFilters.year" @change="loadClosesList" class="form-control" placeholder="مثال: 2025">
+          </div>
+          <div class="col-md-2" v-if="closesFilters.type === 'all' || closesFilters.type === 'monthly'">
+            <label class="form-label">الشهر</label>
+            <select v-model="closesFilters.month" @change="loadClosesList" class="form-select">
+              <option value="">الكل</option>
+              <option value="1">يناير</option>
+              <option value="2">فبراير</option>
+              <option value="3">مارس</option>
+              <option value="4">أبريل</option>
+              <option value="5">مايو</option>
+              <option value="6">يونيو</option>
+              <option value="7">يوليو</option>
+              <option value="8">أغسطس</option>
+              <option value="9">سبتمبر</option>
+              <option value="10">أكتوبر</option>
+              <option value="11">نوفمبر</option>
+              <option value="12">ديسمبر</option>
+            </select>
+          </div>
+          <div class="col-md-2 d-flex align-items-end">
+            <button @click="clearClosesFilters" class="btn btn-secondary w-100">
+              <i class="bi bi-x-circle"></i> مسح الفلاتر
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Daily Closes List -->
+      <div v-if="closesFilters.type === 'all' || closesFilters.type === 'daily'" class="mb-4">
+        <h5 class="mb-3">الإغلاقات اليومية</h5>
+        <div v-if="loadingCloses" class="text-center py-4">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-else-if="dailyClosesList && dailyClosesList.data && dailyClosesList.data.length > 0" class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>التاريخ</th>
+                <th>الحالة</th>
+                <th>المبيعات</th>
+                <th>إضافة مباشرة</th>
+                <th>المصاريف</th>
+                <th>الرصيد الافتتاحي</th>
+                <th>الرصيد الختامي</th>
+                <th>عدد الطلبات</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="close in dailyClosesList.data" :key="'daily-' + close.id">
+                <td>{{ formatDate(close.close_date) }}</td>
+                <td>
+                  <span :class="close.status === 'closed' ? 'badge bg-success' : 'badge bg-warning'">
+                    {{ close.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.total_sales_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.total_sales_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.direct_deposits_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.direct_deposits_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.total_expenses_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.total_expenses_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.opening_balance_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.opening_balance_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.closing_balance_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.closing_balance_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>{{ close.total_orders ?? 0 }}</td>
+                <td>
+                  <button @click="viewCloseDetails('daily', close)" class="btn btn-sm btn-info">
+                    <i class="bi bi-eye"></i> التفاصيل
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <Pagination v-if="dailyClosesList.links" :links="dailyClosesList.links" @page-changed="loadClosesList" />
+        </div>
+        <div v-else class="alert alert-info">لا توجد إغلاقات يومية</div>
+      </div>
+
+      <!-- Monthly Closes List -->
+      <div v-if="closesFilters.type === 'all' || closesFilters.type === 'monthly'">
+        <h5 class="mb-3">الإغلاقات الشهرية</h5>
+        <div v-if="loadingCloses" class="text-center py-4">
+          <div class="spinner-border" role="status"></div>
+        </div>
+        <div v-else-if="monthlyClosesList && monthlyClosesList.data && monthlyClosesList.data.length > 0" class="table-responsive">
+          <table class="table table-hover">
+            <thead>
+              <tr>
+                <th>الشهر</th>
+                <th>الحالة</th>
+                <th>المبيعات</th>
+                <th>إضافة مباشرة</th>
+                <th>المصاريف</th>
+                <th>الرصيد الافتتاحي</th>
+                <th>الرصيد الختامي</th>
+                <th>عدد الطلبات</th>
+                <th>الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="close in monthlyClosesList.data" :key="'monthly-' + close.id">
+                <td>{{ getMonthName(close.month) }} {{ close.year }}</td>
+                <td>
+                  <span :class="close.status === 'closed' ? 'badge bg-success' : 'badge bg-warning'">
+                    {{ close.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                  </span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.total_sales_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.total_sales_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.direct_deposits_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.direct_deposits_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.total_expenses_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.total_expenses_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.opening_balance_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.opening_balance_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>
+                  <span class="currency-badge usd">{{ updateResults(close.closing_balance_usd ?? 0) }} USD</span>
+                  <span class="currency-badge iqd">{{ updateResults(close.closing_balance_iqd ?? 0) }} IQD</span>
+                </td>
+                <td>{{ close.total_orders ?? 0 }}</td>
+                <td>
+                  <button @click="viewCloseDetails('monthly', close)" class="btn btn-sm btn-info">
+                    <i class="bi bi-eye"></i> التفاصيل
+                  </button>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+          <Pagination v-if="monthlyClosesList.links" :links="monthlyClosesList.links" @page-changed="loadClosesList" />
+        </div>
+        <div v-else class="alert alert-info">لا توجد إغلاقات شهرية</div>
+      </div>
+    </div>
 
     <!-- Modals -->
     <ModalUploader
@@ -650,6 +878,17 @@ let tranId = ref(0);
 let selectedImages = ref([]);
 let loading = ref(false);
 let activeTab = ref('transactions');
+let loadingCloses = ref(false);
+let dailyClosesList = ref(null);
+let monthlyClosesList = ref(null);
+let closesFilters = reactive({
+  type: 'all',
+  status: 'all',
+  start_date: '',
+  end_date: '',
+  year: '',
+  month: ''
+});
  
 const props = defineProps({
   boxes: Object, 
@@ -698,7 +937,7 @@ function refresh() {
   loading.value = true;
   axios.get('api/boxes/transactions')
  .then(response => {
-      router.reload({ only: ['transactions', 'mainBox'] });
+      router.reload({ only: ['transactions', 'mainBox', 'dailyClose', 'monthlyClose'] });
       toast.success("تم تحديث البيانات بنجاح", {
         timeout: 2000,
         position: "bottom-right",
@@ -915,35 +1154,74 @@ const calculateTotalOutIQD = () => {
 };
 
 // Close Daily Function
-const handleCloseDaily = () => {
-  Swal.fire({
-    title: 'تأكيد إغلاق اليوم',
-    html: `
-      <p>هل أنت متأكد من إغلاق اليوم؟</p>
-      <div style="text-align: right; margin-top: 1rem;">
-        <p><strong>المبيعات:</strong> ${updateResults(props.dailyClose?.total_sales_usd ?? 0)} USD / ${updateResults(props.dailyClose?.total_sales_iqd ?? 0)} IQD</p>
-        <p><strong>المصاريف:</strong> ${updateResults(props.dailyClose?.total_expenses_usd ?? 0)} USD / ${updateResults(props.dailyClose?.total_expenses_iqd ?? 0)} IQD</p>
-        <p><strong>الرصيد الختامي:</strong> ${updateResults(props.dailyClose?.closing_balance_usd ?? 0)} USD / ${updateResults(props.dailyClose?.closing_balance_iqd ?? 0)} IQD</p>
-      </div>
-    `,
-    icon: 'question',
-    showCancelButton: true,
-    confirmButtonColor: '#667eea',
-    cancelButtonColor: '#6c757d',
-    confirmButtonText: 'نعم، إغلاق',
-    cancelButtonText: 'إلغاء',
-    input: 'textarea',
-    inputPlaceholder: 'ملاحظات (اختياري)',
-    inputAttributes: {
-      'aria-label': 'ملاحظات'
-    }
-  }).then((result) => {
-    if (result.isConfirmed) {
-      loading.value = true;
-      axios.post('/boxes/close-daily', {
-        date: props.dailyClose?.close_date || getTodayDate(),
-        notes: result.value || ''
-      })
+const handleCloseDaily = async () => {
+  // First, recalculate daily close data to ensure accuracy
+  loading.value = true;
+  try {
+    const date = props.dailyClose?.close_date || getTodayDate();
+    const response = await axios.get(`/boxes/daily-close?date=${date}`);
+    const updatedDailyClose = response.data;
+    
+    Swal.fire({
+      title: 'تأكيد إغلاق اليوم',
+      html: `
+        <p>هل أنت متأكد من إغلاق اليوم؟</p>
+        <div style="text-align: right; margin-top: 1rem; font-family: Arial, sans-serif;">
+          <div style="margin-bottom: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: bold; color: #495057;">المبيعات:</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${updateResults(updatedDailyClose?.total_sales_usd ?? 0)} USD</span>
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(updatedDailyClose?.total_sales_iqd ?? 0)} IQD</span>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: bold; color: #495057;">إضافة مباشرة:</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${updateResults(updatedDailyClose?.direct_deposits_usd ?? 0)} USD</span>
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(updatedDailyClose?.direct_deposits_iqd ?? 0)} IQD</span>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: bold; color: #495057;">المصاريف:</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${updateResults(updatedDailyClose?.total_expenses_usd ?? 0)} USD</span>
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(updatedDailyClose?.total_expenses_iqd ?? 0)} IQD</span>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: bold; color: #495057;">الرصيد الافتتاحي:</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${updateResults(updatedDailyClose?.opening_balance_usd ?? 0)} USD</span>
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(updatedDailyClose?.opening_balance_iqd ?? 0)} IQD</span>
+            </div>
+          </div>
+          <div style="margin-bottom: 1rem;">
+            <p style="margin-bottom: 0.5rem; font-weight: bold; color: #495057;">الرصيد الختامي:</p>
+            <div style="display: flex; gap: 0.5rem; flex-wrap: wrap;">
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">${updateResults(updatedDailyClose?.closing_balance_usd ?? 0)} USD</span>
+              <span style="display: inline-block; padding: 0.4rem 0.8rem; border-radius: 6px; font-weight: 600; font-size: 0.85rem; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(updatedDailyClose?.closing_balance_iqd ?? 0)} IQD</span>
+            </div>
+          </div>
+        </div>
+      `,
+      icon: 'question',
+      showCancelButton: true,
+      confirmButtonColor: '#667eea',
+      cancelButtonColor: '#6c757d',
+      confirmButtonText: 'نعم، إغلاق',
+      cancelButtonText: 'إلغاء',
+      input: 'textarea',
+      inputPlaceholder: 'ملاحظات (اختياري)',
+      inputAttributes: {
+        'aria-label': 'ملاحظات'
+      }
+    }).then((result) => {
+      if (result.isConfirmed) {
+        loading.value = true;
+        axios.post('/boxes/close-daily', {
+          date: date,
+          notes: result.value || ''
+        })
       .then(response => {
         if (response.data.success) {
           toast.success(response.data.message || 'تم إغلاق اليوم بنجاح', {
@@ -972,6 +1250,15 @@ const handleCloseDaily = () => {
       });
     }
   });
+  } catch (error) {
+    console.error('Error fetching daily close data:', error);
+    toast.error('حدث خطأ أثناء جلب بيانات الإغلاق', {
+      timeout: 3000,
+      position: "bottom-right",
+      rtl: true
+    });
+    loading.value = false;
+  }
 };
 
 // Close Monthly Function
@@ -1032,6 +1319,112 @@ const handleCloseMonthly = () => {
         loading.value = false;
       });
     }
+  });
+};
+
+// Load Closes List
+const loadClosesList = async () => {
+  loadingCloses.value = true;
+  try {
+    const params = new URLSearchParams();
+    if (closesFilters.type) params.append('type', closesFilters.type);
+    if (closesFilters.status) params.append('status', closesFilters.status);
+    if (closesFilters.start_date) params.append('start_date', closesFilters.start_date);
+    if (closesFilters.end_date) params.append('end_date', closesFilters.end_date);
+    if (closesFilters.year) params.append('year', closesFilters.year);
+    if (closesFilters.month) params.append('month', closesFilters.month);
+    
+    const response = await axios.get(`/boxes/closes-list?${params.toString()}`);
+    dailyClosesList.value = response.data.daily_closes;
+    monthlyClosesList.value = response.data.monthly_closes;
+  } catch (error) {
+    console.error('Error loading closes list:', error);
+    toast.error('حدث خطأ أثناء جلب قائمة الإغلاقات', {
+      timeout: 3000,
+      position: "bottom-right",
+      rtl: true
+    });
+  } finally {
+    loadingCloses.value = false;
+  }
+};
+
+// Clear Closes Filters
+const clearClosesFilters = () => {
+  closesFilters.type = 'all';
+  closesFilters.status = 'all';
+  closesFilters.start_date = '';
+  closesFilters.end_date = '';
+  closesFilters.year = '';
+  closesFilters.month = '';
+  loadClosesList();
+};
+
+// View Close Details
+const viewCloseDetails = (type, close) => {
+  const details = type === 'daily' 
+    ? `
+      <div style="text-align: right; font-family: Arial, sans-serif;">
+        <p><strong>التاريخ:</strong> ${formatDate(close.close_date)}</p>
+        <p><strong>الحالة:</strong> ${close.status === 'closed' ? 'مغلق' : 'مفتوح'}</p>
+        <p><strong>المبيعات:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.total_sales_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.total_sales_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>إضافة مباشرة:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.direct_deposits_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.direct_deposits_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>المصاريف:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.total_expenses_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.total_expenses_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>الرصيد الافتتاحي:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.opening_balance_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.opening_balance_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>الرصيد الختامي:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.closing_balance_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.closing_balance_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>عدد الطلبات:</strong> ${close.total_orders ?? 0}</p>
+        ${close.notes ? `<p><strong>ملاحظات:</strong> ${close.notes}</p>` : ''}
+      </div>
+    `
+    : `
+      <div style="text-align: right; font-family: Arial, sans-serif;">
+        <p><strong>الشهر:</strong> ${getMonthName(close.month)} ${close.year}</p>
+        <p><strong>الحالة:</strong> ${close.status === 'closed' ? 'مغلق' : 'مفتوح'}</p>
+        <p><strong>المبيعات:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.total_sales_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.total_sales_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>إضافة مباشرة:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.direct_deposits_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.direct_deposits_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>المصاريف:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.total_expenses_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.total_expenses_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>الرصيد الافتتاحي:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.opening_balance_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.opening_balance_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>الرصيد الختامي:</strong> 
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; margin: 0 0.25rem;">${updateResults(close.closing_balance_usd ?? 0)} USD</span>
+          <span style="display: inline-block; padding: 0.3rem 0.6rem; border-radius: 6px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); color: white;">${updateResults(close.closing_balance_iqd ?? 0)} IQD</span>
+        </p>
+        <p><strong>عدد الطلبات:</strong> ${close.total_orders ?? 0}</p>
+        ${close.notes ? `<p><strong>ملاحظات:</strong> ${close.notes}</p>` : ''}
+      </div>
+    `;
+  
+  Swal.fire({
+    title: type === 'daily' ? 'تفاصيل الإغلاق اليومي' : 'تفاصيل الإغلاق الشهري',
+    html: details,
+    icon: 'info',
+    confirmButtonText: 'إغلاق'
   });
 };
 
@@ -1929,6 +2322,28 @@ const getMonthName = (month) => {
   color: #2c3e50;
   font-size: 0.95rem;
   text-align: left;
+  display: flex;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.currency-badge {
+  display: inline-block;
+  padding: 0.4rem 0.8rem;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 0.85rem;
+  white-space: nowrap;
+}
+
+.currency-badge.usd {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+}
+
+.currency-badge.iqd {
+  background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+  color: white;
 }
 
 .close-card-footer {

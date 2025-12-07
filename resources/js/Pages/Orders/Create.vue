@@ -82,18 +82,21 @@
         <!-- Product Categories (if available) -->
         <div class="pos-categories" v-if="categories && categories.length">
           <button 
+            @click="clearCategoryFilter"
+            :class="['btn', 'category-btn', { 'active': selectedCategory === null && selectedFilter === 'featured' }]"
+          >
+            <i class="bi bi-grid-3x3-gap"></i>
+            الكل
+          </button>
+          <button 
             v-for="category in categories" 
             :key="category.id"
             @click="filterByCategory(category.id)"
             :class="['btn', 'category-btn', { 'active': selectedCategory === category.id }]"
+            :style="{ borderColor: selectedCategory === category.id ? category.color : 'transparent', backgroundColor: selectedCategory === category.id ? category.color + '20' : 'transparent' }"
           >
+            <i :class="category.icon || 'bi bi-tag'" v-if="category.icon"></i>
             {{ category.name }}
-          </button>
-          <button 
-            @click="clearCategoryFilter"
-            :class="['btn', 'category-btn', { 'active': selectedCategory === null }]"
-          >
-            الكل
           </button>
         </div>
 
@@ -802,22 +805,35 @@ const handleSearchEnter = () => {
 
 const filterByCategory = (categoryId) => {
   selectedCategory.value = categoryId;
-  // Implement category filtering logic here
-  // This would require category_id in products
+  selectedFilter.value = null; // Clear type filter when filtering by category
+  
+  if (categoryId === null) {
+    // Show all products
+    filteredProducts.value = props.products;
+  } else {
+    // Filter products by category
+    filteredProducts.value = props.products.filter(product => 
+      product.category_id === categoryId
+    );
+  }
 };
 
 const clearCategoryFilter = () => {
   selectedCategory.value = null;
-  filterByType(selectedFilter.value);
+  filterByType(selectedFilter.value || 'featured');
 };
 
 const filterByType = (type) => {
   selectedFilter.value = type;
+  selectedCategory.value = null; // Clear category filter when filtering by type
   
   if (type === 'featured') {
     filteredProducts.value = props.products.filter(product => product.is_featured);
   } else if (type === 'best_selling') {
     filteredProducts.value = props.products.filter(product => product.is_best_selling);
+  } else {
+    // Show all products
+    filteredProducts.value = props.products;
   }
 };
 
