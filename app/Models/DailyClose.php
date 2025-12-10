@@ -146,13 +146,10 @@ class DailyClose extends Model
         }
 
         // Calculate expenses for the day
-        // Method 1: From Expense table
-        $expenses = Expense::whereDate('expense_date', $date)->get();
-        $expensesUsd = $expenses->where('currency', 'USD')->sum('amount');
-        $expensesIqd = $expenses->where('currency', 'IQD')->sum('amount');
-        
-        // Method 2: From transactions (only Expense model transactions)
-        // Note: Direct withdrawals are calculated separately, so we only count Expense model transactions here
+        // Only from transactions (Expense model transactions)
+        // Note: Each expense creates both an Expense record AND a transaction.
+        // We only count transactions to avoid double counting.
+        // Direct withdrawals are calculated separately, so we only count Expense model transactions here
         // Use whereDate since 'created' is a date field, not datetime
         $expenseModelTransactions = Transactions::where('wallet_id', $walletId)
             ->where('type', 'out')
@@ -161,12 +158,8 @@ class DailyClose extends Model
             ->get();
         
         // Sum expenses from Expense model transactions (note: out transactions have negative amounts, so we use abs)
-        $expenseTransactionsUsd = abs($expenseModelTransactions->whereIn('currency', ['USD', '$'])->sum('amount'));
-        $expenseTransactionsIqd = abs($expenseModelTransactions->where('currency', 'IQD')->sum('amount'));
-        
-        // Total expenses = Expense table + Expense model transactions only
-        $this->total_expenses_usd = $expensesUsd + $expenseTransactionsUsd;
-        $this->total_expenses_iqd = $expensesIqd + $expenseTransactionsIqd;
+        $this->total_expenses_usd = abs($expenseModelTransactions->whereIn('currency', ['USD', '$'])->sum('amount'));
+        $this->total_expenses_iqd = abs($expenseModelTransactions->where('currency', 'IQD')->sum('amount'));
         
         // Calculate additional income (deposits that are not sales)
         // Get ALL incoming transactions first, then exclude sales
