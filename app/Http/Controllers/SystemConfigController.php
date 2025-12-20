@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\SystemConfig;
+use App\Services\LicenseService;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 
@@ -17,9 +18,18 @@ class SystemConfigController extends Controller
     {
         $config = SystemConfig::first();
         
+        // معلومات الترخيص
+        $licenseInfo = LicenseService::getLicenseInfo();
+        $serverInfo = [
+            'domain' => LicenseService::getCurrentDomain(),
+            'fingerprint' => LicenseService::getServerFingerprint(),
+        ];
+        
         return Inertia::render('SystemConfig/Index', [
             'translations' => __('messages'),
-            'config' => $config
+            'config' => $config,
+            'license' => $licenseInfo,
+            'server' => $serverInfo,
         ]);
     }
 

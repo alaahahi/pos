@@ -180,6 +180,9 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   // Expenses routes
   Route::resource('expenses', App\Http\Controllers\ExpenseController::class); 
 
+  // Sync Monitor routes
+  Route::get('sync-monitor', [App\Http\Controllers\SyncMonitorController::class, 'index'])->name('sync-monitor.index');
+
   // Barcode routes (with authentication)
   Route::prefix('barcode')->name('barcode.')->group(function () {
     Route::get('/', [BarcodeController::class, 'index'])->name('index');
@@ -208,5 +211,9 @@ Route::prefix('barcode')->name('barcode.')->middleware(['web'])->group(function 
   Route::post('/print', [BarcodeController::class, 'print'])->name('print');
 });
 
+
+// License routes
+Route::get('/license/activate', [App\Http\Controllers\LicenseController::class, 'showActivate'])->name('license.activate');
+Route::get('/license/status', [App\Http\Controllers\LicenseController::class, 'showStatus'])->name('license.status');
 
 require __DIR__ . '/auth.php';

@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>نظام نقاط البيع – وضع غير متصل</title>
+    <style>
+      *, *::before, *::after { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+        background: radial-gradient(circle at top, #0f172a, #1e293b 60%, #0f172a);
+        color: #e2e8f0;
+      }
+      header {
+        padding: 1.5rem 1rem;
+        text-align: center;
+        border-bottom: 1px solid rgba(148, 163, 184, 0.2);
+      }
+      header h1 {
+        margin: 0;
+        font-size: 1.5rem;
+        letter-spacing: 0.08em;
+      }
+      main {
+        flex: 1;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 2rem;
+      }
+      .card {
+        background: rgba(15, 23, 42, 0.65);
+        border: 1px solid rgba(148, 163, 184, 0.25);
+        border-radius: 1.5rem;
+        padding: 2.5rem 2rem;
+        max-width: 480px;
+        width: 100%;
+        text-align: center;
+        box-shadow:
+          0 25px 45px -25px rgba(14, 116, 144, 0.65),
+          inset 0 1px 0 rgba(255, 255, 255, 0.08);
+      }
+      .card .icon {
+        font-size: 3.2rem;
+        margin-bottom: 1rem;
+        animation: pulse 3s infinite;
+      }
+      .card h2 {
+        margin: 0 0 1rem;
+        font-size: 1.4rem;
+      }
+      .card p {
+        margin: 0;
+        line-height: 1.7;
+        opacity: 0.88;
+        font-size: 1rem;
+      }
+      .actions {
+        margin-top: 2rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.75rem;
+      }
+      .btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        gap: 0.5rem;
+        padding: 0.85rem 1.4rem;
+        border-radius: 999px;
+        background: linear-gradient(135deg, #22d3ee, #3b82f6);
+        color: #0f172a;
+        font-weight: 700;
+        text-decoration: none;
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+        box-shadow: 0 15px 35px -22px rgba(96, 165, 250, 0.85);
+      }
+      .btn:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 25px 45px -24px rgba(96, 165, 250, 0.95);
+      }
+      footer {
+        padding: 1rem 0;
+        text-align: center;
+        font-size: 0.85rem;
+        opacity: 0.6;
+      }
+      @keyframes pulse {
+        0%, 100% { transform: scale(1); opacity: 1; }
+        50% { transform: scale(1.05); opacity: 0.72; }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>نظام نقاط البيع</h1>
+    </header>
+    <main>
+      <section class="card">
+        <div class="icon">🛒</div>
+        <h2>أنت في وضع غير متصل</h2>
+        <p>
+          التطبيق يعمل في وضع أوفلاين. يمكنك تصفح البيانات التي تم فتحها سابقًا.
+          عند عودة الاتصال سيتم مزامنة أي تغييرات تلقائيًا.
+        </p>
+        <div class="actions">
+          <button class="btn" type="button" onclick="window.location.reload(true)">
+            🔄 إعادة المحاولة
+          </button>
+          <a class="btn" href="/" onclick="if (!navigator.onLine) return false;">
+            🏠 الصفحة الرئيسية
+          </a>
+        </div>
+      </section>
+    </main>
+    <footer>وضع عدم الاتصال – سيتم التحديث تلقائيًا عند توفر الشبكة</footer>
+    <script>
+      window.addEventListener('online', () => window.location.reload());
+    </script>
+  </body>
+</html>
+

@@ -68,3 +68,16 @@ Route::get('/check-session', function () {
 
     return response()->json(['message' => 'Session valid.'], 200);
 });
+
+// License API Routes
+require __DIR__.'/api_license.php';
+
+// Sync Monitor API Routes
+Route::prefix('sync-monitor')->group(function () {
+    Route::get('/tables', [App\Http\Controllers\SyncMonitorController::class, 'tables']);
+    Route::get('/table/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'tableDetails']);
+    Route::post('/sync', [App\Http\Controllers\SyncMonitorController::class, 'sync']);
+    Route::get('/sync-progress', [App\Http\Controllers\SyncMonitorController::class, 'syncProgress']);
+    Route::get('/metadata', [App\Http\Controllers\SyncMonitorController::class, 'syncMetadata']);
+    Route::get('/test/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'testSync']);
+});

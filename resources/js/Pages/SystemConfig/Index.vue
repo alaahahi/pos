@@ -11,6 +11,20 @@
           </h5>
         </div>
         <div class="card-body">
+          <!-- رسالة النجاح -->
+          <div v-if="success" class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="bi bi-check-circle me-2"></i>
+            {{ success }}
+            <button type="button" class="btn-close" @click="success = ''"></button>
+          </div>
+
+          <!-- رسالة الخطأ -->
+          <div v-if="error" class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="bi bi-exclamation-triangle me-2"></i>
+            {{ error }}
+            <button type="button" class="btn-close" @click="error = ''"></button>
+          </div>
+
           <form @submit.prevent="submit">
             <div class="row">
               <!-- Exchange Rate -->
@@ -98,6 +112,152 @@
                         id="third_title_kr"
                         v-model="form.third_title_kr"
                       />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- License Status Section -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                      <i class="bi bi-shield-check me-2"></i>
+                      حالة الترخيص
+                    </h6>
+                    <Link :href="route('license.activate')" class="btn btn-sm btn-primary">
+                      <i class="bi bi-key me-1"></i>
+                      إدارة الترخيص
+                    </Link>
+                  </div>
+                  <div class="card-body">
+                    <!-- حالة الترخيص -->
+                    <div v-if="license.activated && license.valid" class="alert alert-success mb-3">
+                      <div class="d-flex align-items-center">
+                        <i class="bi bi-check-circle me-2 fs-4"></i>
+                        <div>
+                          <h6 class="mb-1">الترخيص مفعل وصالح</h6>
+                          <p class="mb-0">
+                            <strong>النوع:</strong> 
+                            <span class="badge bg-primary">{{ license.type }}</span>
+                            <span v-if="license.expires_at" class="ms-2">
+                              | <strong>تاريخ الانتهاء:</strong> {{ license.expires_at }}
+                            </span>
+                            <span v-else class="ms-2">
+                              | <span class="badge bg-success">ترخيص دائم</span>
+                            </span>
+                            <span v-if="license.days_remaining !== null" class="ms-2">
+                              | <strong>الأيام المتبقية:</strong> 
+                              <span :class="getDaysRemainingClass(license.days_remaining)">
+                                {{ license.days_remaining }} يوم
+                              </span>
+                            </span>
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-else-if="license.activated && !license.valid" class="alert alert-warning mb-3">
+                      <div class="d-flex align-items-center">
+                        <i class="bi bi-exclamation-triangle me-2 fs-4"></i>
+                        <div>
+                          <h6 class="mb-1">الترخيص منتهي الصلاحية</h6>
+                          <p class="mb-0">يرجى تجديد الترخيص أو الاتصال بالدعم الفني.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div v-else class="alert alert-danger mb-3">
+                      <div class="d-flex align-items-center">
+                        <i class="bi bi-x-circle me-2 fs-4"></i>
+                        <div>
+                          <h6 class="mb-1">الترخيص غير مفعل</h6>
+                          <p class="mb-0">يرجى تفعيل الترخيص للاستمرار في استخدام النظام.</p>
+                        </div>
+                      </div>
+                    </div>
+
+                    <!-- معلومات الترخيص -->
+                    <div class="row">
+                      <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                          <tbody>
+                            <tr>
+                              <td class="fw-bold" style="width: 40%;">الدومين:</td>
+                              <td>
+                                <code class="small">{{ server.domain }}</code>
+                                <button
+                                  type="button"
+                                  class="btn btn-sm btn-outline-secondary ms-2"
+                                  @click="copyToClipboard(server.domain)"
+                                  title="نسخ"
+                                >
+                                  <i class="bi bi-clipboard"></i>
+                                </button>
+                              </td>
+                            </tr>
+                            <tr v-if="license.activated">
+                              <td class="fw-bold">تاريخ التفعيل:</td>
+                              <td>{{ license.activated_at || 'غير محدد' }}</td>
+                            </tr>
+                            <tr v-if="license.last_verified_at">
+                              <td class="fw-bold">آخر تحقق:</td>
+                              <td>{{ license.last_verified_at }}</td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                      <div class="col-md-6">
+                        <table class="table table-sm table-borderless">
+                          <tbody>
+                            <tr>
+                              <td class="fw-bold" style="width: 40%;">Fingerprint:</td>
+                              <td>
+                                <code class="small" style="word-break: break-all;">{{ server.fingerprint }}</code>
+                                <button
+                                  type="button"
+                                  class="btn btn-sm btn-outline-secondary ms-2"
+                                  @click="copyToClipboard(server.fingerprint)"
+                                  title="نسخ"
+                                >
+                                  <i class="bi bi-clipboard"></i>
+                                </button>
+                              </td>
+                            </tr>
+                            <tr>
+                              <td class="fw-bold">الحالة:</td>
+                              <td>
+                                <span v-if="license.activated && license.valid" class="badge bg-success">مفعل وصالح</span>
+                                <span v-else-if="license.activated && !license.valid" class="badge bg-warning">منتهي الصلاحية</span>
+                                <span v-else class="badge bg-danger">غير مفعل</span>
+                              </td>
+                            </tr>
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+
+                    <!-- أزرار الإجراء -->
+                    <div class="mt-3 d-flex gap-2">
+                      <button
+                        type="button"
+                        class="btn btn-sm btn-outline-primary"
+                        @click="verifyLicense"
+                        :disabled="verifying"
+                      >
+                        <span v-if="verifying" class="spinner-border spinner-border-sm me-2"></span>
+                        <i v-else class="bi bi-shield-check me-1"></i>
+                        {{ verifying ? 'جاري التحقق...' : 'التحقق من الترخيص' }}
+                      </button>
+                      <Link
+                        :href="route('license.status')"
+                        class="btn btn-sm btn-outline-info"
+                      >
+                        <i class="bi bi-info-circle me-1"></i>
+                        عرض التفاصيل
+                      </Link>
                     </div>
                   </div>
                 </div>
@@ -198,12 +358,22 @@
 </template>
 
 <script setup>
+import { ref } from 'vue';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, useForm } from '@inertiajs/vue3';
+import axios from 'axios';
 
 const props = defineProps({
   config: Object,
   translations: Object,
+  license: {
+    type: Object,
+    default: () => ({})
+  },
+  server: {
+    type: Object,
+    default: () => ({})
+  },
 });
 
 const form = useForm({
@@ -242,5 +412,51 @@ const removeDecorationType = (index) => {
 
 const submit = () => {
   form.put(route('system-config.update'));
+};
+
+// License functions
+const verifying = ref(false);
+const success = ref('');
+const error = ref('');
+
+const verifyLicense = async () => {
+  verifying.value = true;
+  error.value = '';
+  success.value = '';
+
+  try {
+    const response = await axios.get('/api/license/verify');
+    
+    if (response.data.success && response.data.valid) {
+      success.value = 'الترخيص صالح ومفعل';
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } else {
+      error.value = 'الترخيص غير صالح أو منتهي الصلاحية';
+    }
+  } catch (err) {
+    error.value = err.response?.data?.message || 'حدث خطأ أثناء التحقق من الترخيص';
+  } finally {
+    verifying.value = false;
+  }
+};
+
+const copyToClipboard = (text) => {
+  navigator.clipboard.writeText(text).then(() => {
+    success.value = 'تم النسخ بنجاح';
+    setTimeout(() => {
+      success.value = '';
+    }, 2000);
+  }).catch(() => {
+    error.value = 'فشل النسخ';
+  });
+};
+
+const getDaysRemainingClass = (days) => {
+  if (days === null) return 'badge bg-success';
+  if (days > 30) return 'badge bg-success';
+  if (days > 7) return 'badge bg-warning';
+  return 'badge bg-danger';
 };
 </script>
