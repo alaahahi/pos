@@ -52,7 +52,7 @@
           </button>
 
           <Link
-            :href="route('sync.monitor')"
+            :href="route('sync-monitor.index')"
             class="btn-details"
           >
             📊 التفاصيل
@@ -77,8 +77,9 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link } from '@inertiajs/inertia-vue3';
+import { Link } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
+import axios from 'axios';
 
 const toast = useToast();
 
@@ -125,16 +126,36 @@ const statusMessage = computed(() => {
 // الوظائف
 const updateStatus = async () => {
   try {
-    if (window.$api) {
-      const status = await window.$api.getSyncStatus();
-      pendingCount.value = status.pendingCount;
-      
-      // إظهار الشريط إذا كان هناك عمليات معلقة أو offline
-      if ((pendingCount.value > 0 || !isOnline.value) && !dismissed.value) {
-        showBar.value = true;
-      } else if (pendingCount.value === 0 && isOnline.value) {
-        showBar.value = false;
+    if (!isOnline.value) {
+      showBar.value = true;
+      return;
+    }
+
+    // الحصول على حالة المزامنة من API
+    try {
+      const response = await axios.get('/api/sync-monitor/metadata');
+      if (response.data.success) {
+        // حساب عدد الجداول التي تحتاج مزامنة
+        const metadata = response.data.metadata || [];
+        pendingCount.value = metadata.filter(m => {
+          // إذا كان آخر مزامنة قديم (أكثر من ساعة) أو لم يتم المزامنة
+          if (!m.last_synced_at) return true;
+          const lastSync = new Date(m.last_synced_at);
+          const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
+          return hoursSinceSync > 1; // أكثر من ساعة
+        }).length;
+        
+        // إظهار الشريط إذا كان هناك عمليات معلقة أو offline
+        if ((pendingCount.value > 0 || !isOnline.value) && !dismissed.value) {
+          showBar.value = true;
+        } else if (pendingCount.value === 0 && isOnline.value) {
+          showBar.value = false;
+        }
       }
+    } catch (error) {
+      // إذا فشل API، لا نعرض الشريط
+      console.error('فشل تحديث حالة المزامنة:', error);
+      showBar.value = false;
     }
   } catch (error) {
     console.error('فشل تحديث حالة المزامنة:', error);
@@ -149,47 +170,37 @@ const syncNow = async () => {
   totalCount.value = pendingCount.value;
   
   try {
-    if (window.$db) {
-      // الحصول على العناصر المعلقة
-      const queue = await window.$db.getAll('sync_queue', 'synced', false);
-      totalCount.value = queue.length;
+    // بدء المزامنة من SQLite إلى MySQL
+    const response = await axios.post('/api/sync-monitor/sync', {
+      direction: 'up', // من SQLite إلى MySQL
+      safe_mode: true,
+      create_backup: true
+    });
+    
+    if (response.data.success) {
+      const results = response.data.results || {};
+      totalCount.value = Object.keys(results.success || {}).length;
+      syncedCount.value = totalCount.value;
       
-      // مزامنة كل عنصر
-      for (let i = 0; i < queue.length; i++) {
-        const item = queue[i];
-        
-        try {
-          await window.$db.syncItem(item);
-          
-          // تحديث الحالة
-          item.synced = true;
-          await window.$db.save('sync_queue', item);
-          
-          syncedCount.value = i + 1;
-        } catch (error) {
-          console.error('فشلت مزامنة العنصر:', error);
-          
-          item.retries = (item.retries || 0) + 1;
-          item.error = {
-            message: error.message,
-            timestamp: Date.now()
-          };
-          await window.$db.save('sync_queue', item);
-        }
-      }
+      // مزامنة من MySQL إلى SQLite
+      await axios.post('/api/sync-monitor/sync', {
+        direction: 'down' // من MySQL إلى SQLite
+      });
       
       await updateStatus();
       
       if (syncedCount.value === totalCount.value) {
-        toast.success(`✅ تمت مزامنة ${syncedCount.value} عملية بنجاح!`);
+        toast.success(`✅ تمت مزامنة ${syncedCount.value} جدول بنجاح!`);
         showBar.value = false;
       } else {
         toast.warning(`⚠️ تمت مزامنة ${syncedCount.value} من ${totalCount.value}`);
       }
+    } else {
+      toast.error('❌ فشلت المزامنة: ' + (response.data.message || 'خطأ غير معروف'));
     }
   } catch (error) {
     console.error('فشلت المزامنة:', error);
-    toast.error('❌ فشلت المزامنة');
+    toast.error('❌ فشلت المزامنة: ' + (error.response?.data?.message || error.message));
   } finally {
     isSyncing.value = false;
   }

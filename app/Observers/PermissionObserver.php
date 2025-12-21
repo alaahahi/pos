@@ -4,10 +4,19 @@ namespace App\Observers;
 
 use Spatie\Permission\Models\Permission;
 use App\Models\Log;
+use App\Services\SyncQueueService;
+
 class PermissionObserver 
 {
+    protected $syncQueueService;
+
+    public function __construct()
+    {
+        $this->syncQueueService = new SyncQueueService();
+    }
+
     /**
-     * Handle the User "created" event.
+     * Handle the Permission "created" event.
      */
     public function created(Permission $permission): void
     {
@@ -20,12 +29,14 @@ class PermissionObserver
                 'updated_data' => json_encode($permission),
                'by_user_id' => auth()->id() ,
             ]);
+
+            // إضافة إلى sync_queue للمزامنة الذكية
+            $this->syncQueueService->queueInsert('permissions', $permission->id, $permission->toArray());
         }
-    
     }
 
     /**
-     * Handle the User "updated" event.
+     * Handle the Permission "updated" event.
      */
     public function updated(Permission $permission): void
     {
@@ -41,10 +52,13 @@ class PermissionObserver
             'updated_data' => json_encode($permission),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueUpdate('permissions', $permission->id, $originalData, $permission->toArray());
     }
 
     /**
-     * Handle the User "deleted" event.
+     * Handle the Permission "deleted" event.
      */
     public function deleted(Permission $permission): void
     {
@@ -56,6 +70,9 @@ class PermissionObserver
             'original_data' => json_encode($permission),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueDelete('permissions', $permission->id);
     }
 
     /**

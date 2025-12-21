@@ -4,23 +4,35 @@ namespace App\Observers;
 
 use App\Models\User;
 use App\Models\Log;
+use App\Services\SyncQueueService;
+
 class UserObserver 
 {
+    protected $syncQueueService;
+
+    public function __construct()
+    {
+        $this->syncQueueService = new SyncQueueService();
+    }
+
     /**
      * Handle the User "created" event.
      */
     public function created(User $user): void
     {
         if (!app()->runningInConsole()) { // Stop Observer  During DB Seeding
-        Log::create([
-            'module_name' => 'User',
-            'action' => 'create',
-            'badge' => 'success',
-            'affected_record_id' => $user->id,
-            'updated_data' => json_encode($user),
-           'by_user_id' => auth()->id() ?? $user->id, 
-        ]);
-    }
+            Log::create([
+                'module_name' => 'User',
+                'action' => 'create',
+                'badge' => 'success',
+                'affected_record_id' => $user->id,
+                'updated_data' => json_encode($user),
+               'by_user_id' => auth()->id() ?? $user->id, 
+            ]);
+
+            // إضافة إلى sync_queue للمزامنة الذكية
+            $this->syncQueueService->queueInsert('users', $user->id, $user->toArray());
+        }
     }
 
     /**
@@ -40,6 +52,9 @@ class UserObserver
             'updated_data' => json_encode($user),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueUpdate('users', $user->id, $originalData, $user->toArray());
     }
 
     /**
@@ -55,6 +70,9 @@ class UserObserver
             'original_data' => json_encode($user),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueDelete('users', $user->id);
     }
 
     /**

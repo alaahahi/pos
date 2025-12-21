@@ -8,6 +8,9 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
 use Inertia\Inertia;
+use App\Services\DatabaseSyncService;
+use App\Services\SyncQueueService;
+use App\Services\SyncIdMappingService;
 
 class SyncMonitorController extends Controller
 {
@@ -19,6 +22,156 @@ class SyncMonitorController extends Controller
         return Inertia::render('SyncMonitor/Index', [
             'translations' => __('messages'),
         ]);
+    }
+
+    /**
+     * جلب جميع البيانات المطلوبة في request واحد
+     */
+    public function getAllData(Request $request)
+    {
+        try {
+            $forceConnection = $request->input('force_connection', 'auto');
+            
+            // جلب الجداول
+            $tables = [];
+            if (!$forceConnection || $forceConnection === 'mysql' || $forceConnection === 'auto') {
+                try {
+                    $mysqlTables = DB::select('SHOW TABLES');
+                    $dbName = DB::getDatabaseName();
+                    $tableKey = "Tables_in_{$dbName}";
+                    
+                    foreach ($mysqlTables as $table) {
+                        $tableName = $table->$tableKey;
+                        try {
+                            $rowCount = DB::table($tableName)->count();
+                        } catch (\Exception $e) {
+                            $rowCount = 0;
+                        }
+                        
+                        $tables[] = [
+                            'name' => $tableName,
+                            'rows' => $rowCount,
+                            'count' => $rowCount,
+                            'connection' => 'mysql',
+                        ];
+                    }
+                } catch (\Exception $e) {
+                    // MySQL connection error
+                }
+            }
+            
+            if (!$forceConnection || $forceConnection === 'sync_sqlite' || $forceConnection === 'auto') {
+                try {
+                    $sqlitePath = config('database.connections.sync_sqlite.database');
+                    if ($sqlitePath && file_exists($sqlitePath)) {
+                        $sqliteTables = DB::connection('sync_sqlite')->select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                        
+                        foreach ($sqliteTables as $table) {
+                            $tableName = $table->name;
+                            try {
+                                $rowCount = DB::connection('sync_sqlite')->table($tableName)->count();
+                            } catch (\Exception $e) {
+                                $rowCount = 0;
+                            }
+                            
+                            $tables[] = [
+                                'name' => $tableName,
+                                'rows' => $rowCount,
+                                'count' => $rowCount,
+                                'connection' => 'sync_sqlite',
+                            ];
+                        }
+                    }
+                } catch (\Exception $e) {
+                    // SQLite not available
+                }
+            }
+
+            // جلب metadata المزامنة
+            $metadata = [];
+            $queueStats = [
+                'pending' => 0,
+                'synced' => 0,
+                'failed' => 0,
+                'total' => 0,
+            ];
+            
+            if (Schema::hasTable('sync_metadata')) {
+                $metadata = DB::table('sync_metadata')
+                    ->orderBy('table_name')
+                    ->get()
+                    ->map(function ($item) {
+                        return [
+                            'table_name' => $item->table_name,
+                            'direction' => $item->direction,
+                            'last_synced_id' => $item->last_synced_id,
+                            'last_synced_at' => $item->last_synced_at,
+                            'total_synced' => $item->total_synced,
+                        ];
+                    });
+            }
+
+            // جلب إحصائيات sync_queue
+            if (Schema::hasTable('sync_queue')) {
+                try {
+                    $stats = DB::table('sync_queue')
+                        ->selectRaw('
+                            COUNT(*) as total,
+                            SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending,
+                            SUM(CASE WHEN status = "synced" THEN 1 ELSE 0 END) as synced,
+                            SUM(CASE WHEN status = "failed" THEN 1 ELSE 0 END) as failed
+                        ')
+                        ->first();
+                    
+                    $queueStats = [
+                        'pending' => (int) ($stats->pending ?? 0),
+                        'synced' => (int) ($stats->synced ?? 0),
+                        'failed' => (int) ($stats->failed ?? 0),
+                        'total' => (int) ($stats->total ?? 0),
+                    ];
+                } catch (\Exception $e) {
+                    // Ignore
+                }
+            }
+
+            // جلب النسخ الاحتياطية
+            $backups = [];
+            $backupDir = storage_path('app/backups');
+            if (is_dir($backupDir)) {
+                $files = glob($backupDir . '/*.sql');
+                foreach ($files as $file) {
+                    $backups[] = [
+                        'name' => basename($file),
+                        'path' => $file,
+                        'size' => filesize($file),
+                        'size_formatted' => $this->formatBytes(filesize($file)),
+                        'created_at' => date('Y-m-d H:i:s', filemtime($file)),
+                        'type' => 'sql',
+                    ];
+                }
+                
+                usort($backups, function ($a, $b) {
+                    return strtotime($b['created_at']) - strtotime($a['created_at']);
+                });
+            }
+
+            return response()->json([
+                'success' => true,
+                'tables' => $tables,
+                'metadata' => $metadata,
+                'queue_stats' => $queueStats,
+                'backups' => $backups,
+                'database_info' => [
+                    'type' => 'MySQL',
+                    'total_tables' => count($tables),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
     }
 
     /**
@@ -299,8 +452,14 @@ class SyncMonitorController extends Controller
             ];
             
             if ($createBackup && $direction === 'up') {
-                // إنشاء نسخة احتياطية (يمكن إضافتها لاحقاً)
-                $response['backup_file'] = null;
+                // إنشاء نسخة احتياطية
+                try {
+                    $backupFile = $this->createBackup();
+                    $response['backup_file'] = $backupFile;
+                } catch (\Exception $e) {
+                    Log::warning('Failed to create backup: ' . $e->getMessage());
+                    $response['backup_file'] = null;
+                }
             }
             
             return response()->json($response);
@@ -659,16 +818,179 @@ class SyncMonitorController extends Controller
                         ];
                     });
             }
+
+            // إضافة إحصائيات sync_queue للمزامنة الذكية
+            $syncService = new DatabaseSyncService();
+            $queueStats = $syncService->getQueueStats();
             
             return response()->json([
                 'success' => true,
                 'metadata' => $metadata,
+                'queue_stats' => $queueStats, // إحصائيات المزامنة الذكية
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
                 'metadata' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * المزامنة الذكية: مزامنة التغييرات من sync_queue فقط
+     */
+    public function smartSync(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name'); // اختياري
+            $limit = $request->input('limit', 100);
+            
+            $syncService = new DatabaseSyncService();
+            $results = $syncService->syncPendingChanges($tableName, $limit);
+            
+            return response()->json([
+                'success' => true,
+                'message' => 'تمت المزامنة الذكية بنجاح',
+                'results' => $results,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * الحصول على التغييرات المعلقة في sync_queue
+     */
+    public function getPendingChanges(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name'); // اختياري
+            $limit = $request->input('limit', 100);
+            
+            $syncQueueService = new SyncQueueService();
+            $pendingChanges = $syncQueueService->getPendingChanges($tableName, $limit);
+            
+            return response()->json([
+                'success' => true,
+                'pending_changes' => $pendingChanges,
+                'count' => count($pendingChanges),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'pending_changes' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * التحقق من التعارضات في ID
+     */
+    public function checkIdConflicts(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            
+            if (!$tableName) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'يجب تحديد اسم الجدول',
+                ], 400);
+            }
+
+            $idMappingService = new SyncIdMappingService();
+            $conflicts = [];
+
+            // جلب جميع السجلات من SQLite
+            try {
+                $sqliteRecords = DB::connection('sync_sqlite')
+                    ->table($tableName)
+                    ->get(['id']);
+
+                foreach ($sqliteRecords as $record) {
+                    $localId = $record->id;
+                    
+                    // التحقق من وجود ID في السيرفر
+                    if ($idMappingService->checkIdConflict($tableName, $localId)) {
+                        $serverId = $idMappingService->getServerId($tableName, $localId, 'up');
+                        
+                        // إذا كان هناك mapping مختلف، أو لا يوجد mapping
+                        if (!$serverId || $serverId != $localId) {
+                            $conflicts[] = [
+                                'local_id' => $localId,
+                                'server_id' => $serverId,
+                                'has_mapping' => $serverId !== null,
+                                'conflict_type' => $serverId ? 'mapped_different' : 'no_mapping',
+                            ];
+                        }
+                    }
+                }
+            } catch (\Exception $e) {
+                // SQLite غير متاح
+            }
+
+            return response()->json([
+                'success' => true,
+                'table_name' => $tableName,
+                'conflicts' => $conflicts,
+                'conflict_count' => count($conflicts),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * الحصول على ID mappings
+     */
+    public function getIdMappings(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            
+            if (!Schema::hasTable('sync_id_mapping')) {
+                return response()->json([
+                    'success' => true,
+                    'mappings' => [],
+                ]);
+            }
+
+            $query = DB::table('sync_id_mapping')
+                ->orderBy('table_name')
+                ->orderBy('local_id');
+
+            if ($tableName) {
+                $query->where('table_name', $tableName);
+            }
+
+            $mappings = $query->get()->map(function ($item) {
+                return [
+                    'table_name' => $item->table_name,
+                    'local_id' => $item->local_id,
+                    'server_id' => $item->server_id,
+                    'sync_direction' => $item->sync_direction,
+                    'created_at' => $item->created_at,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'mappings' => $mappings,
+                'count' => count($mappings),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'mappings' => [],
             ], 500);
         }
     }
@@ -697,6 +1019,615 @@ class SyncMonitorController extends Controller
                 'mysql_exists' => $mysqlExists,
                 'sqlite_exists' => $sqliteExists,
                 'can_sync' => $mysqlExists,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * إنشاء نسخة احتياطية من قاعدة البيانات بصيغة SQL
+     */
+    private function createBackup(): ?string
+    {
+        try {
+            $backupDir = storage_path('app/backups');
+            if (!is_dir($backupDir)) {
+                mkdir($backupDir, 0755, true);
+            }
+
+            $timestamp = now()->format('Y-m-d_H-i-s');
+            $backupFile = $backupDir . '/backup_' . $timestamp . '.sql';
+
+            // إنشاء نسخة احتياطية من MySQL بصيغة SQL
+            $this->createMySQLBackup($backupFile);
+
+            return $backupFile;
+        } catch (\Exception $e) {
+            Log::error('Failed to create backup: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /**
+     * إنشاء نسخة احتياطية من MySQL بصيغة SQL
+     */
+    private function createMySQLBackup(string $backupFile): void
+    {
+        $dbConfig = config('database.connections.mysql');
+        $dbName = $dbConfig['database'];
+        $dbUser = $dbConfig['username'];
+        $dbPass = $dbConfig['password'];
+        $dbHost = $dbConfig['host'];
+        $dbPort = $dbConfig['port'] ?? 3306;
+
+        // محاولة استخدام mysqldump إذا كان متاحاً
+        $mysqldumpPath = $this->findMysqldumpPath();
+        
+        if ($mysqldumpPath) {
+            // استخدام mysqldump (الأفضل) - البيانات فقط بدون البنية
+            // استثناء جداول النظام والـ logs
+            $ignoreTables = ['migrations', 'sync_metadata', 'sync_queue', 'sync_id_mapping', 'logs'];
+            $ignoreTablesParam = '';
+            foreach ($ignoreTables as $table) {
+                $ignoreTablesParam .= ' --ignore-table=' . escapeshellarg($dbName . '.' . $table);
+            }
+            
+            $command = sprintf(
+                '"%s" --host=%s --port=%s --user=%s --password=%s --single-transaction --no-create-info --no-create-db --skip-triggers --routines=false%s %s > "%s" 2>&1',
+                escapeshellarg($mysqldumpPath),
+                escapeshellarg($dbHost),
+                escapeshellarg($dbPort),
+                escapeshellarg($dbUser),
+                escapeshellarg($dbPass),
+                $ignoreTablesParam,
+                escapeshellarg($dbName),
+                escapeshellarg($backupFile)
+            );
+
+            exec($command, $output, $returnVar);
+
+            if ($returnVar !== 0) {
+                throw new \Exception('فشل mysqldump: ' . implode("\n", $output));
+            }
+        } else {
+            // استخدام PHP لإنشاء SQL يدوياً (بديل) - البيانات فقط
+            $this->createMySQLBackupManually($backupFile, $dbName);
+        }
+    }
+
+    /**
+     * إنشاء نسخة احتياطية يدوياً باستخدام PHP - البيانات فقط بدون البنية
+     */
+    private function createMySQLBackupManually(string $backupFile, string $dbName): void
+    {
+        $sql = "-- MySQL Data Dump (Data Only - No Structure)\n";
+        $sql .= "-- Database: {$dbName}\n";
+        $sql .= "-- Created: " . now()->toDateTimeString() . "\n";
+        $sql .= "-- Note: This backup contains only INSERT statements, no CREATE TABLE statements\n\n";
+        $sql .= "SET SQL_MODE = \"NO_AUTO_VALUE_ON_ZERO\";\n";
+        $sql .= "SET time_zone = \"+00:00\";\n\n";
+
+        // جلب جميع الجداول
+        $tables = DB::select('SHOW TABLES');
+        $tableKey = "Tables_in_{$dbName}";
+
+        foreach ($tables as $table) {
+            $tableName = $table->$tableKey;
+            
+            // استثناء جداول النظام والجداول غير المهمة
+            if (in_array($tableName, ['migrations', 'sync_metadata', 'sync_queue', 'sync_id_mapping', 'logs'])) {
+                continue;
+            }
+
+            // جلب البيانات فقط (بدون بنية الجدول)
+            $rows = DB::table($tableName)->get();
+            if ($rows->count() > 0) {
+                $sql .= "\n-- --------------------------------------------------------\n";
+                $sql .= "-- Dumping data for table `{$tableName}`\n";
+                $sql .= "-- --------------------------------------------------------\n\n";
+                $sql .= "LOCK TABLES `{$tableName}` WRITE;\n";
+                $sql .= "/*!40000 ALTER TABLE `{$tableName}` DISABLE KEYS */;\n\n";
+
+                foreach ($rows as $row) {
+                    $rowArray = (array) $row;
+                    $columns = array_keys($rowArray);
+                    $values = array_map(function ($value) {
+                        if ($value === null) {
+                            return 'NULL';
+                        } elseif (is_numeric($value)) {
+                            return $value;
+                        } else {
+                            return "'" . addslashes($value) . "'";
+                        }
+                    }, array_values($rowArray));
+
+                    // استخدام INSERT IGNORE لتجنب أخطاء المفاتيح المكررة
+                    $sql .= "INSERT IGNORE INTO `{$tableName}` (`" . implode('`, `', $columns) . "`) VALUES (" . implode(', ', $values) . ");\n";
+                }
+
+                $sql .= "\n/*!40000 ALTER TABLE `{$tableName}` ENABLE KEYS */;\n";
+                $sql .= "UNLOCK TABLES;\n\n";
+            }
+        }
+
+        $sql .= "\n-- Data dump completed on " . now()->toDateTimeString() . "\n";
+
+        file_put_contents($backupFile, $sql);
+    }
+
+    /**
+     * البحث عن مسار mysqldump
+     */
+    private function findMysqldumpPath(): ?string
+    {
+        $possiblePaths = [
+            'C:\\xampp\\mysql\\bin\\mysqldump.exe', // XAMPP Windows
+            'C:\\wamp\\bin\\mysql\\mysql' . $this->getMySQLVersion() . '\\bin\\mysqldump.exe', // WAMP
+            '/usr/bin/mysqldump', // Linux
+            '/usr/local/bin/mysqldump', // macOS
+            '/opt/local/bin/mysqldump', // macOS MacPorts
+        ];
+
+        // أولاً: تحقق من المسارات المحددة
+        foreach ($possiblePaths as $path) {
+            if (file_exists($path)) {
+                return $path;
+            }
+        }
+
+        // ثانياً: تحقق من وجوده في PATH
+        if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+            // Windows
+            exec('where mysqldump 2>nul', $output, $returnVar);
+        } else {
+            // Linux/macOS
+            exec('which mysqldump 2>/dev/null', $output, $returnVar);
+        }
+        
+        if ($returnVar === 0 && !empty($output)) {
+            return trim($output[0]);
+        }
+
+        return null;
+    }
+
+    /**
+     * الحصول على إصدار MySQL (لـ WAMP)
+     */
+    private function getMySQLVersion(): string
+    {
+        try {
+            $version = DB::select('SELECT VERSION() as version');
+            if (!empty($version)) {
+                $versionStr = $version[0]->version;
+                return explode('.', $versionStr)[0] . explode('.', $versionStr)[1];
+            }
+        } catch (\Exception $e) {
+            // Ignore
+        }
+        return '8.0'; // Default
+    }
+
+    /**
+     * الحصول على قائمة النسخ الاحتياطية
+     */
+    public function backups()
+    {
+        try {
+            $backupDir = storage_path('app/backups');
+            $backups = [];
+
+            if (is_dir($backupDir)) {
+                $files = glob($backupDir . '/*.sql');
+                foreach ($files as $file) {
+                    $backups[] = [
+                        'name' => basename($file),
+                        'path' => $file,
+                        'size' => filesize($file),
+                        'size_formatted' => $this->formatBytes(filesize($file)),
+                        'created_at' => date('Y-m-d H:i:s', filemtime($file)),
+                        'type' => 'sql',
+                    ];
+                }
+                
+                // ترتيب حسب التاريخ (الأحدث أولاً)
+                usort($backups, function ($a, $b) {
+                    return strtotime($b['created_at']) - strtotime($a['created_at']);
+                });
+            }
+
+            return response()->json([
+                'success' => true,
+                'backups' => $backups,
+                'count' => count($backups),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * تنسيق حجم الملف
+     */
+    private function formatBytes(int $bytes, int $precision = 2): string
+    {
+        $units = ['B', 'KB', 'MB', 'GB', 'TB'];
+        
+        for ($i = 0; $bytes > 1024 && $i < count($units) - 1; $i++) {
+            $bytes /= 1024;
+        }
+        
+        return round($bytes, $precision) . ' ' . $units[$i];
+    }
+
+    /**
+     * استعادة نسخة احتياطية من ملف SQL
+     */
+    public function restoreBackup(Request $request)
+    {
+        try {
+            $backupFile = $request->input('backup_file');
+            $tables = $request->input('tables'); // جداول محددة للاستعادة (اختياري)
+            
+            if (!$backupFile || !file_exists($backupFile)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف النسخة الاحتياطية غير موجود',
+                ], 404);
+            }
+
+            // التحقق من أن الملف هو SQL
+            if (pathinfo($backupFile, PATHINFO_EXTENSION) !== 'sql') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الملف يجب أن يكون بصيغة SQL',
+                ], 400);
+            }
+
+            // قراءة محتوى ملف SQL
+            $sql = file_get_contents($backupFile);
+            
+            if (empty($sql)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف النسخة الاحتياطية فارغ',
+                ], 400);
+            }
+
+            // إذا تم تحديد جداول محددة، استرجعها فقط
+            if ($tables && is_array($tables) && count($tables) > 0) {
+                $this->restoreSelectedTables($sql, $tables);
+            } else {
+                // استعادة كاملة
+                $this->restoreFullBackup($sql);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تمت استعادة النسخة الاحتياطية بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to restore backup', [
+                'file' => $backupFile ?? 'unknown',
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء الاستعادة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * استعادة كاملة من ملف SQL
+     */
+    private function restoreFullBackup(string $sql): void
+    {
+        // تقسيم SQL إلى أوامر منفصلة
+        $statements = $this->splitSQLStatements($sql);
+        
+        // تنفيذ الأوامر التي لا تعمل داخل Transactions أولاً
+        $nonTransactionStatements = [];
+        $transactionStatements = [];
+        
+        foreach ($statements as $statement) {
+            $statement = trim($statement);
+            if (empty($statement) || strpos($statement, '--') === 0) {
+                continue;
+            }
+            
+            // الأوامر التي لا تعمل داخل Transactions
+            if (preg_match('/^(SET|LOCK TABLES|UNLOCK TABLES|CREATE DATABASE|USE)/i', $statement)) {
+                $nonTransactionStatements[] = $statement;
+            } else {
+                $transactionStatements[] = $statement;
+            }
+        }
+        
+        // تنفيذ الأوامر خارج Transaction
+        foreach ($nonTransactionStatements as $statement) {
+            try {
+                // تخطي بعض الأوامر غير الضرورية
+                if (preg_match('/^(SET SQL_MODE|SET time_zone|SET NAMES|SET CHARACTER_SET)/i', $statement)) {
+                    continue;
+                }
+                DB::statement($statement);
+            } catch (\Exception $e) {
+                // تخطي الأخطاء في الأوامر غير الحرجة
+                Log::warning('Skipped non-transaction statement', [
+                    'statement' => substr($statement, 0, 100),
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+        
+        // تنفيذ الأوامر داخل Transaction
+        if (count($transactionStatements) > 0) {
+            DB::beginTransaction();
+            
+            try {
+                foreach ($transactionStatements as $statement) {
+                    try {
+                        // تحويل INSERT INTO إلى INSERT IGNORE لتجنب أخطاء المفاتيح المكررة
+                        if (stripos($statement, 'INSERT INTO') !== false && stripos($statement, 'INSERT IGNORE') === false) {
+                            $statement = preg_replace('/INSERT\s+INTO\s+/i', 'INSERT IGNORE INTO ', $statement, 1);
+                        }
+                        
+                        DB::statement($statement);
+                    } catch (\Exception $e) {
+                        // تخطي الأخطاء في بعض الأوامر
+                        if (stripos($statement, 'DROP TABLE') !== false || 
+                            stripos($statement, 'ALTER TABLE') !== false ||
+                            stripos($statement, 'CREATE TABLE') !== false) {
+                            Log::warning('Skipped statement in transaction', [
+                                'statement' => substr($statement, 0, 100),
+                                'error' => $e->getMessage(),
+                            ]);
+                            continue;
+                        }
+                        // تخطي أخطاء المفاتيح المكررة
+                        if (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '1062') !== false) {
+                            Log::info('Skipped duplicate entry', [
+                                'statement' => substr($statement, 0, 100),
+                            ]);
+                            continue;
+                        }
+                        throw $e;
+                    }
+                }
+                
+                try {
+                    DB::commit();
+                } catch (\Exception $commitException) {
+                    // إذا فشل commit، قد لا يكون هناك transaction نشط
+                    Log::warning('Commit failed', [
+                        'error' => $commitException->getMessage(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // التحقق من وجود transaction نشط قبل rollback
+                try {
+                    // محاولة rollback - إذا لم يكن هناك transaction نشط، سيفشل بشكل آمن
+                    DB::rollBack();
+                } catch (\Exception $rollbackException) {
+                    // تجاهل خطأ rollback إذا لم يكن هناك transaction نشط
+                    // هذا طبيعي إذا كان الخطأ حدث قبل beginTransaction أو بعد commit
+                    if (stripos($rollbackException->getMessage(), 'no active transaction') === false) {
+                        Log::warning('Rollback failed', [
+                            'error' => $rollbackException->getMessage(),
+                        ]);
+                    }
+                }
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * استعادة جداول محددة
+     */
+    private function restoreSelectedTables(string $sql, array $tables): void
+    {
+        // تقسيم SQL إلى أوامر
+        $statements = $this->splitSQLStatements($sql);
+        
+        $currentTable = null;
+        $tableStatements = [];
+        
+        foreach ($statements as $statement) {
+            $statement = trim($statement);
+            if (empty($statement) || strpos($statement, '--') === 0) {
+                continue;
+            }
+            
+            // تخطي الأوامر التي لا تعمل داخل Transactions
+            if (preg_match('/^(SET|LOCK TABLES|UNLOCK TABLES)/i', $statement)) {
+                continue;
+            }
+            
+            // التحقق من بداية جدول جديد
+            if (preg_match('/CREATE TABLE.*?`([^`]+)`/i', $statement, $matches)) {
+                $currentTable = $matches[1];
+                if (!isset($tableStatements[$currentTable])) {
+                    $tableStatements[$currentTable] = [];
+                }
+            }
+            
+            // إضافة السطر إلى الجدول الحالي
+            if ($currentTable && in_array($currentTable, $tables)) {
+                $tableStatements[$currentTable][] = $statement;
+            }
+        }
+        
+        // تنفيذ أوامر الجداول المحددة داخل Transaction
+        if (count($tableStatements) > 0) {
+            DB::beginTransaction();
+            
+            try {
+                foreach ($tables as $tableName) {
+                    if (isset($tableStatements[$tableName])) {
+                    foreach ($tableStatements[$tableName] as $statement) {
+                        try {
+                            // تحويل INSERT INTO إلى INSERT IGNORE لتجنب أخطاء المفاتيح المكررة
+                            if (stripos($statement, 'INSERT INTO') !== false && stripos($statement, 'INSERT IGNORE') === false) {
+                                $statement = preg_replace('/INSERT\s+INTO\s+/i', 'INSERT IGNORE INTO ', $statement, 1);
+                            }
+                            
+                            DB::statement($statement);
+                        } catch (\Exception $e) {
+                            // تخطي الأخطاء في بعض الأوامر
+                            if (stripos($statement, 'DROP TABLE') !== false || 
+                                stripos($statement, 'ALTER TABLE') !== false ||
+                                stripos($statement, 'CREATE TABLE') !== false) {
+                                Log::warning('Skipped statement for table', [
+                                    'table' => $tableName,
+                                    'statement' => substr($statement, 0, 100),
+                                    'error' => $e->getMessage(),
+                                ]);
+                                continue;
+                            }
+                            // تخطي أخطاء المفاتيح المكررة إذا كان INSERT IGNORE موجود
+                            if (stripos($statement, 'INSERT IGNORE') !== false && stripos($e->getMessage(), 'Duplicate entry') !== false) {
+                                Log::info('Skipped duplicate entry for table', [
+                                    'table' => $tableName,
+                                    'statement' => substr($statement, 0, 100),
+                                ]);
+                                continue;
+                            }
+                            throw $e;
+                        }
+                    }
+                    }
+                }
+                
+                try {
+                    DB::commit();
+                } catch (\Exception $commitException) {
+                    // إذا فشل commit، قد لا يكون هناك transaction نشط
+                    Log::warning('Commit failed', [
+                        'error' => $commitException->getMessage(),
+                    ]);
+                }
+            } catch (\Exception $e) {
+                // التحقق من وجود transaction نشط قبل rollback
+                try {
+                    // محاولة rollback - إذا لم يكن هناك transaction نشط، سيفشل بشكل آمن
+                    DB::rollBack();
+                } catch (\Exception $rollbackException) {
+                    // تجاهل خطأ rollback إذا لم يكن هناك transaction نشط
+                    // هذا طبيعي إذا كان الخطأ حدث قبل beginTransaction أو بعد commit
+                    if (stripos($rollbackException->getMessage(), 'no active transaction') === false) {
+                        Log::warning('Rollback failed', [
+                            'error' => $rollbackException->getMessage(),
+                        ]);
+                    }
+                }
+                throw $e;
+            }
+        }
+    }
+
+    /**
+     * تقسيم SQL إلى أوامر منفصلة
+     */
+    private function splitSQLStatements(string $sql): array
+    {
+        // إزالة التعليقات
+        $sql = preg_replace('/--.*$/m', '', $sql);
+        
+        // تقسيم حسب الفاصلة المنقوطة
+        $statements = preg_split('/;\s*$/m', $sql);
+        
+        return array_filter(array_map('trim', $statements));
+    }
+
+    /**
+     * إنشاء نسخة احتياطية يدوياً
+     */
+    public function createBackupManual(Request $request)
+    {
+        try {
+            $backupFile = $this->createBackup();
+            
+            if (!$backupFile) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل إنشاء النسخة الاحتياطية',
+                ], 500);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إنشاء النسخة الاحتياطية بنجاح',
+                'backup_file' => $backupFile,
+                'backup_name' => basename($backupFile),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to create manual backup', [
+                'error' => $e->getMessage(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * تحميل نسخة احتياطية
+     */
+    public function downloadBackup(Request $request)
+    {
+        try {
+            $backupFile = $request->input('backup_file');
+            
+            if (!$backupFile || !file_exists($backupFile)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف النسخة الاحتياطية غير موجود',
+                ], 404);
+            }
+
+            return response()->download($backupFile, basename($backupFile), [
+                'Content-Type' => 'application/sql',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * حذف نسخة احتياطية
+     */
+    public function deleteBackup(Request $request)
+    {
+        try {
+            $backupFile = $request->input('backup_file');
+            
+            if (!$backupFile || !file_exists($backupFile)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف النسخة الاحتياطية غير موجود',
+                ], 404);
+            }
+
+            unlink($backupFile);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف النسخة الاحتياطية بنجاح',
             ]);
         } catch (\Exception $e) {
             return response()->json([

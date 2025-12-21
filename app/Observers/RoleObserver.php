@@ -4,27 +4,39 @@ namespace App\Observers;
 
 use Spatie\Permission\Models\Role;
 use App\Models\Log;
+use App\Services\SyncQueueService;
+
 class RoleObserver 
 {
+    protected $syncQueueService;
+
+    public function __construct()
+    {
+        $this->syncQueueService = new SyncQueueService();
+    }
+
     /**
-     * Handle the User "created" event.
+     * Handle the Role "created" event.
      */
     public function created(Role $role): void
     {
         if (!app()->runningInConsole()) { // Stop Observer  During DB Seeding
-        Log::create([
-            'module_name' => 'Role',
-            'action' => 'create',
-            'badge' => 'success',
-            'affected_record_id' => $role->id,
-            'updated_data' => json_encode($role),
-           'by_user_id' => auth()->id() ,
-        ]);
-    }
+            Log::create([
+                'module_name' => 'Role',
+                'action' => 'create',
+                'badge' => 'success',
+                'affected_record_id' => $role->id,
+                'updated_data' => json_encode($role),
+               'by_user_id' => auth()->id() ,
+            ]);
+
+            // إضافة إلى sync_queue للمزامنة الذكية
+            $this->syncQueueService->queueInsert('roles', $role->id, $role->toArray());
+        }
     }
 
     /**
-     * Handle the User "updated" event.
+     * Handle the Role "updated" event.
      */
     public function updated(Role $role): void
     {
@@ -40,10 +52,13 @@ class RoleObserver
             'updated_data' => json_encode($role),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueUpdate('roles', $role->id, $originalData, $role->toArray());
     }
 
     /**
-     * Handle the User "deleted" event.
+     * Handle the Role "deleted" event.
      */
     public function deleted(Role $role): void
     {
@@ -55,6 +70,9 @@ class RoleObserver
             'original_data' => json_encode($role),
            'by_user_id'=> auth()->id(),
         ]);
+
+        // إضافة إلى sync_queue للمزامنة الذكية
+        $this->syncQueueService->queueDelete('roles', $role->id);
     }
 
     /**

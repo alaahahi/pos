@@ -34,7 +34,7 @@ Route::get('/clear-config-cache', function () {
     //$content_controller->log_visit_cache_job([]);
     return "Configuration cache file removed";
 });
-Route::middleware('auth:sanctum')->get('/user', function (Request $request) {
+Route::middleware(['auth:sanctum', 'license'])->get('/user', function (Request $request) {
     return $request->user();
 });
 Route::post('convertDollarDinar',[AccountingController::class, 'convertDollarDinar'])->name('convertDollarDinar');
@@ -74,10 +74,26 @@ require __DIR__.'/api_license.php';
 
 // Sync Monitor API Routes
 Route::prefix('sync-monitor')->group(function () {
+    // جلب جميع البيانات في request واحد
+    Route::get('/all-data', [App\Http\Controllers\SyncMonitorController::class, 'getAllData']);
+    
     Route::get('/tables', [App\Http\Controllers\SyncMonitorController::class, 'tables']);
     Route::get('/table/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'tableDetails']);
     Route::post('/sync', [App\Http\Controllers\SyncMonitorController::class, 'sync']);
     Route::get('/sync-progress', [App\Http\Controllers\SyncMonitorController::class, 'syncProgress']);
     Route::get('/metadata', [App\Http\Controllers\SyncMonitorController::class, 'syncMetadata']);
     Route::get('/test/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'testSync']);
+    
+    // Smart Sync routes (المزامنة الذكية)
+    Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
+    Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
+    Route::get('/id-conflicts', [App\Http\Controllers\SyncMonitorController::class, 'checkIdConflicts']);
+    Route::get('/id-mappings', [App\Http\Controllers\SyncMonitorController::class, 'getIdMappings']);
+    
+    // Backup routes
+    Route::get('/backups', [App\Http\Controllers\SyncMonitorController::class, 'backups']);
+    Route::post('/backup/create', [App\Http\Controllers\SyncMonitorController::class, 'createBackupManual']);
+    Route::post('/backup/restore', [App\Http\Controllers\SyncMonitorController::class, 'restoreBackup']);
+    Route::get('/backup/download', [App\Http\Controllers\SyncMonitorController::class, 'downloadBackup']);
+    Route::delete('/backup/delete', [App\Http\Controllers\SyncMonitorController::class, 'deleteBackup']);
 });

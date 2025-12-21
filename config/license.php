@@ -11,6 +11,10 @@ return [
     */
 
     // تفعيل/تعطيل نظام الترخيص
+    // ⚠️ تحذير: تعطيل هذا النظام قد يؤثر على أمان التطبيق
+    // القيمة الافتراضية: true (مفعل)
+    // للتعطيل: ضع LICENSE_ENABLED=false في .env
+    // لكن إذا كان هناك ترخيص مفعل في قاعدة البيانات، النظام سيبقى مفعل تلقائياً
     'enabled' => env('LICENSE_ENABLED', true),
 
     // التحقق من الترخيص عند كل طلب (قد يؤثر على الأداء)
@@ -49,5 +53,9 @@ return [
     'excluded_controllers' => [
         'LicenseController',
     ],
+
+    // كلمة المرور للوصول لصفحات التفعيل
+    // ⚠️ يجب تغييرها في الإنتاج
+    'activation_password' => env('LICENSE_ACTIVATION_PASSWORD', 'Alaa.hahe@1'),
 ];
 

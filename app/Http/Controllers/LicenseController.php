@@ -141,5 +141,61 @@ class LicenseController extends Controller
             'php_version' => PHP_VERSION,
         ], 200);
     }
+
+    /**
+     * عرض صفحة توليد مفتاح الترخيص
+     */
+    public function showGenerate()
+    {
+        return Inertia::render('License/Generate');
+    }
+
+    /**
+     * توليد مفتاح الترخيص
+     */
+    public function generate(Request $request): JsonResponse
+    {
+        $request->validate([
+            'domain' => 'nullable|string',
+            'fingerprint' => 'nullable|string',
+            'type' => 'nullable|string|in:trial,standard,premium',
+            'expires_at' => 'nullable|date|after:today',
+            'max_installations' => 'nullable|integer|min:1',
+        ]);
+
+        try {
+            $domain = $request->domain ?? LicenseService::getCurrentDomain();
+            $fingerprint = $request->fingerprint ?? LicenseService::getServerFingerprint();
+            $type = $request->type ?? 'standard';
+            $expiresAt = $request->expires_at ? date('Y-m-d H:i:s', strtotime($request->expires_at)) : null;
+            $maxInstallations = $request->max_installations ?? 1;
+
+            // إنشاء بيانات الترخيص
+            $licenseData = [
+                'domain' => $domain,
+                'fingerprint' => $fingerprint,
+                'type' => $type,
+                'expires_at' => $expiresAt,
+                'max_installations' => $maxInstallations,
+                'generated_at' => now()->toDateTimeString(),
+            ];
+
+            // تشفير مفتاح الترخيص
+            $licenseKey = LicenseService::encryptLicenseKey($licenseData);
+
+            return Response::json([
+                'success' => true,
+                'message' => 'تم توليد مفتاح الترخيص بنجاح',
+                'license_key' => $licenseKey,
+                'license_data' => $licenseData,
+            ], 200);
+
+        } catch (\Exception $e) {
+            return Response::json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء توليد مفتاح الترخيص: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
 

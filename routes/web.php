@@ -53,7 +53,7 @@ Route::get('link', function () {
 Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 
-Route::middleware(['auth', 'active.session'])->group(function () {
+Route::middleware(['auth', 'active.session', 'license'])->group(function () {
 
 
   Route::resource('users', UsersController::class);
@@ -213,7 +213,14 @@ Route::prefix('barcode')->name('barcode.')->middleware(['web'])->group(function 
 
 
 // License routes
-Route::get('/license/activate', [App\Http\Controllers\LicenseController::class, 'showActivate'])->name('license.activate');
-Route::get('/license/status', [App\Http\Controllers\LicenseController::class, 'showStatus'])->name('license.status');
+// صفحة توليد المفتاح فقط محمية بكلمة مرور
+Route::get('/license/generate', [App\Http\Controllers\LicenseController::class, 'showGenerate'])
+    ->middleware('license.password')
+    ->name('license.generate');
+// صفحات التفعيل والحالة بدون حماية كلمة مرور
+Route::get('/license/activate', [App\Http\Controllers\LicenseController::class, 'showActivate'])
+    ->name('license.activate');
+Route::get('/license/status', [App\Http\Controllers\LicenseController::class, 'showStatus'])
+    ->name('license.status');
 
 require __DIR__ . '/auth.php';

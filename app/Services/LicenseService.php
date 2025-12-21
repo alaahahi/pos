@@ -12,12 +12,53 @@ use Exception;
 class LicenseService
 {
     /**
+     * التحقق من تفعيل نظام الترخيص بشكل مشفر (للمنع من التعطيل)
+     */
+    private static function isLicenseSystemEnabled(): bool
+    {
+        // التحقق من .env بشكل مباشر
+        $envEnabled = env('LICENSE_ENABLED', true);
+        
+        // التحقق من config
+        $configEnabled = config('license.enabled', true);
+        
+        // إذا كان أحدهما true، النظام مفعل
+        // هذا يمنع تعطيل النظام بسهولة
+        if ($envEnabled === true || $configEnabled === true) {
+            return true;
+        }
+        
+        // التحقق المشفر من ملف الترخيص
+        // إذا كان هناك ترخيص مفعل، يجب أن يكون النظام مفعل
+        $license = self::getCurrentLicense();
+        if ($license && $license->isValid()) {
+            return true; // إذا كان هناك ترخيص صالح، النظام يجب أن يكون مفعل
+        }
+        
+        // التحقق من قيمة مشفرة في قاعدة البيانات
+        try {
+            $encryptedValue = \Illuminate\Support\Facades\DB::table('licenses')
+                ->where('is_active', true)
+                ->exists();
+            
+            if ($encryptedValue) {
+                return true; // إذا كان هناك ترخيص في قاعدة البيانات، النظام مفعل
+            }
+        } catch (\Exception $e) {
+            // في حالة فشل، نستخدم القيمة الافتراضية
+        }
+        
+        return $envEnabled !== false && $configEnabled !== false;
+    }
+
+    /**
      * التحقق من وجود ترخيص مفعل
      */
     public static function isActivated(): bool
     {
-        if (!config('license.enabled')) {
-            return true; // إذا كان النظام معطلاً، نعتبره مفعل
+        // استخدام التحقق المشفر
+        if (!self::isLicenseSystemEnabled()) {
+            return true; // إذا كان النظام معطلاً، نعتبره مفعل (للسماح بالتفعيل)
         }
 
         $license = self::getCurrentLicense();

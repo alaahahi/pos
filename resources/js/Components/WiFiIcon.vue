@@ -63,7 +63,7 @@
 
       <div class="menu-footer">
         <Link
-          :href="route('sync.monitor')"
+          :href="route('sync-monitor.index')"
           class="menu-link"
         >
           📊 صفحة المزامنة
@@ -78,7 +78,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link } from '@inertiajs/inertia-vue3';
+import { Link } from '@inertiajs/vue3';
 
 const showMenu = ref(false);
 const isOnline = ref(navigator.onLine);

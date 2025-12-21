@@ -265,7 +265,11 @@
         </main>
     </main>
 
+    <!-- Sync Status Bar -->
+    <SyncStatusBar />
 
+    <!-- WiFi Icon -->
+    <WiFiIcon />
 
 </template>
 
@@ -331,6 +335,8 @@ const changeLanguage = (event) => {
 
 <script>
 import Sidebar from '@/Components/SideBar.vue';
+import SyncStatusBar from '@/Components/SyncStatusBar.vue';
+import WiFiIcon from '@/Components/WiFiIcon.vue';
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
@@ -351,6 +357,8 @@ const notificationCount = computed(
 export default {
     components: {
         Sidebar,
+        SyncStatusBar,
+        WiFiIcon,
     },
   data() {
     return {
