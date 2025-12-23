@@ -20,22 +20,80 @@ class ApiSyncService
     }
 
     /**
-     * التحقق من توفر API
+     * التحقق من توفر API باستخدام sync-health endpoint
      */
     public function isApiAvailable(): bool
     {
         try {
-            $response = Http::timeout(5)
+            // محاولة الاتصال بـ API health endpoint
+            $response = Http::timeout(10)
                 ->withToken($this->apiToken)
-                ->get("{$this->apiUrl}/api/sync/health");
+                ->get("{$this->apiUrl}/api/sync-monitor/sync-health");
 
-            return $response->successful();
-        } catch (\Exception $e) {
-            Log::warning('Sync API not available', [
-                'error' => $e->getMessage(),
+            // التحقق من أن الاستجابة ناجحة (200 OK)
+            if ($response->successful()) {
+                $healthData = $response->json();
+                
+                // التحقق من أن overall_status هو "ok" أو "warning" (ليس "issue")
+                if (isset($healthData['success']) && $healthData['success'] === true) {
+                    $overallStatus = $healthData['health']['overall_status'] ?? 'unknown';
+                    
+                    // إذا كان overall_status "ok" أو "warning"، API متاح
+                    if (in_array($overallStatus, ['ok', 'warning'])) {
+                        Log::debug('API health check passed', [
+                            'overall_status' => $overallStatus,
+                            'url' => $this->apiUrl,
+                        ]);
+                        return true;
+                    }
+                    
+                    // إذا كان overall_status "issue"، API متاح لكن به مشاكل
+                    Log::warning('API health check: issues detected', [
+                        'overall_status' => $overallStatus,
+                        'issues' => $healthData['health']['issues'] ?? [],
+                        'url' => $this->apiUrl,
+                    ]);
+                    return true; // API متاح لكن به مشاكل
+                }
+                
+                // إذا كان success = false، API متاح لكن health check فشل
+                Log::warning('API health check failed', [
+                    'response' => $healthData,
+                    'url' => $this->apiUrl,
+                ]);
+                return true; // API متاح لكن health check فشل
+            }
+            
+            // إذا كان status code غير 200، API متاح لكن endpoint غير متاح
+            Log::warning('API health check: non-200 status', [
+                'status' => $response->status(),
                 'url' => $this->apiUrl,
             ]);
-            return false;
+            return $response->status() !== 0; // 0 = connection failed
+            
+        } catch (\Exception $e) {
+            $errorMsg = $e->getMessage();
+            
+            // إذا كان الخطأ connection error، API غير متاح
+            if (str_contains($errorMsg, 'Connection') || 
+                str_contains($errorMsg, 'timeout') ||
+                str_contains($errorMsg, 'resolve') ||
+                str_contains($errorMsg, 'getaddrinfo') ||
+                str_contains($errorMsg, 'cURL error') ||
+                str_contains($errorMsg, 'Failed to connect')) {
+                Log::warning('Sync API not available (connection error)', [
+                    'error' => $errorMsg,
+                    'url' => $this->apiUrl,
+                ]);
+                return false;
+            }
+            
+            // خطأ آخر - API متاح لكن حدث خطأ
+            Log::warning('API health check exception', [
+                'error' => $errorMsg,
+                'url' => $this->apiUrl,
+            ]);
+            return true; // نفترض أن API متاح
         }
     }
 
@@ -45,17 +103,22 @@ class ApiSyncService
     public function syncInsert(string $tableName, array $data): array
     {
         try {
+            $recordId = $data['id'] ?? 0;
+            
             $response = Http::timeout($this->timeout)
                 ->withToken($this->apiToken)
-                ->post("{$this->apiUrl}/api/sync/insert", [
-                    'table' => $tableName,
+                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+                    'table_name' => $tableName,
+                    'record_id' => $recordId,
+                    'action' => 'insert',
                     'data' => $data,
                 ]);
 
             if ($response->successful()) {
+                $result = $response->json();
                 return [
-                    'success' => true,
-                    'data' => $response->json(),
+                    'success' => $result['success'] ?? true,
+                    'data' => $result,
                 ];
             }
 
@@ -85,16 +148,18 @@ class ApiSyncService
         try {
             $response = Http::timeout($this->timeout)
                 ->withToken($this->apiToken)
-                ->put("{$this->apiUrl}/api/sync/update", [
-                    'table' => $tableName,
-                    'id' => $recordId,
+                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+                    'table_name' => $tableName,
+                    'record_id' => $recordId,
+                    'action' => 'update',
                     'data' => $data,
                 ]);
 
             if ($response->successful()) {
+                $result = $response->json();
                 return [
-                    'success' => true,
-                    'data' => $response->json(),
+                    'success' => $result['success'] ?? true,
+                    'data' => $result,
                 ];
             }
 
@@ -125,15 +190,17 @@ class ApiSyncService
         try {
             $response = Http::timeout($this->timeout)
                 ->withToken($this->apiToken)
-                ->delete("{$this->apiUrl}/api/sync/delete", [
-                    'table' => $tableName,
-                    'id' => $recordId,
+                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+                    'table_name' => $tableName,
+                    'record_id' => $recordId,
+                    'action' => 'delete',
                 ]);
 
             if ($response->successful()) {
+                $result = $response->json();
                 return [
-                    'success' => true,
-                    'data' => $response->json(),
+                    'success' => $result['success'] ?? true,
+                    'data' => $result,
                 ];
             }
 

@@ -68,6 +68,10 @@ class AppServiceProvider extends ServiceProvider
             // تحديث المسار في config
             Config::set('database.connections.sync_sqlite.database', $sqlitePath);
             Config::set('database.default', 'sync_sqlite');
+            
+            // إعداد Queue connection لاستخدام sync_sqlite أيضاً
+            Config::set('queue.connections.database.connection', 'sync_sqlite');
+            
             return;
         }
         
@@ -80,11 +84,16 @@ class AppServiceProvider extends ServiceProvider
             $sqlitePath = config('database.connections.sync_sqlite.database');
             if (file_exists($sqlitePath)) {
                 Config::set('database.default', 'sync_sqlite');
+                Config::set('queue.connections.database.connection', 'sync_sqlite');
             } else {
                 // إذا لم يكن SQLite موجوداً، أنشئه
                 $this->createSQLiteFileIfNeeded($sqlitePath);
                 Config::set('database.default', 'sync_sqlite');
+                Config::set('queue.connections.database.connection', 'sync_sqlite');
             }
+        } else {
+            // إذا كان Online و MySQL متوفر، استخدم MySQL للـ Queue أيضاً
+            Config::set('queue.connections.database.connection', 'mysql');
         }
         // إذا كان Online و MySQL متوفر، MySQL هو الافتراضي (لا حاجة لتغييره)
     }

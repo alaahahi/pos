@@ -115,12 +115,20 @@ class SyncIdMappingService
 
     /**
      * التحقق من وجود ID في السيرفر (للتعارضات)
-     * يجب التحقق من MySQL (السيرفر) وليس من الاتصال الافتراضي
+     * تم إزالة الاتصال المباشر بـ MySQL - API يتعامل مع ID conflicts تلقائياً
      */
     public function checkIdConflict(string $tableName, int $id): bool
     {
+        // إذا كان SYNC_VIA_API=true، لا نحتاج للتحقق من MySQL
+        // API سيتعامل مع ID conflicts تلقائياً
+        $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
+        if ($syncViaApi) {
+            // مع API Sync، نعتبر أن لا يوجد تعارض (API سيتعامل معه)
+            return false;
+        }
+        
+        // فقط إذا كان SYNC_VIA_API=false (غير موصى به)
         try {
-            // التحقق من MySQL (السيرفر) مباشرة
             return DB::connection('mysql')->table($tableName)->where('id', $id)->exists();
         } catch (\Exception $e) {
             // إذا فشل الاتصال بـ MySQL، افترض عدم وجود تعارض
@@ -130,10 +138,19 @@ class SyncIdMappingService
 
     /**
      * حل التعارض: إيجاد ID متاح جديد
-     * يجب البحث في MySQL (السيرفر) وليس من الاتصال الافتراضي
+     * تم إزالة الاتصال المباشر بـ MySQL - API يتعامل مع ID conflicts تلقائياً
      */
     public function resolveConflict(string $tableName, int $preferredId): int
     {
+        // إذا كان SYNC_VIA_API=true، لا نحتاج للتحقق من MySQL
+        // API سيتعامل مع ID conflicts تلقائياً
+        $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
+        if ($syncViaApi) {
+            // مع API Sync، نعيد الـ preferred ID (API سيتعامل مع التعارض)
+            return $preferredId;
+        }
+        
+        // فقط إذا كان SYNC_VIA_API=false (غير موصى به)
         try {
             // إذا كان ID متاح في MySQL، استخدمه
             if (!$this->checkIdConflict($tableName, $preferredId)) {

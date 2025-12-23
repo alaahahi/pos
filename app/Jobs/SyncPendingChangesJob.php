@@ -68,35 +68,77 @@ class SyncPendingChangesJob implements ShouldQueue
 
             $syncService = new DatabaseSyncService();
             
-            // التحقق من MySQL قبل البدء (سيتم التحقق داخل syncPendingChanges أيضاً)
-            // لكن نتحقق هنا لنعرف إذا كان MySQL متاحاً قبل البدء
-            try {
-                DB::connection('mysql')->getPdo();
-                DB::connection('mysql')->select('SELECT 1');
-            } catch (\Exception $e) {
-                $attempt = $this->attempts();
-                $nextRetryIn = $this->backoff[$attempt - 1] ?? 30;
-                $errorMsg = 'MySQL غير متاح - سيتم إعادة المحاولة تلقائياً عندما يعود الاتصال';
+            // التحقق من نوع المزامنة (API أم MySQL) قبل البدء
+            // استخدام reflection للوصول إلى protected property useApi
+            $reflection = new \ReflectionClass($syncService);
+            $useApiProperty = $reflection->getProperty('useApi');
+            $useApiProperty->setAccessible(true);
+            $useApi = $useApiProperty->getValue($syncService);
+            
+            if ($useApi) {
+                // إذا كان API Sync مفعّل، تحقق من API وليس MySQL
+                $apiSyncServiceProperty = $reflection->getProperty('apiSyncService');
+                $apiSyncServiceProperty->setAccessible(true);
+                $apiSyncService = $apiSyncServiceProperty->getValue($syncService);
                 
-                $this->updateStatus([
-                    'status' => 'waiting',
-                    'message' => $errorMsg,
-                    'will_retry' => true,
-                    'attempt' => $attempt,
-                    'max_tries' => $this->tries,
-                    'next_retry_at' => now()->addSeconds($nextRetryIn)->toDateTimeString(),
-                    'next_retry_in_seconds' => $nextRetryIn,
-                ]);
+                if (!$apiSyncService || !$apiSyncService->isApiAvailable()) {
+                    $attempt = $this->attempts();
+                    $nextRetryIn = $this->backoff[$attempt - 1] ?? 30;
+                    $errorMsg = 'API غير متاح - سيتم إعادة المحاولة تلقائياً عندما يعود الاتصال';
+                    
+                    $this->updateStatus([
+                        'status' => 'waiting',
+                        'message' => $errorMsg,
+                        'will_retry' => true,
+                        'attempt' => $attempt,
+                        'max_tries' => $this->tries,
+                        'next_retry_at' => now()->addSeconds($nextRetryIn)->toDateTimeString(),
+                        'next_retry_in_seconds' => $nextRetryIn,
+                    ]);
+                    
+                    Log::info('API not available, job will retry', [
+                        'job_id' => $this->jobId,
+                        'attempt' => $attempt,
+                        'max_tries' => $this->tries,
+                        'next_retry_in' => $nextRetryIn,
+                    ]);
+                    
+                    throw new \Exception($errorMsg); // لإعادة المحاولة
+                }
                 
-                Log::info('MySQL not available, job will retry', [
+                Log::info('API Sync enabled, skipping MySQL check', [
                     'job_id' => $this->jobId,
-                    'attempt' => $attempt,
-                    'max_tries' => $this->tries,
-                    'next_retry_in' => $nextRetryIn,
-                    'error' => $e->getMessage(),
                 ]);
-                
-                throw new \Exception($errorMsg); // لإعادة المحاولة
+            } else {
+                // إذا كان MySQL Sync مفعّل، تحقق من MySQL
+                try {
+                    DB::connection('mysql')->getPdo();
+                    DB::connection('mysql')->select('SELECT 1');
+                } catch (\Exception $e) {
+                    $attempt = $this->attempts();
+                    $nextRetryIn = $this->backoff[$attempt - 1] ?? 30;
+                    $errorMsg = 'MySQL غير متاح - سيتم إعادة المحاولة تلقائياً عندما يعود الاتصال';
+                    
+                    $this->updateStatus([
+                        'status' => 'waiting',
+                        'message' => $errorMsg,
+                        'will_retry' => true,
+                        'attempt' => $attempt,
+                        'max_tries' => $this->tries,
+                        'next_retry_at' => now()->addSeconds($nextRetryIn)->toDateTimeString(),
+                        'next_retry_in_seconds' => $nextRetryIn,
+                    ]);
+                    
+                    Log::info('MySQL not available, job will retry', [
+                        'job_id' => $this->jobId,
+                        'attempt' => $attempt,
+                        'max_tries' => $this->tries,
+                        'next_retry_in' => $nextRetryIn,
+                        'error' => $e->getMessage(),
+                    ]);
+                    
+                    throw new \Exception($errorMsg); // لإعادة المحاولة
+                }
             }
             
             $results = $syncService->syncPendingChanges($this->tableName, $this->limit, 300);

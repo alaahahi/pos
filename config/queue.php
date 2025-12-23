@@ -40,6 +40,14 @@ return [
             'queue' => 'default',
             'retry_after' => 90,
             'after_commit' => false,
+            // في Local mode: استخدام sync_sqlite للـ jobs table
+            // في Online mode: استخدام MySQL للـ jobs table
+            'connection' => env('QUEUE_DB_CONNECTION', function() {
+                // إذا كان default connection هو sync_sqlite، استخدمه
+                // وإلا استخدم MySQL
+                $default = config('database.default');
+                return in_array($default, ['sync_sqlite', 'sqlite']) ? $default : 'mysql';
+            }),
         ],
 
         'beanstalkd' => [
@@ -102,7 +110,7 @@ return [
 
     'failed' => [
         'driver' => env('QUEUE_FAILED_DRIVER', 'database-uuids'),
-        'database' => env('DB_CONNECTION', 'mysql'),
+        'database' => env('QUEUE_DB_CONNECTION', env('DB_CONNECTION', 'mysql')),
         'table' => 'failed_jobs',
     ],
 

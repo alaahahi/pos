@@ -172,6 +172,7 @@ Route::prefix('sync-monitor')->group(function () {
     Route::get('/test/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'testSync']);
     
     // Smart Sync routes (المزامنة الذكية)
+    Route::get('/sync-health', [App\Http\Controllers\SyncMonitorController::class, 'checkSyncHealth']); // فحص شامل لحالة المزامنة
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
     Route::get('/sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getSyncStatus']); // جديد: الحصول على حالة المزامنة
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);

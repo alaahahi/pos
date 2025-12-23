@@ -1720,5 +1720,235 @@ class SyncMonitorController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * فحص شامل لحالة المزامنة وتشخيص المشاكل
+     */
+    public function checkSyncHealth(Request $request)
+    {
+        try {
+            $health = [
+                'timestamp' => now()->toDateTimeString(),
+                'overall_status' => 'unknown',
+                'issues' => [],
+                'warnings' => [],
+                'info' => [],
+            ];
+
+            // 1. فحص إعدادات API Sync
+            $syncViaApi = env('SYNC_VIA_API', false);
+            $useApi = filter_var($syncViaApi, FILTER_VALIDATE_BOOLEAN);
+            
+            $health['api_sync'] = [
+                'enabled' => $useApi,
+                'config_value' => $syncViaApi,
+                'online_url' => env('ONLINE_URL', 'غير محدد'),
+                'api_token_set' => !empty(env('SYNC_API_TOKEN')),
+                'api_timeout' => env('SYNC_API_TIMEOUT', 30),
+            ];
+
+            if (!$useApi) {
+                $health['warnings'][] = 'API Sync غير مفعّل (SYNC_VIA_API=false أو غير محدد)';
+            }
+
+            if (empty(env('ONLINE_URL'))) {
+                $health['issues'][] = 'ONLINE_URL غير محدد في .env';
+            }
+
+            if (empty(env('SYNC_API_TOKEN'))) {
+                $health['issues'][] = 'SYNC_API_TOKEN غير محدد في .env';
+            }
+
+            // 2. فحص ApiSyncService
+            try {
+                $apiService = new \App\Services\ApiSyncService();
+                $apiAvailable = $apiService->isApiAvailable();
+                
+                $health['api_service'] = [
+                    'available' => $apiAvailable,
+                    'status' => $apiAvailable ? 'متاح' : 'غير متاح',
+                ];
+
+                if (!$apiAvailable) {
+                    $health['issues'][] = 'API غير متاح - لا يمكن الاتصال بالسيرفر';
+                }
+            } catch (\Exception $e) {
+                $health['api_service'] = [
+                    'available' => false,
+                    'status' => 'خطأ',
+                    'error' => $e->getMessage(),
+                ];
+                $health['issues'][] = 'خطأ في ApiSyncService: ' . $e->getMessage();
+            }
+
+            // 3. فحص DatabaseSyncService
+            try {
+                $syncService = new DatabaseSyncService();
+                
+                // استخدام reflection للوصول إلى protected properties
+                $reflection = new \ReflectionClass($syncService);
+                $useApiProperty = $reflection->getProperty('useApi');
+                $useApiProperty->setAccessible(true);
+                $useApiValue = $useApiProperty->getValue($syncService);
+                
+                $health['database_sync_service'] = [
+                    'use_api' => $useApiValue,
+                    'status' => $useApiValue ? 'يستخدم API' : 'يستخدم MySQL مباشرة',
+                ];
+
+                if (!$useApiValue && $useApi) {
+                    $health['issues'][] = 'DatabaseSyncService لا يستخدم API رغم تفعيل SYNC_VIA_API';
+                }
+            } catch (\Exception $e) {
+                $health['database_sync_service'] = [
+                    'status' => 'خطأ',
+                    'error' => $e->getMessage(),
+                ];
+                $health['issues'][] = 'خطأ في DatabaseSyncService: ' . $e->getMessage();
+            }
+
+            // 4. فحص MySQL (إذا لم يكن API مفعّل)
+            if (!$useApi) {
+                try {
+                    $mysqlAvailable = false;
+                    $mysqlError = null;
+                    
+                    try {
+                        $pdo = DB::connection('mysql')->getPdo();
+                        DB::connection('mysql')->select('SELECT 1');
+                        $mysqlAvailable = true;
+                    } catch (\Exception $e) {
+                        $mysqlError = $e->getMessage();
+                    }
+                    
+                    $health['mysql'] = [
+                        'available' => $mysqlAvailable,
+                        'status' => $mysqlAvailable ? 'متاح' : 'غير متاح',
+                        'error' => $mysqlError,
+                    ];
+
+                    if (!$mysqlAvailable) {
+                        $health['issues'][] = 'MySQL غير متاح: ' . ($mysqlError ?? 'خطأ غير معروف');
+                    }
+                } catch (\Exception $e) {
+                    $health['mysql'] = [
+                        'available' => false,
+                        'status' => 'خطأ',
+                        'error' => $e->getMessage(),
+                    ];
+                    $health['issues'][] = 'خطأ في فحص MySQL: ' . $e->getMessage();
+                }
+            }
+
+            // 5. فحص sync_queue
+            try {
+                $connection = config('database.default');
+                $queueTableExists = Schema::connection($connection)->hasTable('sync_queue');
+                
+                if ($queueTableExists) {
+                    $queueStats = $syncService->getQueueStats();
+                    $health['sync_queue'] = [
+                        'table_exists' => true,
+                        'stats' => $queueStats,
+                        'status' => $queueStats['pending'] > 0 ? 'يوجد سجلات في الانتظار' : 'لا توجد سجلات في الانتظار',
+                    ];
+
+                    if ($queueStats['failed'] > 0) {
+                        $health['warnings'][] = "يوجد {$queueStats['failed']} سجل(ات) فاشل(ة) في sync_queue";
+                    }
+
+                    if ($queueStats['pending'] > 0) {
+                        $health['info'][] = "يوجد {$queueStats['pending']} سجل(ات) في انتظار المزامنة";
+                    }
+                } else {
+                    $health['sync_queue'] = [
+                        'table_exists' => false,
+                        'status' => 'الجدول غير موجود',
+                    ];
+                    $health['issues'][] = 'جدول sync_queue غير موجود';
+                }
+            } catch (\Exception $e) {
+                $health['sync_queue'] = [
+                    'status' => 'خطأ',
+                    'error' => $e->getMessage(),
+                ];
+                $health['issues'][] = 'خطأ في فحص sync_queue: ' . $e->getMessage();
+            }
+
+            // 6. فحص Queue Worker (إذا كان مفعّل)
+            try {
+                $queueConnection = config('queue.default');
+                $health['queue_worker'] = [
+                    'connection' => $queueConnection,
+                    'status' => $queueConnection === 'database' ? 'مفعّل (database)' : ($queueConnection === 'sync' ? 'غير مفعّل (sync)' : 'غير معروف'),
+                ];
+
+                if ($queueConnection === 'sync') {
+                    $health['warnings'][] = 'Queue Worker غير مفعّل (QUEUE_CONNECTION=sync) - المزامنة ستكون متزامنة وليست في الخلفية';
+                }
+
+                // فحص جدول jobs
+                if ($queueConnection === 'database') {
+                    $jobsTableExists = Schema::connection($connection)->hasTable('jobs');
+                    $health['queue_worker']['jobs_table_exists'] = $jobsTableExists;
+                    
+                    if (!$jobsTableExists) {
+                        $health['issues'][] = 'جدول jobs غير موجود - Queue Worker لن يعمل';
+                    }
+                }
+            } catch (\Exception $e) {
+                $health['queue_worker'] = [
+                    'status' => 'خطأ',
+                    'error' => $e->getMessage(),
+                ];
+            }
+
+            // 7. تحديد الحالة العامة
+            if (count($health['issues']) > 0) {
+                $health['overall_status'] = 'error';
+                $health['message'] = 'يوجد مشاكل في المزامنة';
+            } elseif (count($health['warnings']) > 0) {
+                $health['overall_status'] = 'warning';
+                $health['message'] = 'المزامنة تعمل لكن يوجد تحذيرات';
+            } else {
+                $health['overall_status'] = 'ok';
+                $health['message'] = 'المزامنة تعمل بشكل صحيح';
+            }
+
+            // 8. توصيات
+            $health['recommendations'] = [];
+            
+            if (!$useApi && !empty($health['mysql']['available']) && !$health['mysql']['available']) {
+                $health['recommendations'][] = 'تفعيل API Sync (SYNC_VIA_API=true) لتجنب مشاكل الاتصال بـ MySQL';
+            }
+
+            if ($queueConnection === 'sync') {
+                $health['recommendations'][] = 'تفعيل Queue Worker (QUEUE_CONNECTION=database) للمزامنة في الخلفية';
+            }
+
+            if (!empty($health['sync_queue']['stats']['failed']) && $health['sync_queue']['stats']['failed'] > 0) {
+                $health['recommendations'][] = 'إعادة محاولة السجلات الفاشلة (استخدم /api/sync-monitor/retry-failed)';
+            }
+
+            return response()->json([
+                'success' => true,
+                'health' => $health,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to check sync health', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء فحص حالة المزامنة: ' . $e->getMessage(),
+                'health' => [
+                    'overall_status' => 'error',
+                    'error' => $e->getMessage(),
+                ],
+            ], 500);
+        }
+    }
 }
 

@@ -249,7 +249,8 @@ class InitSQLite extends Command
         // قائمة الجداول الأساسية
         $essentialTables = [
             'users', 'user_type', 'products', 'orders', 'categories', 
-            'customers', 'suppliers', 'boxes', 'wallets', 'transactions'
+            'customers', 'suppliers', 'boxes', 'wallets', 'transactions',
+            'jobs', 'failed_jobs', 'sync_queue', 'sync_id_mapping' // جداول المزامنة والـ Queue
         ];
 
         $sqlitePath = config('database.connections.sync_sqlite.database');
