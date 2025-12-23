@@ -119,6 +119,12 @@
                 🔄 المزامنة
               </button>
               <button
+                @click="activeTab = 'health'"
+                :class="['px-6 py-3 text-sm font-medium border-b-2 transition-colors', activeTab === 'health' ? 'border-purple-500 text-purple-600 dark:text-purple-400' : 'border-transparent text-gray-500 dark:text-gray-400']"
+              >
+                🔍 فحص المزامنة
+              </button>
+              <button
                 @click="activeTab = 'backups'"
                 :class="['px-6 py-3 text-sm font-medium border-b-2 transition-colors', activeTab === 'backups' ? 'border-yellow-500 text-yellow-600 dark:text-yellow-400' : 'border-transparent text-gray-500 dark:text-gray-400']"
               >
@@ -178,6 +184,329 @@
             </div>
           </div>
 
+          <!-- تبويب فحص المزامنة -->
+          <div v-if="activeTab === 'health'" class="p-6">
+            <div class="mb-6">
+              <h3 class="text-lg font-semibold mb-4 dark:text-gray-50">🔍 فحص حالة المزامنة</h3>
+              
+              <!-- ملخص الإحصائيات السريع -->
+              <div v-if="syncMetadata.stats" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <h4 class="text-md font-semibold mb-4 dark:text-gray-50">📊 ملخص إحصائيات المزامنة</h4>
+                <div class="grid grid-cols-3 gap-4">
+                  <div class="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg border-2 border-blue-300 dark:border-blue-700">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-sm text-blue-700 dark:text-blue-300">في الانتظار</span>
+                      <span class="text-2xl font-bold text-blue-600 dark:text-blue-400">{{ syncMetadata.stats.pending || 0 }}</span>
+                    </div>
+                    <button @click="loadSyncQueueDetails('pending')" class="w-full mt-2 px-3 py-2 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">
+                      📋 عرض التفاصيل
+                    </button>
+                  </div>
+                  <div class="p-4 bg-green-50 dark:bg-green-900 rounded-lg border-2 border-green-300 dark:border-green-700">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-sm text-green-700 dark:text-green-300">تمت المزامنة</span>
+                      <span class="text-2xl font-bold text-green-600 dark:text-green-400">{{ syncMetadata.stats.synced || 0 }}</span>
+                    </div>
+                    <button @click="loadSyncQueueDetails('synced')" class="w-full mt-2 px-3 py-2 bg-green-500 text-white text-sm rounded hover:bg-green-600">
+                      ✅ عرض التفاصيل
+                    </button>
+                  </div>
+                  <div class="p-4 bg-red-50 dark:bg-red-900 rounded-lg border-2 border-red-300 dark:border-red-700">
+                    <div class="flex justify-between items-center mb-2">
+                      <span class="text-sm text-red-700 dark:text-red-300">فاشلة</span>
+                      <span class="text-2xl font-bold text-red-600 dark:text-red-400">{{ syncMetadata.stats.failed || 0 }}</span>
+                    </div>
+                    <button @click="loadSyncQueueDetails('failed')" class="w-full mt-2 px-3 py-2 bg-red-500 text-white text-sm rounded hover:bg-red-600">
+                      ❌ عرض التفاصيل
+                    </button>
+                  </div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div class="text-center text-sm text-gray-600 dark:text-gray-400">
+                    <strong class="text-gray-900 dark:text-gray-100">الإجمالي:</strong> {{ syncMetadata.stats.total || 0 }} سجل
+                  </div>
+                </div>
+              </div>
+              <div class="flex gap-2 flex-wrap mb-6">
+                <button 
+                  @click="checkSyncMetadata" 
+                  :disabled="loadingMetadata" 
+                  class="px-4 py-2 bg-indigo-500 text-white rounded hover:bg-indigo-600 disabled:opacity-50"
+                >
+                  <span v-if="!loadingMetadata">📊 تحديث الإحصائيات</span>
+                  <span v-else>⏳ جاري...</span>
+                </button>
+                <button 
+                  @click="checkSyncHealth" 
+                  :disabled="loadingHealth" 
+                  class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50"
+                >
+                  <span v-if="!loadingHealth">🔍 فحص الحالة العامة</span>
+                  <span v-else>⏳ جاري الفحص...</span>
+                </button>
+                <button 
+                  @click="checkPendingChanges" 
+                  :disabled="loadingPending" 
+                  class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50"
+                >
+                  <span v-if="!loadingPending">📋 التغييرات المعلقة</span>
+                  <span v-else>⏳ جاري...</span>
+                </button>
+                <button 
+                  @click="checkSyncMetadata" 
+                  :disabled="loadingMetadata" 
+                  class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 disabled:opacity-50"
+                >
+                  <span v-if="!loadingMetadata">📊 إحصائيات المزامنة</span>
+                  <span v-else>⏳ جاري...</span>
+                </button>
+                <button 
+                  @click="startSmartSync" 
+                  :disabled="isSyncing || !connectionStatus.online" 
+                  class="px-4 py-2 bg-orange-500 text-white rounded hover:bg-orange-600 disabled:opacity-50"
+                >
+                  <span v-if="!isSyncing">🚀 بدء المزامنة الذكية</span>
+                  <span v-else>⏳ جاري المزامنة...</span>
+                </button>
+              </div>
+
+              <!-- عرض نتائج فحص الحالة العامة -->
+              <div v-if="syncHealth && Object.keys(syncHealth).length > 0" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <h4 class="text-md font-semibold mb-4 dark:text-gray-50">📊 نتائج فحص الحالة العامة</h4>
+                <div class="space-y-4">
+                  <div v-if="syncHealth.overall_status" class="p-4 rounded-lg" :class="{
+                    'bg-green-50 dark:bg-green-900': syncHealth.overall_status === 'ok',
+                    'bg-yellow-50 dark:bg-yellow-900': syncHealth.overall_status === 'warning',
+                    'bg-red-50 dark:bg-red-900': syncHealth.overall_status === 'issue'
+                  }">
+                    <div class="flex items-center justify-between">
+                      <span class="font-semibold dark:text-gray-100">الحالة العامة:</span>
+                      <span class="px-3 py-1 rounded-full text-sm font-bold" :class="{
+                        'bg-green-200 text-green-800 dark:bg-green-700 dark:text-green-100': syncHealth.overall_status === 'ok',
+                        'bg-yellow-200 text-yellow-800 dark:bg-yellow-700 dark:text-yellow-100': syncHealth.overall_status === 'warning',
+                        'bg-red-200 text-red-800 dark:bg-red-700 dark:text-red-100': syncHealth.overall_status === 'issue'
+                      }">
+                        {{ syncHealth.overall_status === 'ok' ? '✅ جيد' : syncHealth.overall_status === 'warning' ? '⚠️ تحذير' : '❌ مشكلة' }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div v-if="syncHealth.api" class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h5 class="font-semibold mb-2 dark:text-gray-100">🌐 API:</h5>
+                    <div class="text-sm space-y-1 dark:text-gray-300">
+                      <div><strong>الحالة:</strong> {{ syncHealth.api.status || 'غير متاح' }}</div>
+                      <div v-if="syncHealth.api.url"><strong>URL:</strong> {{ syncHealth.api.url }}</div>
+                      <div v-if="syncHealth.api.available !== undefined"><strong>متاح:</strong> {{ syncHealth.api.available ? 'نعم' : 'لا' }}</div>
+                    </div>
+                  </div>
+
+                  <div v-if="syncHealth.sync_queue" class="p-4 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                    <h5 class="font-semibold mb-2 dark:text-gray-100">📋 Sync Queue:</h5>
+                    <div class="text-sm space-y-1 dark:text-gray-300 mb-3">
+                      <div><strong>الحالة:</strong> {{ syncHealth.sync_queue.status || 'غير معروف' }}</div>
+                      <div v-if="syncHealth.sync_queue.stats">
+                        <div class="flex justify-between items-center mb-1">
+                          <span><strong>في الانتظار:</strong> {{ syncHealth.sync_queue.stats.pending || 0 }}</span>
+                          <button @click="loadSyncQueueDetails('pending')" class="px-2 py-1 bg-blue-500 text-white text-xs rounded hover:bg-blue-600">عرض التفاصيل</button>
+                        </div>
+                        <div class="flex justify-between items-center mb-1">
+                          <span><strong>تمت المزامنة:</strong> {{ syncHealth.sync_queue.stats.synced || 0 }}</span>
+                          <button @click="loadSyncQueueDetails('synced')" class="px-2 py-1 bg-green-500 text-white text-xs rounded hover:bg-green-600">عرض التفاصيل</button>
+                        </div>
+                        <div class="flex justify-between items-center mb-1">
+                          <span><strong>فاشلة:</strong> {{ syncHealth.sync_queue.stats.failed || 0 }}</span>
+                          <button @click="loadSyncQueueDetails('failed')" class="px-2 py-1 bg-red-500 text-white text-xs rounded hover:bg-red-600">عرض التفاصيل</button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- عرض تفاصيل sync_queue -->
+                  <div v-if="syncQueueDetails && syncQueueDetails.changes && syncQueueDetails.changes.length > 0" class="mt-4 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                      <h4 class="text-md font-semibold dark:text-gray-50">
+                        📋 تفاصيل {{ syncQueueDetails.status === 'pending' ? 'في الانتظار' : syncQueueDetails.status === 'synced' ? 'تمت المزامنة' : 'فاشلة' }}
+                        ({{ syncQueueDetails.total }})
+                      </h4>
+                      <button @click="syncQueueDetails = null" class="px-3 py-1 bg-gray-500 text-white text-sm rounded hover:bg-gray-600">إخفاء</button>
+                    </div>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full border-collapse border border-gray-300 dark:border-gray-500 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">ID</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الجدول</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">Record ID</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الإجراء</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">عدد المحاولات</th>
+                            <th v-if="syncQueueDetails.status === 'failed'" class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">رسالة الخطأ</th>
+                            <th v-if="syncQueueDetails.status === 'synced'" class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ المزامنة</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ الإنشاء</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800">
+                          <tr v-for="change in syncQueueDetails.changes" :key="change.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.id }}</td>
+                            <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 font-medium">{{ change.table_name }}</td>
+                            <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.record_id }}</td>
+                            <td class="px-4 py-2 border border-gray-300 dark:border-gray-500">
+                              <span :class="{
+                                'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100': change.action === 'insert',
+                                'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100': change.action === 'update',
+                                'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100': change.action === 'delete'
+                              }" class="px-2 py-1 text-xs rounded-full font-medium">
+                                {{ change.action === 'insert' ? 'إضافة' : change.action === 'update' ? 'تحديث' : 'حذف' }}
+                              </span>
+                            </td>
+                            <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.retry_count || 0 }}</td>
+                            <td v-if="syncQueueDetails.status === 'failed'" class="px-4 py-2 text-red-600 dark:text-red-400 text-xs border border-gray-300 dark:border-gray-500 max-w-xs truncate" :title="change.error_message">
+                              {{ change.error_message || '-' }}
+                            </td>
+                            <td v-if="syncQueueDetails.status === 'synced'" class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 text-xs">
+                              {{ change.synced_at || '-' }}
+                            </td>
+                            <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 text-xs">{{ change.created_at }}</td>
+                          </tr>
+                        </tbody>
+                      </table>
+                      <div v-if="syncQueueDetails.total > syncQueueDetails.limit" class="mt-4 flex justify-between items-center">
+                        <div class="text-sm text-gray-600 dark:text-gray-300">
+                          عرض {{ syncQueueDetails.offset + 1 }} إلى {{ Math.min(syncQueueDetails.offset + syncQueueDetails.limit, syncQueueDetails.total) }} من {{ syncQueueDetails.total }}
+                        </div>
+                        <div class="flex gap-2">
+                          <button 
+                            @click="loadSyncQueueDetails(syncQueueDetails.status, Math.max(0, syncQueueDetails.offset - syncQueueDetails.limit))"
+                            :disabled="syncQueueDetails.offset === 0"
+                            class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+                          >
+                            السابقة
+                          </button>
+                          <button 
+                            @click="loadSyncQueueDetails(syncQueueDetails.status, syncQueueDetails.offset + syncQueueDetails.limit)"
+                            :disabled="syncQueueDetails.offset + syncQueueDetails.limit >= syncQueueDetails.total"
+                            class="px-3 py-1 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+                          >
+                            التالية
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="syncHealth.issues && syncHealth.issues.length > 0" class="p-4 bg-red-50 dark:bg-red-900 rounded-lg">
+                    <h5 class="font-semibold mb-2 text-red-800 dark:text-red-100">❌ المشاكل:</h5>
+                    <ul class="list-disc list-inside text-sm text-red-700 dark:text-red-200 space-y-1 mb-3">
+                      <li v-for="issue in syncHealth.issues" :key="issue">{{ issue }}</li>
+                    </ul>
+                    <div v-if="syncHealth.api_service && !syncHealth.api_service.available && syncHealth.api_sync && syncHealth.api_sync.online_url" class="mt-3 p-3 bg-red-100 dark:bg-red-800 rounded">
+                      <p class="text-sm text-red-800 dark:text-red-200 mb-2">
+                        <strong>سبب المشكلة:</strong> لا يمكن الاتصال بالـ API على السيرفر:
+                      </p>
+                      <p class="text-xs text-red-700 dark:text-red-300 font-mono mb-2">
+                        {{ syncHealth.api_sync.online_url }}
+                      </p>
+                      <div class="text-xs text-red-700 dark:text-red-300 space-y-1">
+                        <p>• تحقق من أن السيرفر متاح ويعمل</p>
+                        <p>• تحقق من الاتصال بالإنترنت</p>
+                        <p>• تأكد من أن SYNC_API_TOKEN صحيح في ملف .env</p>
+                        <p>• المزامنة ستتم تلقائياً عند عودة الاتصال</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div v-if="syncHealth.warnings && syncHealth.warnings.length > 0" class="p-4 bg-yellow-50 dark:bg-yellow-900 rounded-lg">
+                    <h5 class="font-semibold mb-2 text-yellow-800 dark:text-yellow-100">⚠️ التحذيرات:</h5>
+                    <ul class="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-200 space-y-1">
+                      <li v-for="warning in syncHealth.warnings" :key="warning">{{ warning }}</li>
+                    </ul>
+                  </div>
+
+                  <div v-if="syncHealth.info && syncHealth.info.length > 0" class="p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                    <h5 class="font-semibold mb-2 text-blue-800 dark:text-blue-100">ℹ️ معلومات:</h5>
+                    <ul class="list-disc list-inside text-sm text-blue-700 dark:text-blue-200 space-y-1">
+                      <li v-for="info in syncHealth.info" :key="info">{{ info }}</li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+
+              <!-- عرض التغييرات المعلقة -->
+              <div v-if="pendingChanges && pendingChanges.length > 0" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <h4 class="text-md font-semibold mb-4 dark:text-gray-50">📋 التغييرات المعلقة ({{ pendingChanges.length }})</h4>
+                <div class="overflow-x-auto">
+                  <table class="min-w-full border-collapse border border-gray-300 dark:border-gray-500">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">ID</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الجدول</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">Record ID</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الإجراء</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ الإنشاء</th>
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800">
+                      <tr v-for="change in pendingChanges.slice(0, 20)" :key="change.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.id }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.table_name }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.record_id }}</td>
+                        <td class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-500">
+                          <span :class="{
+                            'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100': change.action === 'insert',
+                            'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100': change.action === 'update',
+                            'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100': change.action === 'delete'
+                          }" class="px-2 py-1 text-xs rounded-full">
+                            {{ change.action === 'insert' ? 'إضافة' : change.action === 'update' ? 'تحديث' : 'حذف' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.created_at }}</td>
+                      </tr>
+                    </tbody>
+                  </table>
+                  <p v-if="pendingChanges.length > 20" class="text-sm text-gray-500 dark:text-gray-400 mt-2 text-center">
+                    عرض {{ Math.min(20, pendingChanges.length) }} من {{ pendingChanges.length }} سجل
+                  </p>
+                </div>
+              </div>
+
+              <!-- عرض حالة المزامنة -->
+              <div v-if="currentSyncStatus" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <h4 class="text-md font-semibold mb-4 dark:text-gray-50">🚀 حالة المزامنة</h4>
+                <div class="space-y-2 text-sm">
+                  <div class="flex justify-between">
+                    <span class="dark:text-gray-300">Job ID:</span>
+                    <span class="font-mono dark:text-gray-100">{{ currentSyncStatus.job_id }}</span>
+                  </div>
+                  <div class="flex justify-between">
+                    <span class="dark:text-gray-300">الحالة:</span>
+                    <span class="font-semibold" :class="{
+                      'text-green-600 dark:text-green-400': currentSyncStatus.status?.status === 'completed',
+                      'text-blue-600 dark:text-blue-400': currentSyncStatus.status?.status === 'running',
+                      'text-red-600 dark:text-red-400': currentSyncStatus.status?.status === 'failed',
+                      'text-yellow-600 dark:text-yellow-400': currentSyncStatus.status?.status === 'waiting'
+                    }">
+                      {{ currentSyncStatus.status?.status === 'completed' ? '✅ مكتملة' : 
+                         currentSyncStatus.status?.status === 'running' ? '🔄 قيد التنفيذ' : 
+                         currentSyncStatus.status?.status === 'failed' ? '❌ فاشلة' : 
+                         currentSyncStatus.status?.status === 'waiting' ? '⏳ في الانتظار' : currentSyncStatus.status?.status }}
+                    </span>
+                  </div>
+                  <div v-if="currentSyncStatus.status?.synced !== undefined" class="flex justify-between">
+                    <span class="dark:text-gray-300">تمت المزامنة:</span>
+                    <span class="font-bold text-green-600 dark:text-green-400">{{ currentSyncStatus.status.synced }}</span>
+                  </div>
+                  <div v-if="currentSyncStatus.status?.failed !== undefined" class="flex justify-between">
+                    <span class="dark:text-gray-300">فاشلة:</span>
+                    <span class="font-bold text-red-600 dark:text-red-400">{{ currentSyncStatus.status.failed }}</span>
+                  </div>
+                  <div v-if="currentSyncStatus.status?.elapsed_time" class="flex justify-between">
+                    <span class="dark:text-gray-300">الوقت المستغرق:</span>
+                    <span class="dark:text-gray-100">{{ currentSyncStatus.status.elapsed_time }} ثانية</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
           <!-- تبويب المزامنة -->
           <div v-if="activeTab === 'sync'" class="p-6">
             <div class="mb-4">
@@ -226,6 +555,35 @@
                     </tr>
                   </tbody>
                 </table>
+              </div>
+              <div v-else class="bg-gray-50 dark:bg-gray-700 p-6 rounded-lg border border-gray-200 dark:border-gray-600">
+                <div class="text-center">
+                  <p class="text-gray-600 dark:text-gray-300 mb-2">📭 لا توجد بيانات مزامنة متاحة</p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400">
+                    بيانات المزامنة (sync_metadata) تظهر فقط عند استخدام المزامنة الكلاسيكية. 
+                    النظام يستخدم الآن المزامنة الذكية التي تعتمد على <strong>sync_queue</strong>.
+                  </p>
+                  <p class="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                    يمكنك متابعة حالة المزامنة من خلال قسم "🔄 المزامنة" في الأعلى أو من خلال <strong>sync_queue</strong>.
+                  </p>
+                  <div v-if="syncMetadata.stats && (syncMetadata.stats.pending > 0 || syncMetadata.stats.synced > 0 || syncMetadata.stats.failed > 0)" class="mt-4 p-4 bg-blue-50 dark:bg-blue-900 rounded-lg">
+                    <h5 class="font-semibold text-blue-900 dark:text-blue-100 mb-2">📊 إحصائيات المزامنة الذكية:</h5>
+                    <div class="grid grid-cols-3 gap-4 text-sm">
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">في الانتظار:</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400 ml-2">{{ syncMetadata.stats.pending || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">تمت المزامنة:</span>
+                        <span class="font-bold text-green-600 dark:text-green-400 ml-2">{{ syncMetadata.stats.synced || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">فاشلة:</span>
+                        <span class="font-bold text-red-600 dark:text-red-400 ml-2">{{ syncMetadata.stats.failed || 0 }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
@@ -603,6 +961,17 @@ const tableDetailsModal = ref({
 });
 const loadingTableDetails = ref(false);
 
+// فحص المزامنة
+const syncHealth = ref(null);
+const loadingHealth = ref(false);
+const pendingChanges = ref([]);
+const loadingPending = ref(false);
+const loadingMetadata = ref(false);
+const currentSyncStatus = ref(null);
+const currentJobId = ref(null);
+const syncQueueDetails = ref(null);
+const loadingQueueDetails = ref(false);
+
 // الوظائف الأساسية - جلب جميع البيانات في request واحد
 const loadAllData = async () => {
   isRefreshing.value = true;
@@ -782,6 +1151,172 @@ const syncAllTables = async (direction) => {
 
 const loadSyncMetadata = async () => {
   await loadAllData();
+};
+
+// فحص المزامنة - APIs
+const checkSyncHealth = async () => {
+  loadingHealth.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/sync-health', { withCredentials: true });
+    if (response.data.success) {
+      syncHealth.value = response.data.health || response.data;
+      // تحديث الإحصائيات من health check
+      updateSyncStatsFromHealth();
+      toast.success('✅ تم فحص الحالة العامة بنجاح');
+    } else {
+      toast.error(response.data.message || 'فشل فحص الحالة');
+    }
+  } catch (error) {
+    console.error('Error checking sync health:', error);
+    toast.error('فشل فحص الحالة: ' + (error.response?.data?.message || error.message));
+  } finally {
+    loadingHealth.value = false;
+  }
+};
+
+const checkPendingChanges = async () => {
+  loadingPending.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/pending-changes', { withCredentials: true });
+    if (response.data.success) {
+      pendingChanges.value = response.data.pending_changes || response.data.changes || [];
+      toast.success(`✅ تم جلب ${pendingChanges.value.length} تغيير معلق`);
+    } else {
+      toast.error(response.data.message || 'فشل جلب التغييرات المعلقة');
+    }
+  } catch (error) {
+    console.error('Error checking pending changes:', error);
+    toast.error('فشل جلب التغييرات المعلقة: ' + (error.response?.data?.message || error.message));
+  } finally {
+    loadingPending.value = false;
+  }
+};
+
+const checkSyncMetadata = async () => {
+  loadingMetadata.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/metadata', { withCredentials: true });
+    if (response.data.success) {
+      syncMetadata.value.data = response.data.metadata || [];
+      syncMetadata.value.stats = response.data.queue_stats || null;
+      toast.success('✅ تم تحديث إحصائيات المزامنة بنجاح');
+    } else {
+      toast.error(response.data.message || 'فشل جلب الإحصائيات');
+    }
+  } catch (error) {
+    console.error('Error checking sync metadata:', error);
+    toast.error('فشل جلب الإحصائيات: ' + (error.response?.data?.message || error.message));
+  } finally {
+    loadingMetadata.value = false;
+  }
+};
+
+// تحديث الإحصائيات تلقائياً عند فتح التبويب
+const updateSyncStatsFromHealth = () => {
+  if (syncHealth.value && syncHealth.value.sync_queue && syncHealth.value.sync_queue.stats) {
+    syncMetadata.value.stats = syncHealth.value.sync_queue.stats;
+  }
+};
+
+const startSmartSync = async () => {
+  if (!connectionStatus.value.online) {
+    toast.error('❌ لا يمكن المزامنة - أنت في وضع Offline');
+    return;
+  }
+
+  if (!confirm('هل تريد بدء المزامنة الذكية؟\n\nسيتم مزامنة التغييرات المعلقة في sync_queue.')) {
+    return;
+  }
+
+  isSyncing.value = true;
+  try {
+    const response = await axios.post('/api/sync-monitor/smart-sync', {
+      limit: 100
+    }, { withCredentials: true });
+
+    if (response.data.success && response.data.job_id) {
+      currentJobId.value = response.data.job_id;
+      toast.success('✅ تم بدء المزامنة في الخلفية');
+      
+      // بدء polling لحالة المزامنة
+      pollSyncStatus(response.data.job_id);
+    } else {
+      toast.error(response.data.message || 'فشل بدء المزامنة');
+    }
+  } catch (error) {
+    console.error('Error starting smart sync:', error);
+    toast.error('فشل بدء المزامنة: ' + (error.response?.data?.message || error.message));
+  } finally {
+    isSyncing.value = false;
+  }
+};
+
+const pollSyncStatus = async (jobId) => {
+  const maxAttempts = 60; // 60 محاولة (دقيقة واحدة)
+  let attempts = 0;
+  
+  const interval = setInterval(async () => {
+    attempts++;
+    try {
+      const response = await axios.get('/api/sync-monitor/sync-status', {
+        params: { job_id: jobId },
+        withCredentials: true
+      });
+
+      if (response.data.success) {
+        currentSyncStatus.value = response.data;
+        const status = response.data.status?.status;
+
+        if (status === 'completed' || status === 'failed') {
+          clearInterval(interval);
+          if (status === 'completed') {
+            toast.success(`✅ اكتملت المزامنة: ${response.data.status?.synced || 0} سجل`);
+          } else {
+            toast.error('❌ فشلت المزامنة: ' + (response.data.status?.error || 'خطأ غير معروف'));
+          }
+          // تحديث البيانات
+          await loadAllData();
+          await checkPendingChanges();
+        }
+      } else if (response.data.status === 'not_found') {
+        clearInterval(interval);
+        currentSyncStatus.value = null;
+      }
+    } catch (error) {
+      console.error('Error polling sync status:', error);
+    }
+
+    if (attempts >= maxAttempts) {
+      clearInterval(interval);
+      toast.warning('⏱️ انتهت مهلة الانتظار لحالة المزامنة');
+    }
+    }, 1000); // كل ثانية
+};
+
+const loadSyncQueueDetails = async (status = 'pending', offset = 0, limit = 50) => {
+  loadingQueueDetails.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/sync-queue-details', {
+      params: {
+        status: status,
+        offset: offset,
+        limit: limit
+      },
+      withCredentials: true
+    });
+
+    if (response.data.success) {
+      syncQueueDetails.value = response.data;
+      toast.success(`✅ تم جلب ${response.data.changes.length} سجل`);
+    } else {
+      toast.error(response.data.message || 'فشل جلب التفاصيل');
+    }
+  } catch (error) {
+    console.error('Error loading sync queue details:', error);
+    toast.error('فشل جلب التفاصيل: ' + (error.response?.data?.message || error.message));
+  } finally {
+    loadingQueueDetails.value = false;
+  }
 };
 
 
@@ -965,6 +1500,8 @@ const handleOffline = () => {
 onMounted(() => {
   // جلب جميع البيانات في request واحد فقط
   loadAllData();
+  // تحديث الإحصائيات تلقائياً
+  checkSyncMetadata();
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 });

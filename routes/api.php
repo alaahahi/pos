@@ -176,6 +176,7 @@ Route::prefix('sync-monitor')->group(function () {
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
     Route::get('/sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getSyncStatus']); // جديد: الحصول على حالة المزامنة
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
+    Route::get('/sync-queue-details', [App\Http\Controllers\SyncMonitorController::class, 'getSyncQueueDetails']); // جديد: تفاصيل sync_queue
     Route::post('/retry-failed', [App\Http\Controllers\SyncMonitorController::class, 'retryFailed']);
     Route::get('/id-conflicts', [App\Http\Controllers\SyncMonitorController::class, 'checkIdConflicts']);
     Route::get('/id-mappings', [App\Http\Controllers\SyncMonitorController::class, 'getIdMappings']);

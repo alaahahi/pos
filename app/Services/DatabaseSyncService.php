@@ -27,7 +27,9 @@ class DatabaseSyncService
         // إذا كان SYNC_VIA_API=true، إجبار استخدام API فقط
         if ($this->useApi) {
             $this->apiSyncService = new ApiSyncService();
-            Log::info('API Sync enabled - جميع الاتصالات عبر API فقط', [
+            // استخدام debug بدلاً من info لتقليل الضوضاء في اللوغات
+            // لأن هذه الخدمة يتم إنشاؤها كثيراً (كل 5 ثواني من SyncStatusBar)
+            Log::debug('API Sync enabled - جميع الاتصالات عبر API فقط', [
                 'online_url' => env('ONLINE_URL'),
                 'api_token_set' => !empty(env('SYNC_API_TOKEN')),
             ]);
@@ -65,7 +67,14 @@ class DatabaseSyncService
             }
             
             // التحقق من توفر API فقط
-            if (!$this->apiSyncService->isApiAvailable()) {
+            $apiAvailable = $this->apiSyncService->isApiAvailable();
+            Log::info('API availability check', [
+                'api_available' => $apiAvailable,
+                'online_url' => env('ONLINE_URL'),
+                'api_token_set' => !empty(env('SYNC_API_TOKEN')),
+            ]);
+            
+            if (!$apiAvailable) {
                 $errorMsg = 'API غير متاح - لا يمكن المزامنة. يرجى التحقق من الاتصال بالسيرفر.';
                 $results['errors'][] = $errorMsg;
                 $results['message'] = $errorMsg;
@@ -77,9 +86,19 @@ class DatabaseSyncService
 
             // جلب التغييرات المعلقة
             $pendingChanges = $this->syncQueueService->getPendingChanges($tableName, $limit);
+            
+            Log::info('Pending changes check', [
+                'pending_count' => count($pendingChanges),
+                'table_name' => $tableName,
+                'limit' => $limit,
+                'sample_tables' => array_slice(array_unique(array_column($pendingChanges, 'table_name')), 0, 5),
+            ]);
 
             if (empty($pendingChanges)) {
-                Log::info('No pending changes to sync');
+                Log::info('No pending changes to sync', [
+                    'table_name' => $tableName,
+                    'limit' => $limit,
+                ]);
                 return $results;
             }
 
@@ -117,13 +136,38 @@ class DatabaseSyncService
 
                         while ($retryCount < $maxRetries && !$synced) {
                             try {
+                                Log::debug('Processing sync change', [
+                                    'table' => $change['table_name'],
+                                    'record_id' => $change['record_id'],
+                                    'action' => $change['action'],
+                                    'retry' => $retryCount,
+                                ]);
+                                
                                 $synced = $this->processChange($change);
                                 if ($synced) {
                                     $this->syncQueueService->markAsSynced($change['id']);
                                     $results['synced']++;
+                                    Log::debug('Sync change succeeded', [
+                                        'table' => $change['table_name'],
+                                        'record_id' => $change['record_id'],
+                                        'action' => $change['action'],
+                                    ]);
                                     break; // نجح - توقف عن المحاولة
+                                } else {
+                                    Log::warning('Sync change returned false', [
+                                        'table' => $change['table_name'],
+                                        'record_id' => $change['record_id'],
+                                        'action' => $change['action'],
+                                    ]);
                                 }
                             } catch (\Exception $e) {
+                                Log::error('Sync change exception', [
+                                    'table' => $change['table_name'],
+                                    'record_id' => $change['record_id'],
+                                    'action' => $change['action'],
+                                    'error' => $e->getMessage(),
+                                    'retry' => $retryCount,
+                                ]);
                                 $retryCount++;
                                 
                                 // إذا كان الخطأ بسبب MySQL غير متاح أو فشل الاتصال، توقف فوراً

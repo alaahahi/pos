@@ -973,6 +973,83 @@ class SyncMonitorController extends Controller
     }
 
     /**
+     * الحصول على تفاصيل sync_queue بحسب الحالة
+     */
+    public function getSyncQueueDetails(Request $request)
+    {
+        try {
+            $status = $request->input('status', 'pending'); // pending, synced, failed
+            $tableName = $request->input('table_name'); // اختياري
+            $limit = $request->input('limit', 100);
+            $offset = $request->input('offset', 0);
+            
+            $connection = config('database.default');
+            
+            if (!Schema::hasTable('sync_queue')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جدول sync_queue غير موجود',
+                    'changes' => [],
+                    'total' => 0,
+                ]);
+            }
+            
+            $query = DB::connection($connection)->table('sync_queue')
+                ->where('status', $status);
+            
+            if ($tableName) {
+                $query->where('table_name', $tableName);
+            }
+            
+            // جلب العدد الإجمالي
+            $total = $query->count();
+            
+            // جلب البيانات مع pagination
+            $changes = $query->orderBy('created_at', 'desc')
+                ->offset($offset)
+                ->limit($limit)
+                ->get()
+                ->map(function ($item) {
+                    return [
+                        'id' => $item->id,
+                        'table_name' => $item->table_name,
+                        'record_id' => $item->record_id,
+                        'action' => $item->action,
+                        'data' => $item->data ? json_decode($item->data, true) : null,
+                        'changes' => $item->changes ? json_decode($item->changes, true) : null,
+                        'status' => $item->status,
+                        'retry_count' => $item->retry_count,
+                        'error_message' => $item->error_message,
+                        'synced_at' => $item->synced_at,
+                        'created_at' => $item->created_at,
+                        'updated_at' => $item->updated_at,
+                    ];
+                });
+            
+            return response()->json([
+                'success' => true,
+                'changes' => $changes,
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+                'status' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get sync queue details', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'changes' => [],
+                'total' => 0,
+            ], 500);
+        }
+    }
+
+    /**
      * التحقق من التعارضات في ID
      */
     public function checkIdConflicts(Request $request)

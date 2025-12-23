@@ -16,7 +16,7 @@ class ApiSyncService
     {
         $this->apiUrl = env('ONLINE_URL', 'https://nissan.intellij-app.com');
         $this->apiToken = env('SYNC_API_TOKEN', '');
-        $this->timeout = env('SYNC_API_TIMEOUT', 30); // 30 ثانية timeout
+        $this->timeout = (int) env('SYNC_API_TIMEOUT', 10); // 10 ثواني timeout للـ health check (أقل من 30)
     }
 
     /**
@@ -25,10 +25,17 @@ class ApiSyncService
     public function isApiAvailable(): bool
     {
         try {
-            // محاولة الاتصال بـ API health endpoint
-            $response = Http::timeout(10)
-                ->withToken($this->apiToken)
-                ->get("{$this->apiUrl}/api/sync-monitor/sync-health");
+            // محاولة الاتصال بـ API health endpoint مع timeout أقصر (5 ثواني)
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout(5)
+                ->connectTimeout(3); // timeout للاتصال (3 ثواني)
+            
+            // إضافة التوكن فقط إذا كان موجوداً (للتجريب - يمكن تعطيله مؤقتاً)
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->get("{$this->apiUrl}/api/sync-monitor/sync-health");
 
             // التحقق من أن الاستجابة ناجحة (200 OK)
             if ($response->successful()) {
@@ -105,9 +112,20 @@ class ApiSyncService
         try {
             $recordId = $data['id'] ?? 0;
             
-            $response = Http::timeout($this->timeout)
-                ->withToken($this->apiToken)
-                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+            Log::info('API sync insert attempt', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'api_url' => $this->apiUrl,
+                'has_token' => !empty($this->apiToken),
+            ]);
+            
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout($this->timeout);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'insert',
@@ -116,21 +134,36 @@ class ApiSyncService
 
             if ($response->successful()) {
                 $result = $response->json();
+                Log::info('API sync insert succeeded', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                    'response' => $result,
+                ]);
                 return [
                     'success' => $result['success'] ?? true,
                     'data' => $result,
                 ];
             }
 
+            $errorMsg = $response->json('message', 'Unknown error');
+            Log::warning('API sync insert failed', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status' => $response->status(),
+                'error' => $errorMsg,
+            ]);
+
             return [
                 'success' => false,
-                'error' => $response->json('message', 'Unknown error'),
+                'error' => $errorMsg,
                 'status' => $response->status(),
             ];
         } catch (\Exception $e) {
             Log::error("Failed to sync insert via API: {$tableName}", [
                 'error' => $e->getMessage(),
                 'table' => $tableName,
+                'record_id' => $recordId ?? null,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
@@ -146,9 +179,20 @@ class ApiSyncService
     public function syncUpdate(string $tableName, int $recordId, array $data): array
     {
         try {
-            $response = Http::timeout($this->timeout)
-                ->withToken($this->apiToken)
-                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+            Log::info('API sync update attempt', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'api_url' => $this->apiUrl,
+                'has_token' => !empty($this->apiToken),
+            ]);
+            
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout($this->timeout);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'update',
@@ -157,15 +201,28 @@ class ApiSyncService
 
             if ($response->successful()) {
                 $result = $response->json();
+                Log::info('API sync update succeeded', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                    'response' => $result,
+                ]);
                 return [
                     'success' => $result['success'] ?? true,
                     'data' => $result,
                 ];
             }
 
+            $errorMsg = $response->json('message', 'Unknown error');
+            Log::warning('API sync update failed', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status' => $response->status(),
+                'error' => $errorMsg,
+            ]);
+
             return [
                 'success' => false,
-                'error' => $response->json('message', 'Unknown error'),
+                'error' => $errorMsg,
                 'status' => $response->status(),
             ];
         } catch (\Exception $e) {
@@ -173,6 +230,7 @@ class ApiSyncService
                 'error' => $e->getMessage(),
                 'table' => $tableName,
                 'id' => $recordId,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [
@@ -188,9 +246,13 @@ class ApiSyncService
     public function syncDelete(string $tableName, int $recordId): array
     {
         try {
-            $response = Http::timeout($this->timeout)
-                ->withToken($this->apiToken)
-                ->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout($this->timeout);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'delete',
@@ -229,9 +291,13 @@ class ApiSyncService
     public function syncBatch(array $changes): array
     {
         try {
-            $response = Http::timeout($this->timeout * 2) // timeout أطول للـ batch
-                ->withToken($this->apiToken)
-                ->post("{$this->apiUrl}/api/sync/batch", [
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout($this->timeout * 2); // timeout أطول للـ batch
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->post("{$this->apiUrl}/api/sync/batch", [
                     'changes' => $changes,
                 ]);
 
@@ -274,9 +340,13 @@ class ApiSyncService
                 return $cached;
             }
 
-            $response = Http::timeout(10)
-                ->withToken($this->apiToken)
-                ->get("{$this->apiUrl}/api/sync/mapping", [
+            // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
+            $httpRequest = Http::timeout(10);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $response = $httpRequest->get("{$this->apiUrl}/api/sync/mapping", [
                     'table' => $tableName,
                     'local_id' => $localId,
                 ]);

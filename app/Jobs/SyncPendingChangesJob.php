@@ -141,7 +141,21 @@ class SyncPendingChangesJob implements ShouldQueue
                 }
             }
             
+            Log::info('Calling syncPendingChanges', [
+                'job_id' => $this->jobId,
+                'table_name' => $this->tableName,
+                'limit' => $this->limit,
+            ]);
+            
             $results = $syncService->syncPendingChanges($this->tableName, $this->limit, 300);
+            
+            Log::info('syncPendingChanges returned', [
+                'job_id' => $this->jobId,
+                'synced' => $results['synced'] ?? 0,
+                'failed' => $results['failed'] ?? 0,
+                'errors_count' => count($results['errors'] ?? []),
+                'has_message' => !empty($results['message'] ?? null),
+            ]);
 
             // حفظ النتائج في Cache
             $this->updateStatus([
@@ -158,6 +172,7 @@ class SyncPendingChangesJob implements ShouldQueue
                 'job_id' => $this->jobId,
                 'synced' => $results['synced'] ?? 0,
                 'failed' => $results['failed'] ?? 0,
+                'total_processed' => $results['total_processed'] ?? 0,
             ]);
 
             // حذف الحالة بعد 5 دقائق من اكتمال المزامنة
