@@ -14,20 +14,26 @@ class SyncQueueService
      */
     public function queueChange(string $tableName, int $recordId, string $action, array $data = null, array $changes = null): bool
     {
-        // فقط في البيئة المحلية
-        if (env('APP_ENV') === 'server' || env('APP_ENV') === 'production') {
+        // فقط في البيئة المحلية أو إذا كان الاتصال الافتراضي SQLite
+        $defaultConnection = config('database.default');
+        $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
+        
+        if (!$isSQLite && (env('APP_ENV') === 'server' || env('APP_ENV') === 'production')) {
             return false; // على السيرفر: لا حاجة لـ sync_queue
         }
 
+        // استخدام الاتصال الافتراضي (sync_sqlite في Local، mysql في Online)
+        $connection = config('database.default');
+        
         // التحقق من وجود الجدول
-        if (!Schema::hasTable('sync_queue')) {
+        if (!Schema::connection($connection)->hasTable('sync_queue')) {
             Log::warning('sync_queue table does not exist. Skipping queue change.');
             return false;
         }
 
         try {
             // التحقق من وجود سجل pending لنفس السجل
-            $existing = DB::table('sync_queue')
+            $existing = DB::connection($connection)->table('sync_queue')
                 ->where('table_name', $tableName)
                 ->where('record_id', $recordId)
                 ->where('status', 'pending')
@@ -35,7 +41,7 @@ class SyncQueueService
 
             if ($existing) {
                 // تحديث السجل الموجود
-                DB::table('sync_queue')
+                DB::connection($connection)->table('sync_queue')
                     ->where('id', $existing->id)
                     ->update([
                         'action' => $action,
@@ -48,7 +54,7 @@ class SyncQueueService
                     ]);
             } else {
                 // إضافة سجل جديد
-                DB::table('sync_queue')->insert([
+                DB::connection($connection)->table('sync_queue')->insert([
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => $action,
@@ -118,7 +124,10 @@ class SyncQueueService
      */
     public function getPendingChanges(string $tableName = null, int $limit = 100): array
     {
-        $query = DB::table('sync_queue')
+        // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+        $connection = config('database.default');
+        
+        $query = DB::connection($connection)->table('sync_queue')
             ->where('status', 'pending')
             ->orderBy('created_at', 'asc');
 
@@ -146,7 +155,10 @@ class SyncQueueService
     public function markAsSynced(int $queueId): bool
     {
         try {
-            DB::table('sync_queue')
+            // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+            $connection = config('database.default');
+            
+            DB::connection($connection)->table('sync_queue')
                 ->where('id', $queueId)
                 ->update([
                     'status' => 'synced',
@@ -169,7 +181,10 @@ class SyncQueueService
     public function markAsFailed(int $queueId, string $errorMessage): bool
     {
         try {
-            DB::table('sync_queue')
+            // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+            $connection = config('database.default');
+            
+            DB::connection($connection)->table('sync_queue')
                 ->where('id', $queueId)
                 ->update([
                     'status' => 'failed',
@@ -193,7 +208,10 @@ class SyncQueueService
     public function cleanSyncedRecords(int $hoursOld = 24): int
     {
         try {
-            $deleted = DB::table('sync_queue')
+            // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+            $connection = config('database.default');
+            
+            $deleted = DB::connection($connection)->table('sync_queue')
                 ->where('status', 'synced')
                 ->where('synced_at', '<', now()->subHours($hoursOld))
                 ->delete();
@@ -218,7 +236,10 @@ class SyncQueueService
     public function retryFailed(int $maxRetries = 3): int
     {
         try {
-            $updated = DB::table('sync_queue')
+            // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+            $connection = config('database.default');
+            
+            $updated = DB::connection($connection)->table('sync_queue')
                 ->where('status', 'failed')
                 ->where('retry_count', '<', $maxRetries)
                 ->update([
@@ -230,6 +251,37 @@ class SyncQueueService
             return $updated;
         } catch (\Exception $e) {
             Log::error('Failed to retry failed sync records', [
+                'error' => $e->getMessage()
+            ]);
+            return 0;
+        }
+    }
+
+    /**
+     * إعادة تعيين جميع السجلات الفاشلة إلى pending (للمحاولة مرة أخرى)
+     */
+    public function resetFailedToPending(): int
+    {
+        try {
+            // استخدام الاتصال الافتراضي (sync_sqlite في Local)
+            $connection = config('database.default');
+            
+            $updated = DB::connection($connection)->table('sync_queue')
+                ->where('status', 'failed')
+                ->update([
+                    'status' => 'pending',
+                    'error_message' => null,
+                    'retry_count' => 0,
+                    'updated_at' => now()
+                ]);
+
+            Log::info('Reset failed sync records to pending', [
+                'count' => $updated
+            ]);
+
+            return $updated;
+        } catch (\Exception $e) {
+            Log::error('Failed to reset failed sync records', [
                 'error' => $e->getMessage()
             ]);
             return 0;

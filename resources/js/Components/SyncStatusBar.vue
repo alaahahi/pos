@@ -46,9 +46,10 @@
             @click="syncNow"
             class="btn-sync"
             :disabled="isSyncing"
+            title="المزامنة الذكية - مزامنة التغييرات من sync_queue إلى السيرفر"
           >
-            <span v-if="!isSyncing">🔄 مزامنة</span>
-            <span v-else>⏳ جاري...</span>
+            <span v-if="!isSyncing">🔄 المزامنة الذكية</span>
+            <span v-else>⏳ جاري المزامنة...</span>
           </button>
 
           <Link
@@ -135,15 +136,9 @@ const updateStatus = async () => {
     try {
       const response = await axios.get('/api/sync-monitor/metadata');
       if (response.data.success) {
-        // حساب عدد الجداول التي تحتاج مزامنة
-        const metadata = response.data.metadata || [];
-        pendingCount.value = metadata.filter(m => {
-          // إذا كان آخر مزامنة قديم (أكثر من ساعة) أو لم يتم المزامنة
-          if (!m.last_synced_at) return true;
-          const lastSync = new Date(m.last_synced_at);
-          const hoursSinceSync = (Date.now() - lastSync.getTime()) / (1000 * 60 * 60);
-          return hoursSinceSync > 1; // أكثر من ساعة
-        }).length;
+        // استخدام queue_stats للحصول على العدد الحقيقي من sync_queue
+        const queueStats = response.data.queue_stats || {};
+        pendingCount.value = queueStats.pending || 0;
         
         // إظهار الشريط إذا كان هناك عمليات معلقة أو offline
         if ((pendingCount.value > 0 || !isOnline.value) && !dismissed.value) {
@@ -170,39 +165,114 @@ const syncNow = async () => {
   totalCount.value = pendingCount.value;
   
   try {
-    // بدء المزامنة من SQLite إلى MySQL
-    const response = await axios.post('/api/sync-monitor/sync', {
-      direction: 'up', // من SQLite إلى MySQL
-      safe_mode: true,
-      create_backup: true
+    // بدء المزامنة في الخلفية (Background Job)
+    const response = await axios.post('/api/sync-monitor/smart-sync', {
+      limit: 100
     });
     
-    if (response.data.success) {
-      const results = response.data.results || {};
-      totalCount.value = Object.keys(results.success || {}).length;
-      syncedCount.value = totalCount.value;
-      
-      // مزامنة من MySQL إلى SQLite
-      await axios.post('/api/sync-monitor/sync', {
-        direction: 'down' // من MySQL إلى SQLite
-      });
-      
-      await updateStatus();
-      
-      if (syncedCount.value === totalCount.value) {
-        toast.success(`✅ تمت مزامنة ${syncedCount.value} جدول بنجاح!`);
-        showBar.value = false;
-      } else {
-        toast.warning(`⚠️ تمت مزامنة ${syncedCount.value} من ${totalCount.value}`);
-      }
-    } else {
-      toast.error('❌ فشلت المزامنة: ' + (response.data.message || 'خطأ غير معروف'));
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.message || 'فشل بدء المزامنة');
     }
+    
+    const jobId = response.data.job_id;
+    toast.info('🔄 تم بدء المزامنة في الخلفية...');
+    
+    // Polling: التحقق من حالة المزامنة كل ثانية
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusResponse = await axios.get('/api/sync-monitor/sync-status', {
+          params: { job_id: jobId }
+        });
+        
+        if (statusResponse.data && statusResponse.data.success) {
+          const status = statusResponse.data.status;
+          
+          // تحديث التقدم
+          if (status.synced !== undefined) {
+            syncedCount.value = status.synced || 0;
+          }
+          if (status.total_processed !== undefined) {
+            totalCount.value = status.total_processed || pendingCount.value;
+          }
+          
+          // إذا اكتملت المزامنة
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            isSyncing.value = false;
+            
+            const synced = status.synced || 0;
+            const failed = status.failed || 0;
+            
+            // تحديث الحالة
+            await updateStatus();
+            
+            if (failed === 0 && pendingCount.value === 0) {
+              toast.success(`✅ تمت مزامنة ${synced} عملية بنجاح!`);
+              showBar.value = false;
+            } else if (synced > 0) {
+              toast.warning(`⚠️ تمت مزامنة ${synced} عملية، فشل ${failed}، متبقي ${pendingCount.value}`);
+            } else {
+              toast.error('❌ فشلت المزامنة');
+            }
+          }
+          
+          // إذا فشلت المزامنة
+          if (status.status === 'failed') {
+            clearInterval(pollInterval);
+            isSyncing.value = false;
+            
+            const errorMsg = status.error || 'فشلت المزامنة';
+            toast.error('❌ ' + errorMsg);
+            
+            // تحديث الحالة
+            await updateStatus();
+          }
+        } else if (statusResponse.data && statusResponse.data.status === 'not_found') {
+          // Job لم يعد موجوداً (اكتمل وتم حذفه من Cache)
+          clearInterval(pollInterval);
+          isSyncing.value = false;
+          
+          // تحديث الحالة
+          await updateStatus();
+          
+          if (pendingCount.value === 0) {
+            toast.success('✅ تمت المزامنة بنجاح!');
+            showBar.value = false;
+          }
+        }
+      } catch (error) {
+        console.error('خطأ في التحقق من حالة المزامنة:', error);
+        // لا نوقف المزامنة، فقط نستمر في المحاولة
+      }
+    }, 1000); // كل ثانية
+    
+    // Timeout: إيقاف Polling بعد 10 دقائق
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (isSyncing.value) {
+        isSyncing.value = false;
+        toast.warning('⏱️ انتهت مهلة المزامنة. قد تكون المزامنة لا تزال جارية في الخلفية.');
+        updateStatus();
+      }
+    }, 600000); // 10 دقائق
   } catch (error) {
     console.error('فشلت المزامنة:', error);
-    toast.error('❌ فشلت المزامنة: ' + (error.response?.data?.message || error.message));
+    const errorMessage = error.response?.data?.message || error.message || 'فشلت المزامنة';
+    
+    // عرض رسالة خطأ واضحة
+    if (errorMessage.includes('MySQL غير متاح') || errorMessage.includes('لا يمكن الاتصال')) {
+      toast.error('❌ MySQL غير متاح - لا يمكن المزامنة. يرجى التحقق من الاتصال بالسيرفر.');
+    } else {
+      toast.error('❌ فشلت المزامنة: ' + errorMessage);
+    }
+    
+    // إعادة تعيين العدادات
+    syncedCount.value = 0;
+    totalCount.value = pendingCount.value;
   } finally {
     isSyncing.value = false;
+    // تحديث الحالة مرة أخرى للتأكد من الأرقام الصحيحة
+    await updateStatus();
   }
 };
 

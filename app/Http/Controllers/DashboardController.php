@@ -189,10 +189,23 @@ class DashboardController extends Controller
     private function getMonthlySalesChartData()
     {
         return Cache::remember('monthly_sales_chart_data', 60, function () {
-            $monthlySales = Order::selectRaw('MONTH(created_at) as month, SUM(total_amount) as total')
-                ->whereYear('created_at', now()->year)
-                ->groupBy('month')
-                ->get();
+            // استخدام دالة مناسبة حسب نوع قاعدة البيانات
+            $connection = config('database.default');
+            $isSQLite = $connection === 'sync_sqlite' || $connection === 'sqlite';
+            
+            if ($isSQLite) {
+                // SQLite: استخدام strftime
+                $monthlySales = Order::selectRaw("CAST(strftime('%m', created_at) AS INTEGER) as month, SUM(total_amount) as total")
+                    ->whereRaw("strftime('%Y', created_at) = ?", [now()->year])
+                    ->groupBy('month')
+                    ->get();
+            } else {
+                // MySQL: استخدام MONTH
+                $monthlySales = Order::selectRaw('MONTH(created_at) as month, SUM(total_amount) as total')
+                    ->whereYear('created_at', now()->year)
+                    ->groupBy('month')
+                    ->get();
+            }
     
             $months = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 
                      'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];

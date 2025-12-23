@@ -69,6 +69,93 @@ Route::get('/check-session', function () {
     return response()->json(['message' => 'Session valid.'], 200);
 });
 
+// التحقق من الاتصال الحالي بقاعدة البيانات
+Route::get('/check-database-connection', function () {
+    try {
+        $defaultConnection = config('database.default');
+        $connectionConfig = config("database.connections.{$defaultConnection}");
+        
+        // معلومات الاتصال
+        $connectionInfo = [
+            'default_connection' => $defaultConnection,
+            'driver' => $connectionConfig['driver'] ?? 'unknown',
+            'database' => $connectionConfig['database'] ?? 'unknown',
+            'host' => $connectionConfig['host'] ?? 'N/A',
+            'is_local' => in_array(request()->getHost(), ['localhost', '127.0.0.1', '::1']),
+            'app_url' => env('APP_URL'),
+            'app_env' => env('APP_ENV'),
+        ];
+        
+        // محاولة الاتصال
+        try {
+            $pdo = \DB::connection()->getPdo();
+            $connectionInfo['connected'] = true;
+            
+            // الحصول على اسم قاعدة البيانات بناءً على نوع الاتصال
+            if ($defaultConnection === 'sync_sqlite' || $defaultConnection === 'sqlite') {
+                // SQLite: استخدم مسار الملف
+                $dbPath = $connectionConfig['database'] ?? '';
+                $connectionInfo['database_name'] = basename($dbPath) ?? 'N/A';
+                $connectionInfo['file_exists'] = file_exists($dbPath);
+                $connectionInfo['file_size'] = file_exists($dbPath) ? filesize($dbPath) : 0;
+                $connectionInfo['file_path'] = $dbPath;
+            } else {
+                // MySQL: استخدم SELECT database()
+                try {
+                    $connectionInfo['database_name'] = $pdo->query('SELECT database()')->fetchColumn() ?? 
+                                                       ($connectionConfig['database'] ?? 'N/A');
+                } catch (\Exception $e) {
+                    $connectionInfo['database_name'] = $connectionConfig['database'] ?? 'N/A';
+                }
+            }
+            
+            // اختبار query بسيط
+            $testQuery = \DB::select('SELECT 1 as test');
+            $connectionInfo['query_test'] = $testQuery[0]->test === 1;
+            
+        } catch (\Exception $e) {
+            $connectionInfo['connected'] = false;
+            $connectionInfo['error'] = $e->getMessage();
+        }
+        
+        // معلومات MySQL (إذا كان متاحاً)
+        $mysqlInfo = [
+            'available' => false,
+            'connected' => false,
+        ];
+        
+        try {
+            $mysqlPdo = \DB::connection('mysql')->getPdo();
+            $mysqlInfo['available'] = true;
+            $mysqlInfo['connected'] = true;
+            try {
+                $mysqlInfo['database_name'] = $mysqlPdo->query('SELECT database()')->fetchColumn();
+            } catch (\Exception $e) {
+                $mysqlInfo['database_name'] = config('database.connections.mysql.database', 'N/A');
+            }
+        } catch (\Exception $e) {
+            $mysqlInfo['available'] = true;
+            $mysqlInfo['connected'] = false;
+            $mysqlInfo['error'] = $e->getMessage();
+        }
+        
+        return response()->json([
+            'success' => true,
+            'connection' => $connectionInfo,
+            'mysql' => $mysqlInfo,
+            'message' => $defaultConnection === 'sync_sqlite' ? 
+                '✅ متصل على SQLite (Local Mode)' : 
+                '✅ متصل على MySQL (Online Mode)'
+        ], 200);
+        
+    } catch (\Exception $e) {
+        return response()->json([
+            'success' => false,
+            'error' => $e->getMessage()
+        ], 500);
+    }
+});
+
 // License API Routes
 require __DIR__.'/api_license.php';
 
@@ -86,9 +173,14 @@ Route::prefix('sync-monitor')->group(function () {
     
     // Smart Sync routes (المزامنة الذكية)
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
+    Route::get('/sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getSyncStatus']); // جديد: الحصول على حالة المزامنة
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
+    Route::post('/retry-failed', [App\Http\Controllers\SyncMonitorController::class, 'retryFailed']);
     Route::get('/id-conflicts', [App\Http\Controllers\SyncMonitorController::class, 'checkIdConflicts']);
     Route::get('/id-mappings', [App\Http\Controllers\SyncMonitorController::class, 'getIdMappings']);
+    
+    // تهيئة SQLite
+    Route::post('/init-sqlite', [App\Http\Controllers\SyncMonitorController::class, 'initSQLite']);
     
     // Backup routes
     Route::get('/backups', [App\Http\Controllers\SyncMonitorController::class, 'backups']);

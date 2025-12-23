@@ -38,7 +38,7 @@ return [
         'sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DATABASE_URL'),
-            'database' => env('DB_DATABASE', database_path('database.sqlite')),
+            'database' => env('DB_DATABASE', database_path('sync.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
         ],
@@ -46,7 +46,11 @@ return [
         'sync_sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DATABASE_URL'),
-            'database' => env('SYNC_SQLITE_PATH', database_path('sync.sqlite')),
+            'database' => env('SYNC_SQLITE_PATH') 
+                ? (str_starts_with(env('SYNC_SQLITE_PATH'), '/') || str_starts_with(env('SYNC_SQLITE_PATH'), 'C:') 
+                    ? env('SYNC_SQLITE_PATH') 
+                    : base_path(env('SYNC_SQLITE_PATH')))
+                : database_path('sync.sqlite'),
             'prefix' => '',
             'foreign_key_constraints' => true,
         ],
@@ -68,7 +72,15 @@ return [
             'engine' => null,
             'options' => extension_loaded('pdo_mysql') ? array_filter([
                 PDO::MYSQL_ATTR_SSL_CA => env('MYSQL_ATTR_SSL_CA'),
+                // إعدادات timeout و retry للاتصال
+                PDO::ATTR_TIMEOUT => env('MYSQL_TIMEOUT', 5), // 5 ثواني timeout
+                PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+                PDO::ATTR_PERSISTENT => false, // لا نستخدم persistent connections
             ]) : [],
+            // إعدادات إضافية للاتصال
+            'timeout' => env('MYSQL_TIMEOUT', 5), // timeout للاتصال بالثواني
+            'retry_after' => env('MYSQL_RETRY_AFTER', 30), // إعادة المحاولة بعد 30 ثانية
+            'max_retries' => env('MYSQL_MAX_RETRIES', 3), // عدد المحاولات
         ],
 
         'pgsql' => [

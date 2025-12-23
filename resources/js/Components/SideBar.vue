@@ -402,7 +402,7 @@
 </style>
 
 <script setup>
-import { Link , usePage} from '@inertiajs/vue3'
+import { Link , usePage, router} from '@inertiajs/vue3'
 import { onMounted, nextTick } from 'vue'
 
 const page = usePage()
@@ -415,6 +415,13 @@ const hasPermission = (permission) => {
 const closeSidebarOnMobile = () => {
   if (window.innerWidth < 1200) {
     document.body.classList.remove('toggle-sidebar');
+  }
+};
+
+// Prefetch page on hover for faster navigation
+const prefetchOnHover = (url) => {
+  if (url && typeof router !== 'undefined' && router.prefetch) {
+    router.prefetch(url);
   }
 };
 
@@ -431,9 +438,17 @@ onMounted(() => {
     }
     
     // Add click listeners to all sidebar links to close sidebar on mobile
-    const sidebarLinks = document.querySelectorAll('#sidebar .nav-link')
+    const sidebarLinks = document.querySelectorAll('#sidebar .nav-link, #sidebar a[href]')
     sidebarLinks.forEach(link => {
       link.addEventListener('click', closeSidebarOnMobile)
+      
+      // Prefetch on hover for faster navigation
+      const href = link.getAttribute('href')
+      if (href && href.startsWith('/') && !href.startsWith('/logout')) {
+        link.addEventListener('mouseenter', () => {
+          prefetchOnHover(href)
+        }, { once: true }) // Prefetch مرة واحدة فقط
+      }
     })
   })
 })

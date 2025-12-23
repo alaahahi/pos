@@ -51,9 +51,11 @@ createInertiaApp({
             });
         }
 
+
         app.mount(el);
     },
     progress: {
         color: '#4B5563',
+        delay: 100, // تأخير صغير قبل إظهار شريط التقدم
     },
 });

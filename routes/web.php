@@ -224,3 +224,6 @@ Route::get('/license/status', [App\Http\Controllers\LicenseController::class, 's
     ->name('license.status');
 
 require __DIR__ . '/auth.php';
+
+// Test routes - يمكن حذفها بعد التأكد من أن كل شيء يعمل
+require __DIR__ . '/test-db.php';

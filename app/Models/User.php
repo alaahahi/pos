@@ -15,6 +15,48 @@ use Illuminate\Database\Eloquent\Relations\MorphTo;
 class User extends Authenticatable
 {
     use HasApiTokens, HasFactory, Notifiable,   HasRoles;
+    
+    /**
+     * The table associated with the model.
+     * اسم الجدول هو 'users' في كل من MySQL و SQLite
+     */
+    protected $table = 'users';
+    
+    /**
+     * Get the database connection for the model.
+     * في Local، استخدم SQLite تلقائياً
+     */
+    public function getConnectionName()
+    {
+        // إذا كان Local، استخدم SQLite
+        if ($this->isLocalMode()) {
+            return 'sync_sqlite';
+        }
+        
+        // استخدم الاتصال الافتراضي
+        return parent::getConnectionName();
+    }
+    
+    /**
+     * التحقق من وضع Local
+     */
+    protected function isLocalMode(): bool
+    {
+        // التحقق من URL
+        $host = request()->getHost();
+        $localHosts = ['localhost', '127.0.0.1', '::1'];
+        
+        if (in_array($host, $localHosts)) {
+            return true;
+        }
+        
+        // التحقق من متغير البيئة
+        if (app()->environment('local')) {
+            return true;
+        }
+        
+        return false;
+    }
 
 
     /**

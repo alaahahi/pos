@@ -264,6 +264,177 @@
               </div>
             </div>
 
+            <!-- Database Connection Section -->
+            <div class="row mt-3">
+              <div class="col-12">
+                <div class="card">
+                  <div class="card-header d-flex justify-content-between align-items-center">
+                    <h6 class="card-title mb-0">
+                      <i class="bi bi-database me-2"></i>
+                      حالة الاتصال بقاعدة البيانات
+                    </h6>
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-primary"
+                      @click="checkDatabaseConnection"
+                      :disabled="checkingConnection"
+                    >
+                      <span v-if="checkingConnection" class="spinner-border spinner-border-sm me-2"></span>
+                      <i v-else class="bi bi-arrow-clockwise me-1"></i>
+                      {{ checkingConnection ? 'جاري التحقق...' : 'التحقق من الاتصال' }}
+                    </button>
+                  </div>
+                  <div class="card-body">
+                    <!-- معلومات الاتصال -->
+                    <div v-if="connectionInfo" class="mt-3">
+                      <!-- رسالة الحالة -->
+                      <div :class="getConnectionAlertClass(connectionInfo.connection)" class="alert mb-3">
+                        <div class="d-flex align-items-center">
+                          <i :class="getConnectionIcon(connectionInfo.connection)" class="me-2 fs-4"></i>
+                          <div>
+                            <h6 class="mb-1">{{ connectionInfo.message }}</h6>
+                            <p class="mb-0">
+                              <strong>الاتصال الافتراضي:</strong> 
+                              <span class="badge" :class="getConnectionBadgeClass(connectionInfo.connection.default_connection)">
+                                {{ connectionInfo.connection.default_connection }}
+                              </span>
+                              <span class="ms-2">
+                                | <strong>نوع قاعدة البيانات:</strong> 
+                                <span class="badge bg-info">{{ connectionInfo.connection.driver }}</span>
+                              </span>
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+
+                      <!-- تفاصيل الاتصال -->
+                      <div class="row">
+                        <div class="col-md-6">
+                          <table class="table table-sm table-borderless">
+                            <tbody>
+                              <tr>
+                                <td class="fw-bold" style="width: 40%;">الاتصال الافتراضي:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.default_connection }}</code>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="fw-bold">نوع قاعدة البيانات:</td>
+                                <td>
+                                  <span class="badge" :class="getConnectionBadgeClass(connectionInfo.connection.driver)">
+                                    {{ connectionInfo.connection.driver }}
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="fw-bold">حالة الاتصال:</td>
+                                <td>
+                                  <span v-if="connectionInfo.connection.connected" class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>متصل
+                                  </span>
+                                  <span v-else class="badge bg-danger">
+                                    <i class="bi bi-x-circle me-1"></i>غير متصل
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr v-if="connectionInfo.connection.driver === 'sqlite'">
+                                <td class="fw-bold">مسار الملف:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.file_path || connectionInfo.connection.database }}</code>
+                                </td>
+                              </tr>
+                              <tr v-if="connectionInfo.connection.driver === 'sqlite' && connectionInfo.connection.file_exists">
+                                <td class="fw-bold">حجم الملف:</td>
+                                <td>{{ formatFileSize(connectionInfo.connection.file_size) }}</td>
+                              </tr>
+                              <tr v-if="connectionInfo.connection.driver === 'mysql'">
+                                <td class="fw-bold">اسم قاعدة البيانات:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.database_name || connectionInfo.connection.database }}</code>
+                                </td>
+                              </tr>
+                              <tr v-if="connectionInfo.connection.driver === 'mysql'">
+                                <td class="fw-bold">الخادم:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.host }}:{{ connectionInfo.connection.port || 3306 }}</code>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                        <div class="col-md-6">
+                          <table class="table table-sm table-borderless">
+                            <tbody>
+                              <tr>
+                                <td class="fw-bold" style="width: 40%;">وضع التشغيل:</td>
+                                <td>
+                                  <span v-if="connectionInfo.connection.is_local" class="badge bg-warning">
+                                    <i class="bi bi-laptop me-1"></i>Local
+                                  </span>
+                                  <span v-else class="badge bg-primary">
+                                    <i class="bi bi-cloud me-1"></i>Online
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="fw-bold">بيئة التطبيق:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.app_env || 'N/A' }}</code>
+                                </td>
+                              </tr>
+                              <tr>
+                                <td class="fw-bold">URL التطبيق:</td>
+                                <td>
+                                  <code class="small">{{ connectionInfo.connection.app_url || 'N/A' }}</code>
+                                </td>
+                              </tr>
+                              <tr v-if="connectionInfo.connection.query_test !== undefined">
+                                <td class="fw-bold">اختبار Query:</td>
+                                <td>
+                                  <span v-if="connectionInfo.connection.query_test" class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>نجح
+                                  </span>
+                                  <span v-else class="badge bg-danger">
+                                    <i class="bi bi-x-circle me-1"></i>فشل
+                                  </span>
+                                </td>
+                              </tr>
+                              <tr v-if="connectionInfo.mysql">
+                                <td class="fw-bold">MySQL متاح:</td>
+                                <td>
+                                  <span v-if="connectionInfo.mysql.connected" class="badge bg-success">
+                                    <i class="bi bi-check-circle me-1"></i>متصل
+                                  </span>
+                                  <span v-else-if="connectionInfo.mysql.available" class="badge bg-warning">
+                                    <i class="bi bi-exclamation-triangle me-1"></i>غير متصل
+                                  </span>
+                                  <span v-else class="badge bg-secondary">
+                                    <i class="bi bi-x-circle me-1"></i>غير متاح
+                                  </span>
+                                </td>
+                              </tr>
+                            </tbody>
+                          </table>
+                        </div>
+                      </div>
+
+                      <!-- رسالة خطأ إذا كان هناك خطأ -->
+                      <div v-if="connectionInfo.connection.error" class="alert alert-danger mt-3">
+                        <i class="bi bi-exclamation-triangle me-2"></i>
+                        <strong>خطأ:</strong> {{ connectionInfo.connection.error }}
+                      </div>
+                    </div>
+
+                    <!-- رسالة عند عدم وجود معلومات -->
+                    <div v-else class="text-center text-muted py-4">
+                      <i class="bi bi-info-circle me-2"></i>
+                      اضغط على "التحقق من الاتصال" لعرض معلومات الاتصال
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <!-- Decoration Types Section -->
             <div class="row mt-3">
               <div class="col-12">
@@ -440,6 +611,71 @@ const verifyLicense = async () => {
   } finally {
     verifying.value = false;
   }
+};
+
+// Database Connection functions
+const checkingConnection = ref(false);
+const connectionInfo = ref(null);
+
+const checkDatabaseConnection = async () => {
+  checkingConnection.value = true;
+  error.value = '';
+  success.value = '';
+
+  try {
+    const response = await axios.get('/api/check-database-connection');
+    
+    if (response.data.success) {
+      connectionInfo.value = response.data;
+      success.value = response.data.message || 'تم التحقق من الاتصال بنجاح';
+    } else {
+      error.value = response.data.error || 'فشل التحقق من الاتصال';
+      connectionInfo.value = null;
+    }
+  } catch (err) {
+    error.value = err.response?.data?.error || 'حدث خطأ أثناء التحقق من الاتصال';
+    connectionInfo.value = null;
+  } finally {
+    checkingConnection.value = false;
+  }
+};
+
+const getConnectionAlertClass = (connection) => {
+  if (!connection || !connection.connected) {
+    return 'alert-danger';
+  }
+  if (connection.default_connection === 'sync_sqlite') {
+    return 'alert-info';
+  }
+  return 'alert-success';
+};
+
+const getConnectionIcon = (connection) => {
+  if (!connection || !connection.connected) {
+    return 'bi bi-x-circle';
+  }
+  if (connection.default_connection === 'sync_sqlite') {
+    return 'bi bi-database';
+  }
+  return 'bi bi-check-circle';
+};
+
+const getConnectionBadgeClass = (type) => {
+  if (type === 'sync_sqlite' || type === 'sqlite') {
+    return 'bg-info';
+  }
+  if (type === 'mysql') {
+    return 'bg-primary';
+  }
+  return 'bg-secondary';
+};
+
+const formatFileSize = (bytes) => {
+  if (!bytes) return '0 B';
+  const k = 1024;
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return Math.round((bytes / Math.pow(k, i)) * 100) / 100 + ' ' + sizes[i];
 };
 
 const copyToClipboard = (text) => {

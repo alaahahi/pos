@@ -36,8 +36,9 @@ class SyncMonitorController extends Controller
             $tables = [];
             if (!$forceConnection || $forceConnection === 'mysql' || $forceConnection === 'auto') {
                 try {
-                    $mysqlTables = DB::select('SHOW TABLES');
-                    $dbName = DB::getDatabaseName();
+                    // استخدام MySQL بشكل صريح
+                    $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
+                    $dbName = DB::connection('mysql')->getDatabaseName();
                     $tableKey = "Tables_in_{$dbName}";
                     
                     foreach ($mysqlTables as $table) {
@@ -186,8 +187,9 @@ class SyncMonitorController extends Controller
             // Get MySQL tables
             if (!$forceConnection || $forceConnection === 'mysql' || $forceConnection === 'auto') {
                 try {
-                    $mysqlTables = DB::select('SHOW TABLES');
-                    $dbName = DB::getDatabaseName();
+                    // استخدام MySQL بشكل صريح
+                    $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
+                    $dbName = DB::connection('mysql')->getDatabaseName();
                     $tableKey = "Tables_in_{$dbName}";
                     
                     foreach ($mysqlTables as $table) {
@@ -840,19 +842,101 @@ class SyncMonitorController extends Controller
     /**
      * المزامنة الذكية: مزامنة التغييرات من sync_queue فقط
      */
+    /**
+     * بدء المزامنة في الخلفية (Background)
+     */
     public function smartSync(Request $request)
     {
         try {
             $tableName = $request->input('table_name'); // اختياري
             $limit = $request->input('limit', 100);
             
-            $syncService = new DatabaseSyncService();
-            $results = $syncService->syncPendingChanges($tableName, $limit);
+            // إنشاء Job جديد للمزامنة في الخلفية
+            $job = new \App\Jobs\SyncPendingChangesJob($tableName, $limit);
+            $jobId = $job->getJobId();
+            
+            // إرسال Job إلى Queue (في الخلفية - Background)
+            // تأكد من أن QUEUE_CONNECTION=database في .env
+            dispatch($job)->onQueue('sync'); // استخدام queue مخصص للمزامنة
+            
+            Log::info('Sync job dispatched', [
+                'job_id' => $jobId,
+                'table_name' => $tableName,
+                'limit' => $limit,
+            ]);
             
             return response()->json([
                 'success' => true,
-                'message' => 'تمت المزامنة الذكية بنجاح',
-                'results' => $results,
+                'message' => 'تم بدء المزامنة في الخلفية',
+                'job_id' => $jobId,
+                'status' => 'queued',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to dispatch sync job', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * الحصول على حالة المزامنة (للـ polling من Frontend)
+     */
+    public function getSyncStatus(Request $request)
+    {
+        try {
+            $jobId = $request->input('job_id');
+            
+            if (!$jobId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'job_id مطلوب',
+                ], 400);
+            }
+            
+            $status = \Illuminate\Support\Facades\Cache::get("sync_status_{$jobId}");
+            
+            if (!$status) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لم يتم العثور على حالة المزامنة',
+                    'status' => 'not_found',
+                ], 404);
+            }
+            
+            return response()->json([
+                'success' => true,
+                'job_id' => $jobId,
+                'status' => $status,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get sync status', [
+                'error' => $e->getMessage(),
+            ]);
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * إعادة تعيين السجلات الفاشلة إلى pending
+     */
+    public function retryFailed(Request $request)
+    {
+        try {
+            $syncQueueService = new SyncQueueService();
+            $resetCount = $syncQueueService->resetFailedToPending();
+            
+            return response()->json([
+                'success' => true,
+                'message' => "تم إعادة تعيين {$resetCount} سجل(ات) فاشل(ة) إلى pending",
+                'reset_count' => $resetCount,
             ]);
         } catch (\Exception $e) {
             return response()->json([

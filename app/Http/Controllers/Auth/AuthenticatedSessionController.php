@@ -31,7 +31,21 @@ class AuthenticatedSessionController extends Controller
      */
     public function store(LoginRequest $request): RedirectResponse
     {
-        $user = User::where('email', $request->email)->first();
+        // استخدام الاتصال الافتراضي (سيتم تحديده تلقائياً في AppServiceProvider)
+        // إذا كان Local أو MySQL غير متوفر، سيستخدم SQLite
+        try {
+            $user = User::where('email', $request->email)->first();
+        } catch (\Exception $e) {
+            // إذا فشل الاتصال الافتراضي، جرب SQLite
+            try {
+                $user = User::on('sync_sqlite')->where('email', $request->email)->first();
+            } catch (\Exception $e2) {
+                // لا يوجد اتصال متوفر
+                return back()->withErrors([
+                    'email' => 'فشل الاتصال بقاعدة البيانات. يرجى المحاولة مرة أخرى.',
+                ]);
+            }
+        }
     
         // Check if the user is inactive
         if ($user && !$user->is_active) {

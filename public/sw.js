@@ -1,8 +1,9 @@
 // Service Worker - PWA محسّن - دعم Offline سريع
 // الهدف: تسريع التطبيق + دعم offline بدون تخزين IndexedDB
 
-const CACHE_NAME = 'pos-v3.0.0'; // ⬆️ تحديث الإصدار - PWA محسّن
-const RUNTIME_CACHE = 'pos-runtime-v3.0.0';
+const CACHE_NAME = 'pos-v4.0.0'; // ⬆️ تحديث الإصدار - PWA محسّن مع Cache First
+const RUNTIME_CACHE = 'pos-runtime-v4.0.0';
+const PAGES_CACHE = 'pos-pages-v4.0.0'; // كاش منفصل للصفحات
 const ASSETS_TO_CACHE = [
   '/',
   '/offline.html',
@@ -37,14 +38,14 @@ self.addEventListener('activate', (event) => {
     caches.keys().then(cacheNames => {
       return Promise.all(
         cacheNames
-          .filter(name => name !== CACHE_NAME)
+          .filter(name => name !== CACHE_NAME && name !== PAGES_CACHE && name !== RUNTIME_CACHE)
           .map(name => {
             console.log('🗑️ Deleting old cache:', name);
             return caches.delete(name);
           })
       );
     }).then(() => {
-      console.log('✅ SW v2.0 activated and claimed all clients!');
+      console.log('✅ SW v4.0 activated and claimed all clients!');
       return self.clients.claim(); // التحكم الفوري بجميع الصفحات
     })
   );
@@ -65,29 +66,44 @@ self.addEventListener('fetch', (event) => {
     return;
   }
   
-  // ✅ دعم طلبات Inertia (زيارة الصفحات داخل التطبيق)
+  // ✅ دعم طلبات Inertia (زيارة الصفحات داخل التطبيق) - Cache First Strategy
   const isInertiaRequest = request.headers.get('X-Inertia') || request.headers.get('X-Inertia-Version');
   if (isInertiaRequest) {
     event.respondWith(
-      fetch(request)
-        .then(response => {
-          if (response && response.ok) {
-            const clone = response.clone();
-            caches.open(CACHE_NAME).then(cache => cache.put(request, clone));
-          }
-          return response;
-        })
-        .catch(async () => {
-          const cached = await caches.match(request);
+      caches.open(PAGES_CACHE).then(cache => {
+        return cache.match(request).then(cached => {
+          // إذا كان موجود في الكاش، أرجعها فوراً (أسرع)
           if (cached) {
+            // تحديث الكاش في الخلفية (Stale-While-Revalidate)
+            fetch(request)
+              .then(response => {
+                if (response && response.ok) {
+                  const clone = response.clone();
+                  cache.put(request, clone);
+                }
+              })
+              .catch(() => {}); // تجاهل الأخطاء في التحديث
             return cached;
           }
-          const shell = await caches.match('/app-shell.html');
-          if (shell) {
-            return shell;
-          }
-          return caches.match('/offline.html');
-        })
+          
+          // إذا لم يكن في الكاش، جلب من الشبكة
+          return fetch(request)
+            .then(response => {
+              if (response && response.ok) {
+                const clone = response.clone();
+                cache.put(request, clone);
+              }
+              return response;
+            })
+            .catch(async () => {
+              const shell = await caches.match('/app-shell.html');
+              if (shell) {
+                return shell;
+              }
+              return caches.match('/offline.html');
+            });
+        });
+      })
     );
     return;
   }

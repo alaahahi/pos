@@ -47,14 +47,23 @@ class AccountingController extends Controller
     public function __construct(){
         $this->url = env('FRONTEND_URL');
         
-        // التحقق من وجود قاعدة البيانات قبل المحاولة
+        // استخدام الاتصال الافتراضي (سيتم تحديده تلقائياً في AppServiceProvider)
+        // إذا كان Local أو MySQL غير متوفر، سيستخدم SQLite
         try {
             \DB::connection()->getPdo();
             // قاعدة البيانات متوفرة
             $this->initializeDatabaseConnections();
         } catch (\Exception $e) {
-            // قاعدة البيانات غير متوفرة
-            $this->initializeNullValues();
+            // قاعدة البيانات غير متوفرة - حاول SQLite كـ fallback
+            try {
+                \DB::connection('sync_sqlite')->getPdo();
+                // SQLite متوفر، استخدمه
+                \Config::set('database.default', 'sync_sqlite');
+                $this->initializeDatabaseConnections();
+            } catch (\Exception $e2) {
+                // لا توجد قاعدة بيانات متوفرة
+                $this->initializeNullValues();
+            }
         }
 
         $this->currentDate = Carbon::now()->format('Y-m-d');

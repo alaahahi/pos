@@ -29,8 +29,24 @@ class OrderController extends Controller
         $this->middleware('permission:create order', ['only' => ['create', 'store']]);
         $this->middleware('permission:update order', ['only' => ['edit', 'update']]);
         $this->middleware('permission:delete order', ['only' => ['destroy']]);
-        $this->userAccount = UserType::where('name', 'account')->first()?->id;
-        $this->mainBox= User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com')->first();
+        
+        // استخدام الاتصال الافتراضي (سيتم تحديده تلقائياً في AppServiceProvider)
+        // إذا كان Local أو MySQL غير متوفر، سيستخدم SQLite
+        try {
+            $this->userAccount = UserType::where('name', 'account')->first()?->id;
+            $this->mainBox = User::with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com')->first();
+        } catch (\Exception $e) {
+            // إذا فشل الاتصال الافتراضي، جرب SQLite
+            try {
+                $this->userAccount = UserType::on('sync_sqlite')->where('name', 'account')->first()?->id;
+                $this->mainBox = User::on('sync_sqlite')->with('wallet')->where('type_id', $this->userAccount)->where('email','mainBox@account.com')->first();
+            } catch (\Exception $e2) {
+                // لا توجد قاعدة بيانات متوفرة
+                $this->userAccount = null;
+                $this->mainBox = null;
+            }
+        }
+        
         $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD'); // مثلاً 'KWD' كخيار افتراضي
 
     }

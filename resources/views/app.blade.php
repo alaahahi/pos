@@ -46,6 +46,12 @@
     <script>
         window.translations = @json(__('messages'));
         window.permissions = @json(auth()->user() ? auth()->user()->getAllPermissions()->pluck('name') : []);
+        
+        // إعدادات الاتصال - من ملف .env
+        window.connectionInfo = {
+            online_url: @json(env('ONLINE_URL', 'https://system.intellijapp.com/dashboard')),
+            local_url: @json(env('LOCAL_URL', 'http://127.0.0.1:8000/'))
+        };
     </script>
     @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
     @inertiaHead

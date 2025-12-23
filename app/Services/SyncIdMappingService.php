@@ -115,32 +115,36 @@ class SyncIdMappingService
 
     /**
      * التحقق من وجود ID في السيرفر (للتعارضات)
+     * يجب التحقق من MySQL (السيرفر) وليس من الاتصال الافتراضي
      */
     public function checkIdConflict(string $tableName, int $id): bool
     {
         try {
-            return DB::table($tableName)->where('id', $id)->exists();
+            // التحقق من MySQL (السيرفر) مباشرة
+            return DB::connection('mysql')->table($tableName)->where('id', $id)->exists();
         } catch (\Exception $e) {
+            // إذا فشل الاتصال بـ MySQL، افترض عدم وجود تعارض
             return false;
         }
     }
 
     /**
      * حل التعارض: إيجاد ID متاح جديد
+     * يجب البحث في MySQL (السيرفر) وليس من الاتصال الافتراضي
      */
     public function resolveConflict(string $tableName, int $preferredId): int
     {
         try {
-            // إذا كان ID متاح، استخدمه
+            // إذا كان ID متاح في MySQL، استخدمه
             if (!$this->checkIdConflict($tableName, $preferredId)) {
                 return $preferredId;
             }
 
-            // البحث عن ID متاح (ابحث بعد الـ ID المفضل)
-            $maxId = DB::table($tableName)->max('id') ?? 0;
+            // البحث عن ID متاح في MySQL (ابحث بعد الـ ID المفضل)
+            $maxId = DB::connection('mysql')->table($tableName)->max('id') ?? 0;
             $newId = max($preferredId, $maxId) + 1;
 
-            // تأكد من أن الـ ID الجديد متاح
+            // تأكد من أن الـ ID الجديد متاح في MySQL
             while ($this->checkIdConflict($tableName, $newId)) {
                 $newId++;
             }
