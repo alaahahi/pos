@@ -461,6 +461,74 @@ class ApiSyncService
     }
 
     /**
+     * جلب البيانات من السيرفر (للمقارنة)
+     */
+    public function getTableData(string $tableName, int $limit = 1000, int $offset = 0): array
+    {
+        try {
+            Log::debug('Fetching table data from server', [
+                'table' => $tableName,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+            
+            $httpRequest = Http::timeout($this->timeout * 2); // timeout أطول لجلب البيانات
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            
+            $url = "{$this->apiUrl}/api/sync-monitor/table/{$tableName}";
+            $response = $httpRequest->get($url, [
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+
+            $statusCode = $response->status();
+            $responseBody = $response->json();
+            
+            if ($response->successful() && ($responseBody['success'] ?? false)) {
+                Log::debug('Table data fetched successfully', [
+                    'table' => $tableName,
+                    'count' => count($responseBody['data'] ?? []),
+                ]);
+                
+                return [
+                    'success' => true,
+                    'data' => $responseBody['data'] ?? [],
+                    'total' => $responseBody['total'] ?? 0,
+                    'columns' => $responseBody['columns'] ?? [],
+                ];
+            }
+
+            $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
+            Log::warning('Failed to fetch table data from server', [
+                'table' => $tableName,
+                'status' => $statusCode,
+                'error' => $errorMsg,
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $errorMsg,
+                'status' => $statusCode,
+                'data' => [],
+            ];
+        } catch (\Exception $e) {
+            Log::error("Failed to fetch table data from server: {$tableName}", [
+                'error' => $e->getMessage(),
+                'table' => $tableName,
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return [
+                'success' => false,
+                'error' => $e->getMessage(),
+                'data' => [],
+            ];
+        }
+    }
+
+    /**
      * مزامنة batch عبر API (أكثر كفاءة)
      */
     public function syncBatch(array $changes): array
