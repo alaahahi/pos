@@ -270,6 +270,137 @@
                 </button>
               </div>
 
+              <!-- قسم مقارنة الجداول -->
+              <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <h4 class="text-md font-semibold mb-4 dark:text-gray-50">🔍 مقارنة البيانات (السيرفر vs المحلي)</h4>
+                <div class="flex gap-4 items-end mb-4">
+                  <div class="flex-1">
+                    <label class="block text-sm font-medium mb-2 dark:text-gray-300">اختر الجدول:</label>
+                    <input
+                      v-model="compareTableName"
+                      type="text"
+                      placeholder="مثال: orders"
+                      class="w-full px-4 py-2 border rounded dark:bg-gray-700 dark:text-gray-200 dark:border-gray-600"
+                    />
+                  </div>
+                  <button
+                    @click="compareTables"
+                    :disabled="!compareTableName || comparingTables"
+                    class="px-6 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span v-if="!comparingTables">🔍 مقارنة</span>
+                    <span v-else>⏳ جاري المقارنة...</span>
+                  </button>
+                  <button
+                    @click="syncCompareTable"
+                    :disabled="!compareTableName || isSyncing || !connectionStatus.online"
+                    class="px-6 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                    title="مزامنة هذا الجدول"
+                  >
+                    <span v-if="!isSyncing">🔄 مزامنة</span>
+                    <span v-else>⏳ جاري المزامنة...</span>
+                  </button>
+                </div>
+
+                <!-- نتائج المقارنة -->
+                <div v-if="compareResult" class="mt-6">
+                  <div class="mb-4 p-4 rounded-lg" :class="compareResult.summary?.is_identical ? 'bg-green-50 dark:bg-green-900' : 'bg-yellow-50 dark:bg-yellow-900'">
+                    <div class="flex items-center justify-between mb-2">
+                      <div class="flex items-center gap-3">
+                        <h5 class="font-semibold dark:text-gray-100">
+                          {{ compareResult.summary?.is_identical ? '✅ البيانات متطابقة' : '⚠️ يوجد اختلافات' }}
+                        </h5>
+                        <button
+                          @click="syncCompareTable"
+                          :disabled="isSyncing || !connectionStatus.online"
+                          class="px-4 py-1.5 bg-green-600 text-white text-sm rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                          :title="`مزامنة جدول ${compareTableName}`"
+                        >
+                          <span v-if="!isSyncing">🔄 مزامنة {{ compareTableName }}</span>
+                          <span v-else>⏳ جاري المزامنة...</span>
+                        </button>
+                      </div>
+                      <span class="text-2xl">{{ compareResult.summary?.is_identical ? '✅' : '⚠️' }}</span>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">المحلي:</span>
+                        <span class="font-bold ml-2 dark:text-gray-100">{{ compareResult.summary?.local_count || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">السيرفر:</span>
+                        <span class="font-bold ml-2 dark:text-gray-100">{{ compareResult.summary?.server_count || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">متطابق:</span>
+                        <span class="font-bold text-green-600 dark:text-green-400 ml-2">{{ compareResult.summary?.matched_count || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">مختلف:</span>
+                        <span class="font-bold text-red-600 dark:text-red-400 ml-2">{{ compareResult.summary?.differences_count || 0 }}</span>
+                      </div>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4 mt-3 text-sm">
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">في المحلي فقط:</span>
+                        <span class="font-bold text-blue-600 dark:text-blue-400 ml-2">{{ compareResult.summary?.only_local_count || 0 }}</span>
+                      </div>
+                      <div>
+                        <span class="text-gray-600 dark:text-gray-300">في السيرفر فقط:</span>
+                        <span class="font-bold text-orange-600 dark:text-orange-400 ml-2">{{ compareResult.summary?.only_server_count || 0 }}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <!-- السجلات المختلفة -->
+                  <div v-if="compareResult.differences && compareResult.differences.length > 0" class="mt-4">
+                    <h5 class="font-semibold mb-3 dark:text-gray-100">📋 السجلات المختلفة (عرض أول {{ compareResult.differences.length }} من {{ compareResult.total_differences }})</h5>
+                    <div class="overflow-x-auto">
+                      <table class="min-w-full border-collapse border border-gray-300 dark:border-gray-500 text-sm">
+                        <thead class="bg-gray-50 dark:bg-gray-700">
+                          <tr>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">ID</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الحقل</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">المحلي</th>
+                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">السيرفر</th>
+                          </tr>
+                        </thead>
+                        <tbody class="bg-white dark:bg-gray-800">
+                          <template v-for="diff in compareResult.differences" :key="diff.id">
+                            <tr v-for="(fieldValue, fieldName) in diff.fields" :key="`${diff.id}-${fieldName}`" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                              <td class="px-4 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 font-medium">{{ diff.id }}</td>
+                              <td class="px-4 py-2 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-500">{{ fieldName }}</td>
+                              <td class="px-4 py-2 text-red-600 dark:text-red-400 border border-gray-300 dark:border-gray-500 font-mono text-xs">{{ fieldValue.local }}</td>
+                              <td class="px-4 py-2 text-green-600 dark:text-green-400 border border-gray-300 dark:border-gray-500 font-mono text-xs">{{ fieldValue.server }}</td>
+                            </tr>
+                          </template>
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <!-- السجلات الموجودة في المحلي فقط -->
+                  <div v-if="compareResult.only_local_ids && compareResult.only_local_ids.length > 0" class="mt-4">
+                    <h5 class="font-semibold mb-3 dark:text-gray-100">📋 في المحلي فقط (عرض أول {{ compareResult.only_local_ids.length }} من {{ compareResult.total_only_local }})</h5>
+                    <div class="p-3 bg-blue-50 dark:bg-blue-900 rounded border border-blue-300 dark:border-blue-700">
+                      <span v-for="id in compareResult.only_local_ids" :key="id" class="inline-block px-3 py-1 bg-blue-200 dark:bg-blue-700 text-blue-800 dark:text-blue-200 rounded mr-2 mb-2">
+                        ID: {{ id }}
+                      </span>
+                    </div>
+                  </div>
+
+                  <!-- السجلات الموجودة في السيرفر فقط -->
+                  <div v-if="compareResult.only_server_ids && compareResult.only_server_ids.length > 0" class="mt-4">
+                    <h5 class="font-semibold mb-3 dark:text-gray-100">📋 في السيرفر فقط (عرض أول {{ compareResult.only_server_ids.length }} من {{ compareResult.total_only_server }})</h5>
+                    <div class="p-3 bg-orange-50 dark:bg-orange-900 rounded border border-orange-300 dark:border-orange-700">
+                      <span v-for="id in compareResult.only_server_ids" :key="id" class="inline-block px-3 py-1 bg-orange-200 dark:bg-orange-700 text-orange-800 dark:text-orange-200 rounded mr-2 mb-2">
+                        ID: {{ id }}
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               <!-- عرض نتائج فحص الحالة العامة -->
               <div v-if="syncHealth && Object.keys(syncHealth).length > 0" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
                 <h4 class="text-md font-semibold mb-4 dark:text-gray-50">📊 نتائج فحص الحالة العامة</h4>
@@ -972,6 +1103,11 @@ const currentJobId = ref(null);
 const syncQueueDetails = ref(null);
 const loadingQueueDetails = ref(false);
 
+// مقارنة الجداول
+const compareTableName = ref('orders');
+const comparingTables = ref(false);
+const compareResult = ref(null);
+
 // الوظائف الأساسية - جلب جميع البيانات في request واحد
 const loadAllData = async () => {
   isRefreshing.value = true;
@@ -1126,20 +1262,42 @@ const syncDirection = async (direction) => {
   if (!confirm(`هل تريد المزامنة ${direction === 'up' ? 'من SQLite إلى MySQL' : 'من MySQL إلى SQLite'}?`)) return;
   isSyncing.value = true;
   try {
-    const response = await axios.post('/api/sync-monitor/sync', {
-      direction,
-      tables: null,
-      safe_mode: direction === 'up',
-      create_backup: direction === 'up'
-    }, { withCredentials: true });
-    if (response.data.success) {
-      toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
-      await loadAllData();
+    // إذا كان الاتجاه "down" (من MySQL إلى SQLite)، استخدم endpoint جديد يعمل عبر API
+    if (direction === 'down') {
+      // في النظام المحلي، استخدم sync-from-server لجدول orders أولاً (يمكن توسيعها)
+      try {
+        const response = await axios.post('/api/sync-monitor/sync-from-server', {
+          table_name: 'orders',
+          limit: 1000
+        }, { withCredentials: true });
+        
+        if (response.data.success) {
+          toast.success(`✅ تمت مزامنة ${response.data.synced || 0} سجل(ات) من السيرفر لجدول orders`);
+          await loadAllData();
+        } else {
+          toast.error(response.data.message || 'فشلت المزامنة من السيرفر');
+        }
+      } catch (error) {
+        console.error('Error syncing from server:', error);
+        toast.error('فشلت المزامنة من السيرفر: ' + (error.response?.data?.message || error.message));
+      }
     } else {
-      toast.error('فشلت المزامنة');
+      // الاتجاه "up" (من SQLite إلى MySQL) - استخدم endpoint العادي
+      const response = await axios.post('/api/sync-monitor/sync', {
+        direction,
+        tables: null,
+        safe_mode: direction === 'up',
+        create_backup: direction === 'up'
+      }, { withCredentials: true });
+      if (response.data.success) {
+        toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
+        await loadAllData();
+      } else {
+        toast.error('فشلت المزامنة');
+      }
     }
   } catch (error) {
-    toast.error('فشلت المزامنة');
+    toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message));
   } finally {
     isSyncing.value = false;
   }
@@ -1483,6 +1641,89 @@ const getLogClass = (type) => {
     error: 'bg-red-100 text-red-800'
   };
   return classes[type] || 'bg-gray-100 text-gray-800';
+};
+
+// مقارنة الجداول
+const compareTables = async () => {
+  if (!compareTableName.value) {
+    toast.error('يرجى إدخال اسم الجدول');
+    return;
+  }
+
+  comparingTables.value = true;
+  compareResult.value = null;
+
+  try {
+    const response = await axios.post('/api/sync-monitor/compare-tables', {
+      table_name: compareTableName.value,
+      limit: 1000
+    }, { withCredentials: true });
+
+    if (response.data.success) {
+      compareResult.value = response.data;
+      toast.success(`✅ تمت المقارنة: ${compareResult.value.summary?.is_identical ? 'البيانات متطابقة' : 'يوجد اختلافات'}`);
+    } else {
+      toast.error(response.data.message || 'فشلت المقارنة');
+    }
+  } catch (error) {
+    console.error('Error comparing tables:', error);
+    toast.error('فشلت المقارنة: ' + (error.response?.data?.message || error.message));
+  } finally {
+    comparingTables.value = false;
+  }
+};
+
+// مزامنة جدول المقارنة
+const syncCompareTable = async () => {
+  if (!compareTableName.value) {
+    toast.error('يرجى إدخال اسم الجدول أولاً');
+    return;
+  }
+
+  if (!connectionStatus.value.online) {
+    toast.error('❌ لا يمكن المزامنة - أنت في وضع Offline');
+    return;
+  }
+
+  // سؤال المستخدم: هل يريد مزامنة sync_queue أم السجلات المفقودة؟
+  const syncType = confirm(
+    `مزامنة جدول "${compareTableName.value}"؟\n\n` +
+    `نعم = مزامنة السجلات المفقودة (من SQLite إلى MySQL)\n` +
+    `إلغاء = مزامنة sync_queue فقط`
+  ) ? 'missing' : 'queue';
+
+  if (syncType === 'queue') {
+    // إلغاء - لا نعمل شيء
+    return;
+  }
+
+  isSyncing.value = true;
+  try {
+    // مزامنة السجلات المفقودة
+    const response = await axios.post('/api/sync-monitor/sync-missing-records', {
+      table_name: compareTableName.value,
+      limit: 1000
+    }, { withCredentials: true });
+
+    if (response.data.success) {
+      toast.success(
+        `✅ تمت المزامنة: ${response.data.synced} نجحت، ${response.data.failed} فشلت` +
+        (response.data.total_missing > 0 ? ` (${response.data.total_missing} سجل مفقود)` : '')
+      );
+      
+      // تحديث المقارنة بعد قليل
+      setTimeout(() => {
+        compareTables();
+      }, 2000);
+    } else {
+      toast.error(response.data.message || 'فشلت المزامنة');
+    }
+  } catch (error) {
+    console.error('Error syncing compare table:', error);
+    toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message));
+  } finally {
+    isSyncing.value = false;
+  }
 };
 
 // Event Listeners

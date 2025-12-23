@@ -44,7 +44,8 @@ class SyncMonitorController extends Controller
                     foreach ($mysqlTables as $table) {
                         $tableName = $table->$tableKey;
                         try {
-                            $rowCount = DB::table($tableName)->count();
+                            // على السيرفر: استخدام MySQL فقط
+                            $rowCount = DB::connection('mysql')->table($tableName)->count();
                         } catch (\Exception $e) {
                             $rowCount = 0;
                         }
@@ -97,8 +98,12 @@ class SyncMonitorController extends Controller
                 'total' => 0,
             ];
             
-            if (Schema::hasTable('sync_metadata')) {
-                $metadata = DB::table('sync_metadata')
+            // sync_metadata و sync_queue موجودة فقط على المحلي (SQLite)
+            $defaultConnection = config('database.default');
+            $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
+            
+            if ($isSQLite && Schema::connection('sync_sqlite')->hasTable('sync_metadata')) {
+                $metadata = DB::connection('sync_sqlite')->table('sync_metadata')
                     ->orderBy('table_name')
                     ->get()
                     ->map(function ($item) {
@@ -112,10 +117,10 @@ class SyncMonitorController extends Controller
                     });
             }
 
-            // جلب إحصائيات sync_queue
-            if (Schema::hasTable('sync_queue')) {
+            // جلب إحصائيات sync_queue (فقط على المحلي)
+            if ($isSQLite && Schema::connection('sync_sqlite')->hasTable('sync_queue')) {
                 try {
-                    $stats = DB::table('sync_queue')
+                    $stats = DB::connection('sync_sqlite')->table('sync_queue')
                         ->selectRaw('
                             COUNT(*) as total,
                             SUM(CASE WHEN status = "pending" THEN 1 ELSE 0 END) as pending,
@@ -314,8 +319,8 @@ class SyncMonitorController extends Controller
                         })
                         ->toArray();
                 } else {
-                    // MySQL
-                    if (!Schema::hasTable($tableName)) {
+                    // MySQL - على السيرفر: استخدام MySQL فقط
+                    if (!Schema::connection('mysql')->hasTable($tableName)) {
                         return response()->json([
                             'success' => false,
                             'error' => 'الجدول غير موجود في MySQL',
@@ -323,13 +328,13 @@ class SyncMonitorController extends Controller
                     }
                     
                     // جلب الأعمدة
-                    $columns = Schema::getColumnListing($tableName);
+                    $columns = Schema::connection('mysql')->getColumnListing($tableName);
                     
                     // جلب إجمالي السجلات
-                    $total = DB::table($tableName)->count();
+                    $total = DB::connection('mysql')->table($tableName)->count();
                     
                     // جلب البيانات
-                    $data = DB::table($tableName)
+                    $data = DB::connection('mysql')->table($tableName)
                         ->offset($offset)
                         ->limit($limit)
                         ->get()
@@ -409,8 +414,9 @@ class SyncMonitorController extends Controller
                 // جميع الجداول
                 if ($direction === 'down') {
                     // من MySQL إلى SQLite - جلب جميع جداول MySQL
-                    $mysqlTables = DB::select('SHOW TABLES');
-                    $dbName = DB::getDatabaseName();
+                    // على السيرفر: استخدام MySQL فقط
+                    $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
+                    $dbName = DB::connection('mysql')->getDatabaseName();
                     $tableKey = "Tables_in_{$dbName}";
                     foreach ($mysqlTables as $table) {
                         $tableName = $table->$tableKey;
@@ -483,7 +489,8 @@ class SyncMonitorController extends Controller
         
         if ($direction === 'down') {
             // من MySQL إلى SQLite
-            if (!Schema::hasTable($tableName)) {
+            // على السيرفر: استخدام MySQL فقط
+            if (!Schema::connection('mysql')->hasTable($tableName)) {
                 throw new \Exception("الجدول {$tableName} غير موجود في MySQL");
             }
             
@@ -514,8 +521,9 @@ class SyncMonitorController extends Controller
             
             // محاولة استخدام id للترتيب، وإلا بدون ترتيب
             try {
-                $query = DB::table($tableName);
-                $columns = Schema::getColumnListing($tableName);
+                // على السيرفر: استخدام MySQL فقط
+                $query = DB::connection('mysql')->table($tableName);
+                $columns = Schema::connection('mysql')->getColumnListing($tableName);
                 if (in_array('id', $columns)) {
                     $query->orderBy('id');
                 }
@@ -562,7 +570,8 @@ class SyncMonitorController extends Controller
                 });
             } catch (\Exception $e) {
                 // إذا فشل chunk، جرب الطريقة العادية
-                $mysqlData = DB::table($tableName)->get();
+                // على السيرفر: استخدام MySQL فقط
+                $mysqlData = DB::connection('mysql')->table($tableName)->get();
                 foreach ($mysqlData as $row) {
                     try {
                         $rowArray = (array) $row;
@@ -604,7 +613,8 @@ class SyncMonitorController extends Controller
             }
             
             // إنشاء الجدول في MySQL إذا لم يكن موجوداً
-            if (!Schema::hasTable($tableName)) {
+            // على السيرفر: استخدام MySQL فقط
+            if (!Schema::connection('mysql')->hasTable($tableName)) {
                 $this->createTableInMySQL($tableName);
             }
             
@@ -612,13 +622,14 @@ class SyncMonitorController extends Controller
             $sqliteData = DB::connection('sync_sqlite')->table($tableName)->get();
             
             // إدراج البيانات في MySQL
+            // على السيرفر: استخدام MySQL فقط
             foreach ($sqliteData as $row) {
                 try {
                     $rowArray = (array) $row;
                     
                     if ($safeMode) {
                         // Safe Mode: إضافة فقط إذا لم يكن موجوداً
-                        $query = DB::table($tableName);
+                        $query = DB::connection('mysql')->table($tableName);
                         
                         // استخدام id إذا كان موجوداً
                         if (isset($rowArray['id'])) {
@@ -628,19 +639,19 @@ class SyncMonitorController extends Controller
                         }
                         
                         if (!$exists) {
-                            DB::table($tableName)->insert($rowArray);
+                            DB::connection('mysql')->table($tableName)->insert($rowArray);
                             $syncedCount++;
                         }
                     } else {
                         // إدراج أو تحديث
                         if (isset($rowArray['id'])) {
-                            DB::table($tableName)->updateOrInsert(
+                            DB::connection('mysql')->table($tableName)->updateOrInsert(
                                 ['id' => $rowArray['id']],
                                 $rowArray
                             );
                         } else {
                             // إدراج فقط إذا لم يكن هناك id
-                            DB::table($tableName)->insert($rowArray);
+                            DB::connection('mysql')->table($tableName)->insert($rowArray);
                         }
                         $syncedCount++;
                     }
@@ -665,7 +676,8 @@ class SyncMonitorController extends Controller
     {
         try {
             // جلب بنية الجدول من MySQL
-            $columns = DB::select("SHOW COLUMNS FROM `{$tableName}`");
+            // على السيرفر: استخدام MySQL فقط
+            $columns = DB::connection('mysql')->select("SHOW COLUMNS FROM `{$tableName}`");
             
             $createTable = "CREATE TABLE IF NOT EXISTS `{$tableName}` (";
             $columnDefinitions = [];
@@ -721,7 +733,8 @@ class SyncMonitorController extends Controller
             $mysqlSql = str_replace('TEXT', 'TEXT', $mysqlSql);
             $mysqlSql = str_replace('REAL', 'DECIMAL(10,2)', $mysqlSql);
             
-            DB::statement($mysqlSql);
+            // على السيرفر: استخدام MySQL فقط
+            DB::connection('mysql')->statement($mysqlSql);
         }
     }
     
@@ -750,17 +763,26 @@ class SyncMonitorController extends Controller
      */
     private function updateSyncMetadata($tableName, $direction, $syncedCount)
     {
-        if (!Schema::hasTable('sync_metadata')) {
+        // sync_metadata موجود فقط على المحلي (SQLite)
+        // على السيرفر: تجاهل هذا الجدول
+        $defaultConnection = config('database.default');
+        $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
+        
+        if (!$isSQLite) {
+            return; // على السيرفر: لا حاجة لـ sync_metadata
+        }
+        
+        if (!Schema::connection('sync_sqlite')->hasTable('sync_metadata')) {
             return;
         }
         
-        $existing = DB::table('sync_metadata')
+        $existing = DB::connection('sync_sqlite')->table('sync_metadata')
             ->where('table_name', $tableName)
             ->where('direction', $direction)
             ->first();
         
         if ($existing) {
-            DB::table('sync_metadata')
+            DB::connection('sync_sqlite')->table('sync_metadata')
                 ->where('table_name', $tableName)
                 ->where('direction', $direction)
                 ->update([
@@ -769,7 +791,7 @@ class SyncMonitorController extends Controller
                     'total_synced' => $existing->total_synced + $syncedCount,
                 ]);
         } else {
-            DB::table('sync_metadata')->insert([
+            DB::connection('sync_sqlite')->table('sync_metadata')->insert([
                 'table_name' => $tableName,
                 'direction' => $direction,
                 'last_synced_at' => now(),
@@ -806,8 +828,12 @@ class SyncMonitorController extends Controller
         try {
             $metadata = [];
             
-            if (Schema::hasTable('sync_metadata')) {
-                $metadata = DB::table('sync_metadata')
+            // sync_metadata موجودة فقط على المحلي (SQLite)
+            $defaultConnection = config('database.default');
+            $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
+            
+            if ($isSQLite && Schema::connection('sync_sqlite')->hasTable('sync_metadata')) {
+                $metadata = DB::connection('sync_sqlite')->table('sync_metadata')
                     ->orderBy('table_name')
                     ->get()
                     ->map(function ($item) {
@@ -1273,7 +1299,8 @@ class SyncMonitorController extends Controller
         $sql .= "SET time_zone = \"+00:00\";\n\n";
 
         // جلب جميع الجداول
-        $tables = DB::select('SHOW TABLES');
+        // على السيرفر: استخدام MySQL فقط
+        $tables = DB::connection('mysql')->select('SHOW TABLES');
         $tableKey = "Tables_in_{$dbName}";
 
         foreach ($tables as $table) {
@@ -1285,7 +1312,8 @@ class SyncMonitorController extends Controller
             }
 
             // جلب البيانات فقط (بدون بنية الجدول)
-            $rows = DB::table($tableName)->get();
+            // على السيرفر: استخدام MySQL فقط
+            $rows = DB::connection('mysql')->table($tableName)->get();
             if ($rows->count() > 0) {
                 $sql .= "\n-- --------------------------------------------------------\n";
                 $sql .= "-- Dumping data for table `{$tableName}`\n";
@@ -2063,8 +2091,9 @@ class SyncMonitorController extends Controller
                 ], 400);
             }
 
-            // التحقق من وجود الجدول
-            if (!Schema::hasTable($tableName)) {
+            // على السيرفر: استخدام MySQL فقط
+            // التحقق من وجود الجدول في MySQL
+            if (!Schema::connection('mysql')->hasTable($tableName)) {
                 Log::warning('Table not found for API sync', [
                     'table' => $tableName,
                     'action' => $action,
@@ -2073,7 +2102,7 @@ class SyncMonitorController extends Controller
                 
                 return response()->json([
                     'success' => false,
-                    'message' => "الجدول {$tableName} غير موجود",
+                    'message' => "الجدول {$tableName} غير موجود في MySQL",
                 ], 404);
             }
 
@@ -2098,8 +2127,12 @@ class SyncMonitorController extends Controller
                     // إزالة id من البيانات إذا كان موجوداً (لأن السيرفر سينشئ id جديد)
                     unset($data['id']);
                     
-                    $insertedId = DB::table($tableName)->insertGetId($data);
-                    $result = DB::table($tableName)->where('id', $insertedId)->first();
+                    // إزالة deleted_at للعمليات insert (لا نريد إدراج سجل محذوف)
+                    unset($data['deleted_at']);
+                    
+                    // على السيرفر: استخدام MySQL فقط
+                    $insertedId = DB::connection('mysql')->table($tableName)->insertGetId($data);
+                    $result = DB::connection('mysql')->table($tableName)->where('id', $insertedId)->first();
                     
                     Log::info('API sync insert succeeded', [
                         'table' => $tableName,
@@ -2121,8 +2154,9 @@ class SyncMonitorController extends Controller
                         ], 400);
                     }
                     
+                    // على السيرفر: استخدام MySQL فقط
                     // التحقق من وجود السجل
-                    $exists = DB::table($tableName)->where('id', $recordId)->exists();
+                    $exists = DB::connection('mysql')->table($tableName)->where('id', $recordId)->exists();
                     if (!$exists) {
                         Log::warning('Record not found for API sync update', [
                             'table' => $tableName,
@@ -2138,8 +2172,8 @@ class SyncMonitorController extends Controller
                     // إزالة id من البيانات (لا يمكن تحديث id)
                     unset($data['id']);
                     
-                    DB::table($tableName)->where('id', $recordId)->update($data);
-                    $result = DB::table($tableName)->where('id', $recordId)->first();
+                    DB::connection('mysql')->table($tableName)->where('id', $recordId)->update($data);
+                    $result = DB::connection('mysql')->table($tableName)->where('id', $recordId)->first();
                     
                     Log::info('API sync update succeeded', [
                         'table' => $tableName,
@@ -2153,8 +2187,9 @@ class SyncMonitorController extends Controller
                     ]);
 
                 case 'delete':
+                    // على السيرفر: استخدام MySQL فقط
                     // التحقق من وجود السجل
-                    $exists = DB::table($tableName)->where('id', $recordId)->exists();
+                    $exists = DB::connection('mysql')->table($tableName)->where('id', $recordId)->exists();
                     if (!$exists) {
                         Log::warning('Record not found for API sync delete', [
                             'table' => $tableName,
@@ -2168,7 +2203,7 @@ class SyncMonitorController extends Controller
                         ]);
                     }
                     
-                    DB::table($tableName)->where('id', $recordId)->delete();
+                    DB::connection('mysql')->table($tableName)->where('id', $recordId)->delete();
                     
                     Log::info('API sync delete succeeded', [
                         'table' => $tableName,
@@ -2198,6 +2233,524 @@ class SyncMonitorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء تنفيذ المزامنة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * مقارنة البيانات بين السيرفر والمحلي
+     */
+    public function compareTables(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            $limit = (int) $request->input('limit', 1000); // حد أقصى للسجلات للمقارنة
+
+            if (!$tableName) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'table_name مطلوب',
+                ], 400);
+            }
+
+            // التحقق من وجود الجدول محلياً
+            if (!Schema::hasTable($tableName)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "الجدول {$tableName} غير موجود محلياً",
+                ], 404);
+            }
+
+            Log::info('Starting table comparison', [
+                'table' => $tableName,
+                'limit' => $limit,
+            ]);
+
+            // جلب البيانات من SQLite المحلي (المصدر)
+            // المزامنة تكون من SQLite المحلي إلى MySQL على السيرفر
+            $sqlitePath = config('database.connections.sync_sqlite.database');
+            if (!file_exists($sqlitePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف SQLite غير موجود',
+                ], 404);
+            }
+
+            if (!Schema::connection('sync_sqlite')->hasTable($tableName)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "الجدول {$tableName} غير موجود في SQLite المحلي",
+                ], 404);
+            }
+
+            $localData = DB::connection('sync_sqlite')->table($tableName)
+                ->limit($limit)
+                ->get()
+                ->map(function ($row) {
+                    return (array) $row;
+                })
+                ->keyBy('id') // استخدام id كـ key لتسهيل المقارنة
+                ->toArray();
+
+            $localCount = count($localData);
+
+            // جلب البيانات من السيرفر
+            $apiSyncService = new \App\Services\ApiSyncService();
+            $serverResult = $apiSyncService->getTableData($tableName, $limit, 0);
+
+            if (!$serverResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل جلب البيانات من السيرفر: ' . ($serverResult['error'] ?? 'خطأ غير معروف'),
+                    'local_count' => $localCount,
+                ], 500);
+            }
+
+            $serverData = collect($serverResult['data'])->keyBy('id')->toArray();
+            $serverCount = count($serverData);
+
+            // المقارنة
+            $localIds = array_keys($localData);
+            $serverIds = array_keys($serverData);
+
+            // السجلات الموجودة في المحلي فقط
+            $onlyLocal = array_diff($localIds, $serverIds);
+            
+            // السجلات الموجودة في السيرفر فقط
+            $onlyServer = array_diff($serverIds, $localIds);
+            
+            // السجلات الموجودة في كلا المكانين (للمقارنة التفصيلية)
+            $commonIds = array_intersect($localIds, $serverIds);
+            
+            // مقارنة السجلات المشتركة للتحقق من الاختلافات
+            $differences = [];
+            foreach ($commonIds as $id) {
+                $localRecord = $localData[$id];
+                $serverRecord = $serverData[$id];
+                
+                // إزالة timestamps من المقارنة (قد تختلف)
+                unset($localRecord['created_at'], $localRecord['updated_at']);
+                unset($serverRecord['created_at'], $serverRecord['updated_at']);
+                
+                // ترتيب المفاتيح قبل المقارنة (لضمان مقارنة دقيقة)
+                ksort($localRecord);
+                ksort($serverRecord);
+                
+                // مقارنة السجلات
+                $localJson = json_encode($localRecord, JSON_UNESCAPED_UNICODE);
+                $serverJson = json_encode($serverRecord, JSON_UNESCAPED_UNICODE);
+                
+                if ($localJson !== $serverJson) {
+                    // إيجاد الحقول المختلفة
+                    $diffFields = [];
+                    foreach ($localRecord as $key => $localValue) {
+                        $serverValue = $serverRecord[$key] ?? null;
+                        if ($localValue != $serverValue) {
+                            $diffFields[$key] = [
+                                'local' => $localValue,
+                                'server' => $serverValue,
+                            ];
+                        }
+                    }
+                    
+                    $differences[] = [
+                        'id' => $id,
+                        'fields' => $diffFields,
+                        'local_record' => $localRecord,
+                        'server_record' => $serverRecord,
+                    ];
+                }
+            }
+
+            // ملخص المقارنة
+            $summary = [
+                'table_name' => $tableName,
+                'local_count' => $localCount,
+                'server_count' => $serverCount,
+                'common_count' => count($commonIds),
+                'only_local_count' => count($onlyLocal),
+                'only_server_count' => count($onlyServer),
+                'differences_count' => count($differences),
+                'matched_count' => count($commonIds) - count($differences),
+                'is_identical' => count($onlyLocal) === 0 && count($onlyServer) === 0 && count($differences) === 0,
+            ];
+
+            // عينة من السجلات المختلفة (أول 10 فقط)
+            $differencesSample = array_slice($differences, 0, 10);
+            $onlyLocalSample = array_slice($onlyLocal, 0, 10);
+            $onlyServerSample = array_slice($onlyServer, 0, 10);
+
+            Log::info('Table comparison completed', [
+                'table' => $tableName,
+                'summary' => $summary,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'summary' => $summary,
+                'differences' => $differencesSample, // عينة فقط لتوفير البيانات
+                'only_local_ids' => $onlyLocalSample, // عينة فقط
+                'only_server_ids' => $onlyServerSample, // عينة فقط
+                'total_differences' => count($differences),
+                'total_only_local' => count($onlyLocal),
+                'total_only_server' => count($onlyServer),
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Table comparison failed', [
+                'error' => $e->getMessage(),
+                'table' => $request->input('table_name'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء المقارنة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * تنظيف البيانات قبل إرسالها للسيرفر
+     * - تحويل timestamps من ISO 8601 إلى MySQL format
+     * - إزالة deleted_at للعمليات insert
+     * - إزالة id (السيرفر سينشئ id جديد)
+     */
+    protected function cleanDataForSync(array $data, string $action = 'insert'): array
+    {
+        // إزالة id - السيرفر سينشئ id جديد
+        unset($data['id']);
+        
+        // للعمليات insert، إزالة deleted_at (لا نريد إدراج سجل محذوف)
+        if ($action === 'insert') {
+            unset($data['deleted_at']);
+        }
+        
+        // تحويل timestamps من ISO 8601 إلى MySQL format (Y-m-d H:i:s)
+        $timestampFields = ['created_at', 'updated_at', 'deleted_at'];
+        foreach ($timestampFields as $field) {
+            if (isset($data[$field])) {
+                $timestampValue = $data[$field];
+                
+                // إذا كانت القيمة بصيغة ISO 8601 (تحتوي على T أو Z)
+                if (is_string($timestampValue) && (strpos($timestampValue, 'T') !== false || strpos($timestampValue, 'Z') !== false)) {
+                    try {
+                        // تحويل من ISO 8601 إلى Carbon ثم إلى MySQL format
+                        $carbon = \Carbon\Carbon::parse($timestampValue);
+                        $data[$field] = $carbon->format('Y-m-d H:i:s');
+                    } catch (\Exception $e) {
+                        // إذا فشل التحويل، إزالة الحقل أو ترك القيمة الحالية
+                        \Log::warning('Failed to convert timestamp', [
+                            'field' => $field,
+                            'value' => $timestampValue,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // للعمليات insert، نفضل إزالة timestamps والسماح للسيرفر بإنشائها
+                        if ($action === 'insert' && in_array($field, ['created_at', 'updated_at'])) {
+                            unset($data[$field]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $data;
+    }
+
+    /**
+     * مزامنة البيانات من السيرفر إلى المحلي: جلب البيانات من MySQL على السيرفر عبر API وإدراجها في SQLite المحلي
+     */
+    public function syncFromServer(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            $limit = (int) $request->input('limit', 1000);
+
+            if (!$tableName) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'table_name مطلوب',
+                ], 400);
+            }
+
+            // التحقق من أننا في النظام المحلي (لا يمكن تنفيذ هذا على السيرفر)
+            $appEnv = config('app.env');
+            if ($appEnv === 'server' || $appEnv === 'production') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الـ endpoint متاح فقط في النظام المحلي',
+                ], 400);
+            }
+
+            // التحقق من وجود الجدول في SQLite المحلي
+            $sqlitePath = config('database.connections.sync_sqlite.database');
+            if (!file_exists($sqlitePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف SQLite غير موجود',
+                ], 404);
+            }
+
+            if (!Schema::connection('sync_sqlite')->hasTable($tableName)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "الجدول {$tableName} غير موجود في SQLite المحلي",
+                ], 404);
+            }
+
+            Log::info('Starting sync from server', [
+                'table' => $tableName,
+                'limit' => $limit,
+            ]);
+
+            // جلب البيانات من السيرفر عبر API
+            $apiSyncService = new \App\Services\ApiSyncService();
+            $serverResult = $apiSyncService->getTableData($tableName, $limit, 0);
+
+            if (!$serverResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل جلب البيانات من السيرفر: ' . ($serverResult['error'] ?? 'خطأ غير معروف'),
+                ], 500);
+            }
+
+            $serverData = $serverResult['data'] ?? [];
+            
+            if (empty($serverData)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'لا توجد بيانات في السيرفر',
+                    'synced' => 0,
+                    'failed' => 0,
+                ]);
+            }
+
+            // إدراج البيانات في SQLite المحلي
+            $synced = 0;
+            $failed = 0;
+            $errors = [];
+
+            foreach ($serverData as $record) {
+                try {
+                    $recordId = $record['id'] ?? null;
+                    
+                    if (!$recordId) {
+                        $failed++;
+                        $errors[] = "سجل بدون id";
+                        continue;
+                    }
+
+                    // التحقق من وجود السجل في SQLite
+                    $exists = DB::connection('sync_sqlite')->table($tableName)
+                        ->where('id', $recordId)
+                        ->exists();
+
+                    if ($exists) {
+                        // تحديث السجل الموجود
+                        DB::connection('sync_sqlite')->table($tableName)
+                            ->where('id', $recordId)
+                            ->update($record);
+                        $synced++;
+                        Log::debug('Updated record from server', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                        ]);
+                    } else {
+                        // إدراج سجل جديد
+                        DB::connection('sync_sqlite')->table($tableName)->insert($record);
+                        $synced++;
+                        Log::debug('Inserted record from server', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $failed++;
+                    $recordId = $record['id'] ?? 'unknown';
+                    $errors[] = "السجل {$recordId}: " . $e->getMessage();
+                    Log::error('Exception syncing record from server', [
+                        'table' => $tableName,
+                        'record_id' => $recordId ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "تمت مزامنة {$synced} سجل من السيرفر، فشل {$failed}",
+                'synced' => $synced,
+                'failed' => $failed,
+                'total_from_server' => count($serverData),
+                'errors' => array_slice($errors, 0, 10), // أول 10 أخطاء فقط
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Sync from server failed', [
+                'error' => $e->getMessage(),
+                'table' => $request->input('table_name'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء المزامنة من السيرفر: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * مزامنة السجلات المفقودة: مزامنة السجلات الموجودة في SQLite المحلي والتي لم تتم مزامنتها إلى MySQL على السيرفر
+     */
+    public function syncMissingRecords(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            $limit = (int) $request->input('limit', 1000);
+
+            if (!$tableName) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'table_name مطلوب',
+                ], 400);
+            }
+
+            // التحقق من وجود الجدول في SQLite
+            $sqlitePath = config('database.connections.sync_sqlite.database');
+            if (!file_exists($sqlitePath)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'ملف SQLite غير موجود',
+                ], 404);
+            }
+
+            if (!Schema::connection('sync_sqlite')->hasTable($tableName)) {
+                return response()->json([
+                    'success' => false,
+                    'message' => "الجدول {$tableName} غير موجود في SQLite المحلي",
+                ], 404);
+            }
+
+            Log::info('Starting sync missing records', [
+                'table' => $tableName,
+                'limit' => $limit,
+            ]);
+
+            // جلب جميع السجلات من SQLite المحلي
+            $localRecords = DB::connection('sync_sqlite')->table($tableName)
+                ->limit($limit)
+                ->get()
+                ->map(function ($row) {
+                    return (array) $row;
+                })
+                ->toArray();
+
+            if (empty($localRecords)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'لا توجد سجلات في SQLite المحلي',
+                    'synced' => 0,
+                    'failed' => 0,
+                ]);
+            }
+
+            // جلب IDs الموجودة في MySQL على السيرفر
+            $apiSyncService = new \App\Services\ApiSyncService();
+            $serverResult = $apiSyncService->getTableData($tableName, $limit * 2, 0); // جلب أكثر للتأكد
+
+            if (!$serverResult['success']) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل جلب البيانات من السيرفر: ' . ($serverResult['error'] ?? 'خطأ غير معروف'),
+                ], 500);
+            }
+
+            $serverIds = collect($serverResult['data'])->pluck('id')->toArray();
+
+            // إيجاد السجلات المفقودة (موجودة في SQLite وليست في MySQL)
+            $missingRecords = [];
+            foreach ($localRecords as $record) {
+                $recordId = $record['id'] ?? null;
+                if ($recordId && !in_array($recordId, $serverIds)) {
+                    $missingRecords[] = $record;
+                }
+            }
+
+            if (empty($missingRecords)) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'جميع السجلات موجودة في السيرفر',
+                    'synced' => 0,
+                    'failed' => 0,
+                    'total_checked' => count($localRecords),
+                ]);
+            }
+
+            Log::info('Found missing records to sync', [
+                'table' => $tableName,
+                'missing_count' => count($missingRecords),
+                'total_checked' => count($localRecords),
+            ]);
+
+            // مزامنة السجلات المفقودة
+            $synced = 0;
+            $failed = 0;
+            $errors = [];
+
+            foreach ($missingRecords as $record) {
+                try {
+                    $recordId = $record['id'];
+                    
+                    // تنظيف البيانات قبل الإرسال (تحويل timestamps، إزالة deleted_at و id)
+                    $cleanedRecord = $this->cleanDataForSync($record, 'insert');
+                    
+                    // إرسال السجل إلى السيرفر
+                    $syncResult = $apiSyncService->syncInsert($tableName, $cleanedRecord);
+                    
+                    if ($syncResult['success'] ?? false) {
+                        $synced++;
+                        Log::debug('Synced missing record', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                        ]);
+                    } else {
+                        $failed++;
+                        $errorMsg = $syncResult['error'] ?? 'Unknown error';
+                        $errors[] = "السجل {$recordId}: {$errorMsg}";
+                        Log::warning('Failed to sync missing record', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                            'error' => $errorMsg,
+                        ]);
+                    }
+                } catch (\Exception $e) {
+                    $failed++;
+                    $errors[] = "السجل {$record['id']}: " . $e->getMessage();
+                    Log::error('Exception syncing missing record', [
+                        'table' => $tableName,
+                        'record_id' => $record['id'] ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => "تمت مزامنة {$synced} سجل، فشل {$failed}",
+                'synced' => $synced,
+                'failed' => $failed,
+                'total_checked' => count($localRecords),
+                'total_missing' => count($missingRecords),
+                'errors' => array_slice($errors, 0, 10), // أول 10 أخطاء فقط
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Sync missing records failed', [
+                'error' => $e->getMessage(),
+                'table' => $request->input('table_name'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء مزامنة السجلات المفقودة: ' . $e->getMessage(),
             ], 500);
         }
     }

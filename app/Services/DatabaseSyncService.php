@@ -27,12 +27,8 @@ class DatabaseSyncService
         // إذا كان SYNC_VIA_API=true، إجبار استخدام API فقط
         if ($this->useApi) {
             $this->apiSyncService = new ApiSyncService();
-            // استخدام debug بدلاً من info لتقليل الضوضاء في اللوغات
-            // لأن هذه الخدمة يتم إنشاؤها كثيراً (كل 5 ثواني من SyncStatusBar)
-            Log::debug('API Sync enabled - جميع الاتصالات عبر API فقط', [
-                'online_url' => env('ONLINE_URL'),
-                'api_token_set' => !empty(env('SYNC_API_TOKEN')),
-            ]);
+            // تم إزالة Log::debug لأن DatabaseSyncService يتم إنشاؤه كثيراً (كل 5 ثواني من SyncStatusBar)
+            // مما يسبب تكرار الرسائل في اللوغ
         } else {
             // حتى لو كان SYNC_VIA_API=false، نحذر المستخدم
             Log::warning('SYNC_VIA_API=false - سيتم استخدام MySQL مباشرة (غير موصى به)');
@@ -385,6 +381,54 @@ class DatabaseSyncService
             throw new \Exception("API غير متاح - لا يمكن المزامنة");
         }
 
+        // إذا لم تكن البيانات موجودة، جلبها من SQLite المحلي
+        // المزامنة تكون من SQLite المحلي إلى MySQL على السيرفر
+        if (empty($data) && in_array($action, ['insert', 'update'])) {
+            try {
+                $sqliteConnection = 'sync_sqlite';
+                if (Schema::connection($sqliteConnection)->hasTable($tableName)) {
+                    $record = DB::connection($sqliteConnection)->table($tableName)
+                        ->where('id', $recordId)
+                        ->first();
+                    
+                    if ($record) {
+                        $data = (array) $record;
+                        Log::debug('Fetched data from SQLite for sync', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                            'action' => $action,
+                        ]);
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to fetch data from SQLite', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        // تنظيف البيانات قبل الإرسال (يجب أن يتم هنا أيضاً للتأكد)
+        // البيانات قد تكون من sync_queue (JSON decoded) أو من SQLite
+        if (!empty($data) && in_array($action, ['insert', 'update'])) {
+            $originalTimestamps = [
+                'created_at' => $data['created_at'] ?? null,
+                'updated_at' => $data['updated_at'] ?? null,
+            ];
+            $data = $this->cleanDataForSync($data, $action);
+            Log::debug('Data cleaned for sync', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'action' => $action,
+                'original_timestamps' => $originalTimestamps,
+                'cleaned_timestamps' => [
+                    'created_at' => $data['created_at'] ?? null,
+                    'updated_at' => $data['updated_at'] ?? null,
+                ],
+            ]);
+        }
+
         switch ($action) {
             case 'insert':
                 return $this->syncInsert($tableName, $data);
@@ -401,6 +445,53 @@ class DatabaseSyncService
     }
 
     /**
+     * تنظيف البيانات قبل إرسالها للسيرفر
+     * - تحويل timestamps من ISO 8601 إلى MySQL format
+     * - إزالة deleted_at للعمليات insert
+     * - إزالة id (السيرفر سينشئ id جديد)
+     */
+    protected function cleanDataForSync(array $data, string $action = 'insert'): array
+    {
+        // إزالة id - السيرفر سينشئ id جديد
+        unset($data['id']);
+        
+        // للعمليات insert، إزالة deleted_at (لا نريد إدراج سجل محذوف)
+        if ($action === 'insert') {
+            unset($data['deleted_at']);
+        }
+        
+        // تحويل timestamps من ISO 8601 إلى MySQL format (Y-m-d H:i:s)
+        $timestampFields = ['created_at', 'updated_at', 'deleted_at'];
+        foreach ($timestampFields as $field) {
+            if (isset($data[$field])) {
+                $timestampValue = $data[$field];
+                
+                // إذا كانت القيمة بصيغة ISO 8601 (تحتوي على T أو Z)
+                if (is_string($timestampValue) && (strpos($timestampValue, 'T') !== false || strpos($timestampValue, 'Z') !== false)) {
+                    try {
+                        // تحويل من ISO 8601 إلى Carbon ثم إلى MySQL format
+                        $carbon = \Carbon\Carbon::parse($timestampValue);
+                        $data[$field] = $carbon->format('Y-m-d H:i:s');
+                    } catch (\Exception $e) {
+                        // إذا فشل التحويل، إزالة الحقل أو ترك القيمة الحالية
+                        Log::warning('Failed to convert timestamp', [
+                            'field' => $field,
+                            'value' => $timestampValue,
+                            'error' => $e->getMessage(),
+                        ]);
+                        // للعمليات insert، نفضل إزالة timestamps والسماح للسيرفر بإنشائها
+                        if ($action === 'insert' && in_array($field, ['created_at', 'updated_at'])) {
+                            unset($data[$field]);
+                        }
+                    }
+                }
+            }
+        }
+        
+        return $data;
+    }
+
+    /**
      * مزامنة إدراج جديد
      */
     protected function syncInsert(string $tableName, array $data): bool
@@ -410,8 +501,11 @@ class DatabaseSyncService
             throw new \Exception("SYNC_VIA_API غير مفعّل - يجب تفعيل API Sync. لا يمكن استخدام MySQL مباشرة.");
         }
         
+        // تنظيف البيانات قبل الإرسال (تحويل timestamps، إزالة deleted_at و id)
+        $cleanedData = $this->cleanDataForSync($data, 'insert');
+        
         // استخدام API فقط
-        $result = $this->apiSyncService->syncInsert($tableName, $data);
+        $result = $this->apiSyncService->syncInsert($tableName, $cleanedData);
         
         if ($result['success'] ?? false) {
             // حفظ ID mapping من استجابة API إذا كان متوفراً
@@ -438,8 +532,11 @@ class DatabaseSyncService
             throw new \Exception("SYNC_VIA_API غير مفعّل - يجب تفعيل API Sync. لا يمكن استخدام MySQL مباشرة.");
         }
         
+        // تنظيف البيانات قبل الإرسال (تحويل timestamps)
+        $cleanedData = $this->cleanDataForSync($data, 'update');
+        
         // استخدام API فقط
-        $result = $this->apiSyncService->syncUpdate($tableName, $recordId, $data);
+        $result = $this->apiSyncService->syncUpdate($tableName, $recordId, $cleanedData);
         
         if ($result['success'] ?? false) {
             return true;
