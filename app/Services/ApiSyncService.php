@@ -25,7 +25,7 @@ class ApiSyncService
     public function isApiAvailable(): bool
     {
         try {
-            // محاولة الاتصال بـ API health endpoint مع timeout أقصر (5 ثواني)
+            // محاولة الاتصال بـ API - نستخدم endpoint أبسط للتجريب
             // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
             $httpRequest = Http::timeout(5)
                 ->connectTimeout(3); // timeout للاتصال (3 ثواني)
@@ -35,48 +35,106 @@ class ApiSyncService
                 $httpRequest->withToken($this->apiToken);
             }
             
-            $response = $httpRequest->get("{$this->apiUrl}/api/sync-monitor/sync-health");
-
-            // التحقق من أن الاستجابة ناجحة (200 OK)
-            if ($response->successful()) {
-                $healthData = $response->json();
-                
-                // التحقق من أن overall_status هو "ok" أو "warning" (ليس "issue")
-                if (isset($healthData['success']) && $healthData['success'] === true) {
-                    $overallStatus = $healthData['health']['overall_status'] ?? 'unknown';
-                    
-                    // إذا كان overall_status "ok" أو "warning"، API متاح
-                    if (in_array($overallStatus, ['ok', 'warning'])) {
-                        Log::debug('API health check passed', [
-                            'overall_status' => $overallStatus,
-                            'url' => $this->apiUrl,
-                        ]);
-                        return true;
-                    }
-                    
-                    // إذا كان overall_status "issue"، API متاح لكن به مشاكل
-                    Log::warning('API health check: issues detected', [
-                        'overall_status' => $overallStatus,
-                        'issues' => $healthData['health']['issues'] ?? [],
-                        'url' => $this->apiUrl,
-                    ]);
-                    return true; // API متاح لكن به مشاكل
-                }
-                
-                // إذا كان success = false، API متاح لكن health check فشل
-                Log::warning('API health check failed', [
-                    'response' => $healthData,
+            // استخدام endpoint أبسط للتحقق من توفر API (لا يحتاج authentication)
+            // هذا endpoint يعمل على السيرفر ويتحقق من قاعدة البيانات
+            $checkUrl = "{$this->apiUrl}/api/check-database-connection";
+            $response = $httpRequest->get($checkUrl);
+            $usedEndpoint = 'check-database-connection';
+            
+            // إذا فشل endpoint الأول (404)، نجرب sync-health كـ fallback
+            if ($response->status() === 404) {
+                Log::debug('check-database-connection not found, trying sync-health', [
                     'url' => $this->apiUrl,
                 ]);
-                return true; // API متاح لكن health check فشل
+                $checkUrl = "{$this->apiUrl}/api/sync-monitor/sync-health";
+                $response = $httpRequest->get($checkUrl);
+                $usedEndpoint = 'sync-health';
+            }
+
+            $statusCode = $response->status();
+            
+            // إذا وصلنا للـ API (حتى لو كان 401, 403, 404) فهذا يعني أن API متاح
+            // الخطأ 0 يعني connection failed (السيرفر غير متاح)
+            if ($statusCode > 0) {
+                // API متاح - وصلنا للسيرفر
+                if ($response->successful()) {
+                    $responseData = $response->json();
+                    
+                    // التعامل مع check-database-connection endpoint
+                    if ($usedEndpoint === 'check-database-connection') {
+                        if (isset($responseData['success']) && $responseData['success'] === true) {
+                            $connected = $responseData['connection']['connected'] ?? false;
+                            if ($connected) {
+                                Log::debug('API health check passed (check-database-connection)', [
+                                    'connected' => $connected,
+                                    'url' => $this->apiUrl,
+                                ]);
+                                return true;
+                            }
+                        }
+                        // إذا كان success = false أو connected = false
+                        Log::warning('API health check: database connection check failed', [
+                            'response' => $responseData,
+                            'url' => $this->apiUrl,
+                        ]);
+                        return true; // API متاح لكن connection check فشل
+                    }
+                    
+                    // التعامل مع sync-health endpoint
+                    if ($usedEndpoint === 'sync-health') {
+                        if (isset($responseData['success']) && $responseData['success'] === true) {
+                            $overallStatus = $responseData['health']['overall_status'] ?? 'unknown';
+                            
+                            // إذا كان overall_status "ok" أو "warning"، API متاح
+                            if (in_array($overallStatus, ['ok', 'warning'])) {
+                                Log::debug('API health check passed (sync-health)', [
+                                    'overall_status' => $overallStatus,
+                                    'url' => $this->apiUrl,
+                                ]);
+                                return true;
+                            }
+                            
+                            // إذا كان overall_status "issue"، API متاح لكن به مشاكل
+                            Log::warning('API health check: issues detected', [
+                                'overall_status' => $overallStatus,
+                                'issues' => $responseData['health']['issues'] ?? [],
+                                'url' => $this->apiUrl,
+                            ]);
+                            return true; // API متاح لكن به مشاكل
+                        }
+                        
+                        // إذا كان success = false
+                        Log::warning('API health check failed', [
+                            'response' => $responseData,
+                            'url' => $this->apiUrl,
+                        ]);
+                        return true; // API متاح لكن health check فشل
+                    }
+                } else {
+                    // Status code موجود (401, 403, 404, 500, etc) - يعني API متاح لكن به مشكلة
+                    // هذا أفضل من connection failed - على الأقل السيرفر يعمل
+                    $message = match($statusCode) {
+                        401 => 'Authentication required',
+                        403 => 'Access forbidden',
+                        404 => 'Endpoint not found',
+                        default => 'Server error'
+                    };
+                    
+                    Log::info('API health check: server responded with status code', [
+                        'status' => $statusCode,
+                        'endpoint' => $usedEndpoint,
+                        'url' => $this->apiUrl,
+                        'message' => $message,
+                    ]);
+                    return true; // API متاح (السيرفر يعمل) لكن يحتاج authentication أو به مشكلة
+                }
             }
             
-            // إذا كان status code غير 200، API متاح لكن endpoint غير متاح
-            Log::warning('API health check: non-200 status', [
-                'status' => $response->status(),
+            // Status code = 0 يعني connection failed
+            Log::warning('API health check: connection failed (status 0)', [
                 'url' => $this->apiUrl,
             ]);
-            return $response->status() !== 0; // 0 = connection failed
+            return false; // API غير متاح - connection failed
             
         } catch (\Exception $e) {
             $errorMsg = $e->getMessage();

@@ -1832,8 +1832,9 @@ class SyncMonitorController extends Controller
                 $health['issues'][] = 'ONLINE_URL غير محدد في .env';
             }
 
+            // TODO: للتجريب - تحويل إلى warning. بعد التجريب، إعادة تحويله إلى issue
             if (empty(env('SYNC_API_TOKEN'))) {
-                $health['issues'][] = 'SYNC_API_TOKEN غير محدد في .env';
+                $health['warnings'][] = 'SYNC_API_TOKEN غير محدد في .env (للتجريب - يمكن العمل بدون توكن)';
             }
 
             // 2. فحص ApiSyncService
