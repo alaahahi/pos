@@ -190,25 +190,54 @@ class ApiSyncService
                     'data' => $data,
                 ]);
 
+            $statusCode = $response->status();
+            $responseBody = $response->json();
+            
+            Log::info('API sync insert response', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status_code' => $statusCode,
+                'response_body' => $responseBody,
+            ]);
+
             if ($response->successful()) {
-                $result = $response->json();
+                $success = $responseBody['success'] ?? true;
+                
+                if (!$success) {
+                    $errorMsg = $responseBody['message'] ?? 'API returned success: false';
+                    Log::warning('API sync insert failed (success: false)', [
+                        'table' => $tableName,
+                        'record_id' => $recordId,
+                        'error' => $errorMsg,
+                        'response' => $responseBody,
+                    ]);
+                    
+                    return [
+                        'success' => false,
+                        'error' => $errorMsg,
+                        'data' => $responseBody,
+                    ];
+                }
+                
                 Log::info('API sync insert succeeded', [
                     'table' => $tableName,
                     'record_id' => $recordId,
-                    'response' => $result,
+                    'response' => $responseBody,
                 ]);
+                
                 return [
-                    'success' => $result['success'] ?? true,
-                    'data' => $result,
+                    'success' => true,
+                    'data' => $responseBody,
                 ];
             }
 
-            $errorMsg = $response->json('message', 'Unknown error');
-            Log::warning('API sync insert failed', [
+            $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
+            Log::warning('API sync insert failed (HTTP error)', [
                 'table' => $tableName,
                 'record_id' => $recordId,
-                'status' => $response->status(),
+                'status' => $statusCode,
                 'error' => $errorMsg,
+                'response' => $responseBody,
             ]);
 
             return [
@@ -257,25 +286,54 @@ class ApiSyncService
                     'data' => $data,
                 ]);
 
+            $statusCode = $response->status();
+            $responseBody = $response->json();
+            
+            Log::info('API sync update response', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status_code' => $statusCode,
+                'response_body' => $responseBody,
+            ]);
+
             if ($response->successful()) {
-                $result = $response->json();
+                $success = $responseBody['success'] ?? true;
+                
+                if (!$success) {
+                    $errorMsg = $responseBody['message'] ?? 'API returned success: false';
+                    Log::warning('API sync update failed (success: false)', [
+                        'table' => $tableName,
+                        'record_id' => $recordId,
+                        'error' => $errorMsg,
+                        'response' => $responseBody,
+                    ]);
+                    
+                    return [
+                        'success' => false,
+                        'error' => $errorMsg,
+                        'data' => $responseBody,
+                    ];
+                }
+                
                 Log::info('API sync update succeeded', [
                     'table' => $tableName,
                     'record_id' => $recordId,
-                    'response' => $result,
+                    'response' => $responseBody,
                 ]);
+                
                 return [
-                    'success' => $result['success'] ?? true,
-                    'data' => $result,
+                    'success' => true,
+                    'data' => $responseBody,
                 ];
             }
 
-            $errorMsg = $response->json('message', 'Unknown error');
-            Log::warning('API sync update failed', [
+            $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
+            Log::warning('API sync update failed (HTTP error)', [
                 'table' => $tableName,
                 'record_id' => $recordId,
-                'status' => $response->status(),
+                'status' => $statusCode,
                 'error' => $errorMsg,
+                'response' => $responseBody,
             ]);
 
             return [
@@ -304,36 +362,95 @@ class ApiSyncService
     public function syncDelete(string $tableName, int $recordId): array
     {
         try {
+            Log::info('API sync delete attempt', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'api_url' => $this->apiUrl,
+                'has_token' => !empty($this->apiToken),
+            ]);
+            
             // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
             $httpRequest = Http::timeout($this->timeout);
             if (!empty($this->apiToken)) {
                 $httpRequest->withToken($this->apiToken);
             }
             
-            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
-                    'table_name' => $tableName,
-                    'record_id' => $recordId,
-                    'action' => 'delete',
-                ]);
+            $url = "{$this->apiUrl}/api/sync-monitor/api-sync";
+            $payload = [
+                'table_name' => $tableName,
+                'record_id' => $recordId,
+                'action' => 'delete',
+            ];
+            
+            Log::debug('Sending delete request to API', [
+                'url' => $url,
+                'payload' => $payload,
+            ]);
+            
+            $response = $httpRequest->post($url, $payload);
+
+            $statusCode = $response->status();
+            $responseBody = $response->json();
+            
+            Log::info('API sync delete response', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status_code' => $statusCode,
+                'response_body' => $responseBody,
+            ]);
 
             if ($response->successful()) {
-                $result = $response->json();
+                $success = $responseBody['success'] ?? true;
+                
+                if (!$success) {
+                    $errorMsg = $responseBody['message'] ?? 'API returned success: false';
+                    Log::warning('API sync delete failed (success: false)', [
+                        'table' => $tableName,
+                        'record_id' => $recordId,
+                        'error' => $errorMsg,
+                        'response' => $responseBody,
+                    ]);
+                    
+                    return [
+                        'success' => false,
+                        'error' => $errorMsg,
+                        'data' => $responseBody,
+                    ];
+                }
+                
+                Log::info('API sync delete succeeded', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                    'response' => $responseBody,
+                ]);
+                
                 return [
-                    'success' => $result['success'] ?? true,
-                    'data' => $result,
+                    'success' => true,
+                    'data' => $responseBody,
                 ];
             }
 
+            $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
+            Log::warning('API sync delete failed (HTTP error)', [
+                'table' => $tableName,
+                'record_id' => $recordId,
+                'status' => $statusCode,
+                'error' => $errorMsg,
+                'response' => $responseBody,
+            ]);
+
             return [
                 'success' => false,
-                'error' => $response->json('message', 'Unknown error'),
-                'status' => $response->status(),
+                'error' => $errorMsg,
+                'status' => $statusCode,
+                'data' => $responseBody,
             ];
         } catch (\Exception $e) {
             Log::error("Failed to sync delete via API: {$tableName}", [
                 'error' => $e->getMessage(),
                 'table' => $tableName,
-                'id' => $recordId,
+                'record_id' => $recordId,
+                'trace' => $e->getTraceAsString(),
             ]);
 
             return [

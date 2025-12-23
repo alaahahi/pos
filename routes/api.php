@@ -178,6 +178,7 @@ Route::prefix('sync-monitor')->group(function () {
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
     Route::get('/sync-queue-details', [App\Http\Controllers\SyncMonitorController::class, 'getSyncQueueDetails']); // جديد: تفاصيل sync_queue
     Route::post('/retry-failed', [App\Http\Controllers\SyncMonitorController::class, 'retryFailed']);
+    Route::post('/api-sync', [App\Http\Controllers\SyncMonitorController::class, 'apiSync']); // استقبال طلبات المزامنة من النظام المحلي
     Route::get('/id-conflicts', [App\Http\Controllers\SyncMonitorController::class, 'checkIdConflicts']);
     Route::get('/id-mappings', [App\Http\Controllers\SyncMonitorController::class, 'getIdMappings']);
     

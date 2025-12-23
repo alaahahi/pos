@@ -2028,5 +2028,178 @@ class SyncMonitorController extends Controller
             ], 500);
         }
     }
+
+    /**
+     * استقبال طلبات المزامنة من السيرفر (insert, update, delete)
+     * هذا endpoint يستقبل الطلبات من النظام المحلي ويقوم بتنفيذها على قاعدة البيانات
+     */
+    public function apiSync(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name');
+            $recordId = $request->input('record_id');
+            $action = $request->input('action'); // insert, update, delete
+            $data = $request->input('data', []); // للـ insert و update
+
+            // التحقق من البيانات المطلوبة
+            if (!$tableName) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'table_name مطلوب',
+                ], 400);
+            }
+
+            if (!$action || !in_array($action, ['insert', 'update', 'delete'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'action مطلوب ويجب أن يكون insert أو update أو delete',
+                ], 400);
+            }
+
+            if (in_array($action, ['update', 'delete']) && !$recordId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'record_id مطلوب للـ ' . $action,
+                ], 400);
+            }
+
+            // التحقق من وجود الجدول
+            if (!Schema::hasTable($tableName)) {
+                Log::warning('Table not found for API sync', [
+                    'table' => $tableName,
+                    'action' => $action,
+                    'record_id' => $recordId,
+                ]);
+                
+                return response()->json([
+                    'success' => false,
+                    'message' => "الجدول {$tableName} غير موجود",
+                ], 404);
+            }
+
+            Log::info('API sync request received', [
+                'table' => $tableName,
+                'action' => $action,
+                'record_id' => $recordId,
+                'has_data' => !empty($data),
+            ]);
+
+            // تنفيذ العملية حسب النوع
+            $result = null;
+            switch ($action) {
+                case 'insert':
+                    if (empty($data)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'data مطلوب للـ insert',
+                        ], 400);
+                    }
+                    
+                    // إزالة id من البيانات إذا كان موجوداً (لأن السيرفر سينشئ id جديد)
+                    unset($data['id']);
+                    
+                    $insertedId = DB::table($tableName)->insertGetId($data);
+                    $result = DB::table($tableName)->where('id', $insertedId)->first();
+                    
+                    Log::info('API sync insert succeeded', [
+                        'table' => $tableName,
+                        'inserted_id' => $insertedId,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم إدراج السجل بنجاح',
+                        'data' => $result,
+                        'inserted_id' => $insertedId,
+                    ]);
+
+                case 'update':
+                    if (empty($data)) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'data مطلوب للـ update',
+                        ], 400);
+                    }
+                    
+                    // التحقق من وجود السجل
+                    $exists = DB::table($tableName)->where('id', $recordId)->exists();
+                    if (!$exists) {
+                        Log::warning('Record not found for API sync update', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                        ]);
+                        
+                        return response()->json([
+                            'success' => false,
+                            'message' => "السجل {$recordId} غير موجود في الجدول {$tableName}",
+                        ], 404);
+                    }
+                    
+                    // إزالة id من البيانات (لا يمكن تحديث id)
+                    unset($data['id']);
+                    
+                    DB::table($tableName)->where('id', $recordId)->update($data);
+                    $result = DB::table($tableName)->where('id', $recordId)->first();
+                    
+                    Log::info('API sync update succeeded', [
+                        'table' => $tableName,
+                        'record_id' => $recordId,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم تحديث السجل بنجاح',
+                        'data' => $result,
+                    ]);
+
+                case 'delete':
+                    // التحقق من وجود السجل
+                    $exists = DB::table($tableName)->where('id', $recordId)->exists();
+                    if (!$exists) {
+                        Log::warning('Record not found for API sync delete', [
+                            'table' => $tableName,
+                            'record_id' => $recordId,
+                        ]);
+                        
+                        // في حالة الحذف، إذا كان السجل غير موجود، نعتبر العملية ناجحة
+                        return response()->json([
+                            'success' => true,
+                            'message' => 'السجل غير موجود (تم حذفه مسبقاً)',
+                        ]);
+                    }
+                    
+                    DB::table($tableName)->where('id', $recordId)->delete();
+                    
+                    Log::info('API sync delete succeeded', [
+                        'table' => $tableName,
+                        'record_id' => $recordId,
+                    ]);
+                    
+                    return response()->json([
+                        'success' => true,
+                        'message' => 'تم حذف السجل بنجاح',
+                    ]);
+
+                default:
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'action غير معروف',
+                    ], 400);
+            }
+        } catch (\Exception $e) {
+            Log::error('API sync failed', [
+                'error' => $e->getMessage(),
+                'table' => $request->input('table_name'),
+                'action' => $request->input('action'),
+                'record_id' => $request->input('record_id'),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تنفيذ المزامنة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
 }
 
