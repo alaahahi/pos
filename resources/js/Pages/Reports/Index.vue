@@ -57,6 +57,26 @@
                   <i class="bi bi-graph-up"></i> التقرير الشامل
                 </button>
               </li>
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link" 
+                  :class="{ active: activeTab === 'daily-closes' }"
+                  @click="changeTab('daily-closes')"
+                  type="button"
+                >
+                  <i class="bi bi-calendar-day"></i> الإغلاق اليومي
+                </button>
+              </li>
+              <li class="nav-item" role="presentation">
+                <button 
+                  class="nav-link" 
+                  :class="{ active: activeTab === 'monthly-closes' }"
+                  @click="changeTab('monthly-closes')"
+                  type="button"
+                >
+                  <i class="bi bi-calendar-month"></i> الإغلاق الشهري
+                </button>
+              </li>
             </ul>
           </div>
         </div>
@@ -439,6 +459,300 @@
           </div>
         </div>
 
+        <!-- Daily Closes Report -->
+        <div v-else-if="activeTab === 'daily-closes' && reportData" class="card">
+          <div class="card-body">
+            <!-- Print Button -->
+            <div class="mb-4 text-end">
+              <button class="btn btn-primary btn-lg" @click="printReport">
+                <i class="bi bi-printer"></i> طباعة التقرير
+              </button>
+            </div>
+
+            <h4 class="mb-4">إحصائيات الإغلاق اليومي</h4>
+            <div class="row mb-4">
+              <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                  <div class="card-body">
+                    <h6>المبيعات (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_sales_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                  <div class="card-body">
+                    <h6>المبيعات (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_sales_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>الإضافة المباشرة (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_deposits_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>الإضافة المباشرة (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_deposits_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                  <div class="card-body">
+                    <h6>السحب المباشر (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_withdrawals_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                  <div class="card-body">
+                    <h6>السحب المباشر (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_withdrawals_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>المصاريف (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_expenses_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>المصاريف (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_expenses_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-info text-white">
+                  <div class="card-body">
+                    <h6>عدد الطلبات</h6>
+                    <h3>{{ reportData.statistics?.total_orders || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>مغلق</h6>
+                    <h3>{{ reportData.statistics?.closed_count || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>مفتوح</h6>
+                    <h3>{{ reportData.statistics?.open_count || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h5 class="mb-3">قائمة الإغلاق اليومي</h5>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>التاريخ</th>
+                    <th>الحالة</th>
+                    <th>المبيعات (USD)</th>
+                    <th>المبيعات (IQD)</th>
+                    <th>الإضافة المباشرة (USD)</th>
+                    <th>الإضافة المباشرة (IQD)</th>
+                    <th>السحب المباشر (USD)</th>
+                    <th>السحب المباشر (IQD)</th>
+                    <th>المصاريف (USD)</th>
+                    <th>المصاريف (IQD)</th>
+                    <th>عدد الطلبات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(close, index) in reportData.daily_closes" :key="close.id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ formatDate(close.close_date) }}</td>
+                    <td>
+                      <span :class="close.status === 'closed' ? 'badge bg-success' : 'badge bg-warning'">
+                        {{ close.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                      </span>
+                    </td>
+                    <td>{{ formatNumber(close.total_sales_usd) }}</td>
+                    <td>{{ formatNumber(close.total_sales_iqd) }}</td>
+                    <td>{{ formatNumber(close.direct_deposits_usd) }}</td>
+                    <td>{{ formatNumber(close.direct_deposits_iqd) }}</td>
+                    <td>{{ formatNumber(close.direct_withdrawals_usd) }}</td>
+                    <td>{{ formatNumber(close.direct_withdrawals_iqd) }}</td>
+                    <td>{{ formatNumber(close.total_expenses_usd) }}</td>
+                    <td>{{ formatNumber(close.total_expenses_iqd) }}</td>
+                    <td>{{ close.total_orders }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
+        <!-- Monthly Closes Report -->
+        <div v-else-if="activeTab === 'monthly-closes' && reportData" class="card">
+          <div class="card-body">
+            <!-- Print Button -->
+            <div class="mb-4 text-end">
+              <button class="btn btn-primary btn-lg" @click="printReport">
+                <i class="bi bi-printer"></i> طباعة التقرير
+              </button>
+            </div>
+
+            <h4 class="mb-4">إحصائيات الإغلاق الشهري</h4>
+            <div class="row mb-4">
+              <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                  <div class="card-body">
+                    <h6>المبيعات (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_sales_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-primary text-white">
+                  <div class="card-body">
+                    <h6>المبيعات (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_sales_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>الإضافة المباشرة (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_deposits_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>الإضافة المباشرة (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_deposits_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                  <div class="card-body">
+                    <h6>السحب المباشر (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_withdrawals_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-danger text-white">
+                  <div class="card-body">
+                    <h6>السحب المباشر (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_direct_withdrawals_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>المصاريف (USD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_expenses_usd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>المصاريف (IQD)</h6>
+                    <h3>{{ formatNumber(reportData.statistics?.total_expenses_iqd || 0) }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-info text-white">
+                  <div class="card-body">
+                    <h6>عدد الطلبات</h6>
+                    <h3>{{ reportData.statistics?.total_orders || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-success text-white">
+                  <div class="card-body">
+                    <h6>مغلق</h6>
+                    <h3>{{ reportData.statistics?.closed_count || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-3">
+                <div class="card bg-warning text-white">
+                  <div class="card-body">
+                    <h6>مفتوح</h6>
+                    <h3>{{ reportData.statistics?.open_count || 0 }}</h3>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <h5 class="mb-3">قائمة الإغلاق الشهري</h5>
+            <div class="table-responsive">
+              <table class="table table-striped">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>الشهر</th>
+                    <th>السنة</th>
+                    <th>الحالة</th>
+                    <th>المبيعات (USD)</th>
+                    <th>المبيعات (IQD)</th>
+                    <th>الإضافة المباشرة (USD)</th>
+                    <th>الإضافة المباشرة (IQD)</th>
+                    <th>السحب المباشر (USD)</th>
+                    <th>السحب المباشر (IQD)</th>
+                    <th>المصاريف (USD)</th>
+                    <th>المصاريف (IQD)</th>
+                    <th>عدد الطلبات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(close, index) in reportData.monthly_closes" :key="close.id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ getMonthName(close.month) }}</td>
+                    <td>{{ close.year }}</td>
+                    <td>
+                      <span :class="close.status === 'closed' ? 'badge bg-success' : 'badge bg-warning'">
+                        {{ close.status === 'closed' ? 'مغلق' : 'مفتوح' }}
+                      </span>
+                    </td>
+                    <td>{{ formatNumber(close.total_sales_usd) }}</td>
+                    <td>{{ formatNumber(close.total_sales_iqd) }}</td>
+                    <td>{{ formatNumber(close.direct_deposits_usd) }}</td>
+                    <td>{{ formatNumber(close.direct_deposits_iqd) }}</td>
+                    <td>{{ formatNumber(close.direct_withdrawals_usd) }}</td>
+                    <td>{{ formatNumber(close.direct_withdrawals_iqd) }}</td>
+                    <td>{{ formatNumber(close.total_expenses_usd) }}</td>
+                    <td>{{ formatNumber(close.total_expenses_iqd) }}</td>
+                    <td>{{ close.total_orders }}</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+
         <!-- No Data -->
         <div v-else class="card">
           <div class="card-body text-center py-5">
@@ -532,6 +846,17 @@ const loadReport = async () => {
       case 'summary':
         endpoint = route('reports.summary')
         break
+      case 'daily-closes':
+        endpoint = route('reports.daily-closes')
+        break
+      case 'monthly-closes':
+        endpoint = route('reports.monthly-closes')
+        // For monthly closes, we need year and month filters
+        params.start_year = new Date(filters.value.start_date).getFullYear()
+        params.end_year = new Date(filters.value.end_date).getFullYear()
+        params.start_month = new Date(filters.value.start_date).getMonth() + 1
+        params.end_month = new Date(filters.value.end_date).getMonth() + 1
+        break
     }
 
     const response = await axios.get(endpoint, { params })
@@ -575,6 +900,12 @@ const printReport = () => {
     case 'summary':
       routeName = 'reports.summary.print'
       break
+    case 'daily-closes':
+      routeName = 'reports.daily-closes.print'
+      break
+    case 'monthly-closes':
+      routeName = 'reports.monthly-closes.print'
+      break
   }
   
   if (routeName) {
@@ -594,6 +925,14 @@ const formatNumber = (num) => {
 const formatDate = (date) => {
   if (!date) return 'N/A'
   return new Date(date).toLocaleDateString('ar-EG')
+}
+
+const getMonthName = (month) => {
+  const months = [
+    'يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو',
+    'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'
+  ]
+  return months[month - 1] || month
 }
 
 const getStatusBadgeClass = (status) => {

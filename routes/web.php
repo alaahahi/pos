@@ -142,6 +142,10 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::get('reports/purchases/print', [ReportController::class, 'purchases'])->name('reports.purchases.print');
   Route::get('reports/expenses/print', [ReportController::class, 'expenses'])->name('reports.expenses.print');
   Route::get('reports/summary/print', [ReportController::class, 'summary'])->name('reports.summary.print');
+  Route::get('api/reports/daily-closes', [ReportController::class, 'dailyCloses'])->name('reports.daily-closes');
+  Route::get('api/reports/monthly-closes', [ReportController::class, 'monthlyCloses'])->name('reports.monthly-closes');
+  Route::get('reports/daily-closes/print', [ReportController::class, 'dailyCloses'])->name('reports.daily-closes.print');
+  Route::get('reports/monthly-closes/print', [ReportController::class, 'monthlyCloses'])->name('reports.monthly-closes.print');
 
 
 

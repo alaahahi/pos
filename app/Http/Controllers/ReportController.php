@@ -391,5 +391,178 @@ class ReportController extends Controller
 
         return response()->json($data);
     }
+
+    /**
+     * تقرير الإغلاق اليومي
+     */
+    public function dailyCloses(Request $request)
+    {
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        $format = $request->get('format', 'html');
+
+        $query = DailyClose::with('closedBy')
+            ->whereBetween('close_date', [$startDate, $endDate])
+            ->orderBy('close_date', 'desc');
+
+        $dailyCloses = $query->get();
+
+        // حساب الإجماليات
+        $totalSalesUsd = $dailyCloses->sum('total_sales_usd');
+        $totalSalesIqd = $dailyCloses->sum('total_sales_iqd');
+        $totalDirectDepositsUsd = $dailyCloses->sum('direct_deposits_usd');
+        $totalDirectDepositsIqd = $dailyCloses->sum('direct_deposits_iqd');
+        $totalDirectWithdrawalsUsd = $dailyCloses->sum('direct_withdrawals_usd');
+        $totalDirectWithdrawalsIqd = $dailyCloses->sum('direct_withdrawals_iqd');
+        $totalExpensesUsd = $dailyCloses->sum('total_expenses_usd');
+        $totalExpensesIqd = $dailyCloses->sum('total_expenses_iqd');
+        $totalOrders = $dailyCloses->sum('total_orders');
+        $closedCount = $dailyCloses->where('status', 'closed')->count();
+        $openCount = $dailyCloses->where('status', 'open')->count();
+
+        // تجميع حسب الأسبوع
+        $groupedByWeek = $dailyCloses->groupBy(function($close) {
+            return Carbon::parse($close->close_date)->format('Y-W');
+        })->map(function($group) {
+            $firstDate = Carbon::parse($group->first()->close_date);
+            $lastDate = Carbon::parse($group->last()->close_date);
+            return [
+                'week' => $firstDate->format('Y-W'),
+                'start_date' => $firstDate->format('Y-m-d'),
+                'end_date' => $lastDate->format('Y-m-d'),
+                'count' => $group->count(),
+                'total_sales_usd' => $group->sum('total_sales_usd'),
+                'total_sales_iqd' => $group->sum('total_sales_iqd'),
+                'total_direct_deposits_usd' => $group->sum('direct_deposits_usd'),
+                'total_direct_deposits_iqd' => $group->sum('direct_deposits_iqd'),
+                'total_direct_withdrawals_usd' => $group->sum('direct_withdrawals_usd'),
+                'total_direct_withdrawals_iqd' => $group->sum('direct_withdrawals_iqd'),
+                'total_expenses_usd' => $group->sum('total_expenses_usd'),
+                'total_expenses_iqd' => $group->sum('total_expenses_iqd'),
+                'total_orders' => $group->sum('total_orders'),
+            ];
+        })->sortByDesc('week')->values();
+
+        $data = [
+            'daily_closes' => $dailyCloses,
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+            ],
+            'statistics' => [
+                'total_sales_usd' => $totalSalesUsd,
+                'total_sales_iqd' => $totalSalesIqd,
+                'total_direct_deposits_usd' => $totalDirectDepositsUsd,
+                'total_direct_deposits_iqd' => $totalDirectDepositsIqd,
+                'total_direct_withdrawals_usd' => $totalDirectWithdrawalsUsd,
+                'total_direct_withdrawals_iqd' => $totalDirectWithdrawalsIqd,
+                'total_expenses_usd' => $totalExpensesUsd,
+                'total_expenses_iqd' => $totalExpensesIqd,
+                'total_orders' => $totalOrders,
+                'closed_count' => $closedCount,
+                'open_count' => $openCount,
+                'total_count' => $dailyCloses->count(),
+            ],
+            'grouped_by_week' => $groupedByWeek,
+        ];
+
+        if ($format === 'print') {
+            return view('reports.daily-closes-report', $data);
+        }
+
+        return response()->json($data);
+    }
+
+    /**
+     * تقرير الإغلاق الشهري
+     */
+    public function monthlyCloses(Request $request)
+    {
+        $startDate = $request->get('start_date', Carbon::now()->startOfMonth()->format('Y-m-d'));
+        $endDate = $request->get('end_date', Carbon::now()->format('Y-m-d'));
+        $format = $request->get('format', 'html');
+
+        $startCarbon = Carbon::parse($startDate);
+        $endCarbon = Carbon::parse($endDate);
+        
+        $startYear = $startCarbon->year;
+        $endYear = $endCarbon->year;
+        $startMonth = $startCarbon->month;
+        $endMonth = $endCarbon->month;
+
+        $query = MonthlyClose::with('closedBy');
+        
+        if ($startYear == $endYear) {
+            // نفس السنة
+            $query->where('year', $startYear)
+                  ->whereBetween('month', [$startMonth, $endMonth]);
+        } else {
+            // سنوات مختلفة
+            $query->where(function($q) use ($startYear, $endYear, $startMonth, $endMonth) {
+                // السنة الأولى
+                $q->where(function($subQ) use ($startYear, $startMonth) {
+                    $subQ->where('year', $startYear)->where('month', '>=', $startMonth);
+                });
+                // السنوات الوسطى
+                if ($endYear - $startYear > 1) {
+                    $q->orWhereBetween('year', [$startYear + 1, $endYear - 1]);
+                }
+                // السنة الأخيرة
+                $q->orWhere(function($subQ) use ($endYear, $endMonth) {
+                    $subQ->where('year', $endYear)->where('month', '<=', $endMonth);
+                });
+            });
+        }
+        
+        $query->orderBy('year', 'desc')
+              ->orderBy('month', 'desc');
+
+        $monthlyCloses = $query->get();
+
+        // حساب الإجماليات
+        $totalSalesUsd = $monthlyCloses->sum('total_sales_usd');
+        $totalSalesIqd = $monthlyCloses->sum('total_sales_iqd');
+        $totalDirectDepositsUsd = $monthlyCloses->sum('direct_deposits_usd');
+        $totalDirectDepositsIqd = $monthlyCloses->sum('direct_deposits_iqd');
+        $totalDirectWithdrawalsUsd = $monthlyCloses->sum('direct_withdrawals_usd');
+        $totalDirectWithdrawalsIqd = $monthlyCloses->sum('direct_withdrawals_iqd');
+        $totalExpensesUsd = $monthlyCloses->sum('total_expenses_usd');
+        $totalExpensesIqd = $monthlyCloses->sum('total_expenses_iqd');
+        $totalOrders = $monthlyCloses->sum('total_orders');
+        $closedCount = $monthlyCloses->where('status', 'closed')->count();
+        $openCount = $monthlyCloses->where('status', 'open')->count();
+
+        $data = [
+            'monthly_closes' => $monthlyCloses,
+            'filters' => [
+                'start_date' => $startDate,
+                'end_date' => $endDate,
+                'start_year' => $startYear,
+                'end_year' => $endYear,
+                'start_month' => $startMonth,
+                'end_month' => $endMonth,
+            ],
+            'statistics' => [
+                'total_sales_usd' => $totalSalesUsd,
+                'total_sales_iqd' => $totalSalesIqd,
+                'total_direct_deposits_usd' => $totalDirectDepositsUsd,
+                'total_direct_deposits_iqd' => $totalDirectDepositsIqd,
+                'total_direct_withdrawals_usd' => $totalDirectWithdrawalsUsd,
+                'total_direct_withdrawals_iqd' => $totalDirectWithdrawalsIqd,
+                'total_expenses_usd' => $totalExpensesUsd,
+                'total_expenses_iqd' => $totalExpensesIqd,
+                'total_orders' => $totalOrders,
+                'closed_count' => $closedCount,
+                'open_count' => $openCount,
+                'total_count' => $monthlyCloses->count(),
+            ],
+        ];
+
+        if ($format === 'print') {
+            return view('reports.monthly-closes-report', $data);
+        }
+
+        return response()->json($data);
+    }
 }
 

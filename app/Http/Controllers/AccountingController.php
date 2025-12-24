@@ -35,7 +35,8 @@ use App\Models\ExpensesType;
 use App\Models\Expenses;
 use App\Models\TransactionsImages;
 use App\Helpers\UploadHelper;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 use File;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ImportInfo;
@@ -128,15 +129,14 @@ class AccountingController extends Controller
         // Save the original image to the first directory
         $file->move($path1, $name);
     
-        // Load the original image using Intervention Image
-        $image = Image::make(public_path('uploads/' . $name));
+        // Load the original image using Intervention Image Manager
+        $manager = new ImageManager(new Driver());
+        $image = $manager->read(public_path('uploads/' . $name));
+    
+        // Resize the image
+        $image->scale(width: 50, height: 50);
     
         // Save the resized image to the second directory
-        $image->resize(50, 50, function ($constraint) {
-            $constraint->aspectRatio();
-            $constraint->upsize();
-        });
-    
         $image->save(public_path('uploadsResized/' . $name));
         // Create a new record in the database
         $carImage = TransactionsImages::create([
