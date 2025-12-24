@@ -32,10 +32,10 @@
         body {
             font-family: 'Arial', 'Helvetica', sans-serif;
             font-size: 11px;
-            line-height: 1.6;
+            line-height: 1.4;
             color: #333;
             background: #f5f5f5;
-            padding: 15mm;
+            padding: 10mm;
         }
         
         .invoice-container {
@@ -78,16 +78,16 @@
         .invoice-content {
             position: relative;
             z-index: 1;
-            padding: 20mm;
+            padding: 15mm;
         }
         
         /* Header - تحسين التصميم */
         .invoice-header {
             border-bottom: 3px solid var(--primary-color);
-            padding-bottom: 15px;
-            margin-bottom: 20px;
+            padding-bottom: 10px;
+            margin-bottom: 12px;
             background: linear-gradient(135deg, rgba({{ $primaryRgb }}, 0.05) 0%, rgba({{ $primaryRgb }}, 0.02) 100%);
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px 8px 0 0;
         }
         
@@ -95,7 +95,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 10px;
         }
         
         .company-info-left {
@@ -136,11 +136,11 @@
         .invoice-info-grid {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            margin-top: 12px;
+            gap: 10px;
+            margin-top: 8px;
             font-size: 11px;
             background: white;
-            padding: 12px;
+            padding: 10px;
             border-radius: 5px;
             border: 1px solid #e0e0e0;
         }
@@ -148,8 +148,8 @@
         .info-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 8px;
-            padding: 5px 0;
+            margin-bottom: 5px;
+            padding: 3px 0;
             border-bottom: 1px dotted #ddd;
         }
         
@@ -173,8 +173,8 @@
         /* Customer Details - تحسين */
         .customer-section {
             border: 2px solid var(--primary-color);
-            padding: 15px;
-            margin-bottom: 25px;
+            padding: 12px;
+            margin-bottom: 15px;
             background: linear-gradient(135deg, rgba({{ $primaryRgb }}, 0.05) 0%, white 100%);
             border-radius: 8px;
         }
@@ -182,10 +182,10 @@
         .section-title {
             font-weight: bold;
             font-size: 13px;
-            margin-bottom: 12px;
+            margin-bottom: 8px;
             text-transform: uppercase;
             border-bottom: 2px solid var(--primary-color);
-            padding-bottom: 8px;
+            padding-bottom: 5px;
             color: var(--primary-color-dark);
         }
         
@@ -201,7 +201,7 @@
             width: 100%;
             border-collapse: separate;
             border-spacing: 0;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
             font-size: 11px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
             border-radius: 8px;
@@ -212,7 +212,7 @@
             background: linear-gradient(135deg, var(--primary-color) 0%, var(--primary-color-dark) 100%);
             color: #fff;
             border: none;
-            padding: 12px 8px;
+            padding: 8px 8px;
             text-align: center;
             font-weight: bold;
             text-transform: uppercase;
@@ -230,7 +230,7 @@
         
         .items-table td {
             border: 1px solid #e8e8e8;
-            padding: 10px 8px;
+            padding: 6px 8px;
             text-align: center;
             background: white;
         }
@@ -252,12 +252,12 @@
         .summary-section {
             display: flex;
             justify-content: flex-end;
-            margin-bottom: 25px;
+            margin-bottom: 15px;
         }
         
         .summary-right {
             border: 2px solid var(--primary-color);
-            padding: 15px;
+            padding: 12px;
             border-radius: 8px;
             background: linear-gradient(135deg, rgba({{ $primaryRgb }}, 0.05) 0%, white 100%);
             width: 100%;
@@ -266,9 +266,9 @@
         .summary-row {
             display: flex;
             justify-content: space-between;
-            margin-bottom: 10px;
+            margin-bottom: 6px;
             font-size: 12px;
-            padding: 8px 0;
+            padding: 5px 0;
             border-bottom: 1px dotted #ddd;
         }
         
@@ -285,8 +285,8 @@
             font-weight: bold;
             font-size: 16px;
             border-top: 3px solid var(--primary-color);
-            padding-top: 12px;
-            margin-top: 10px;
+            padding-top: 8px;
+            margin-top: 6px;
             color: var(--primary-color-dark);
         }
         
@@ -297,8 +297,8 @@
         
         .amount-words-row {
             border-top: 2px solid var(--primary-color);
-            padding-top: 12px;
-            margin-top: 10px;
+            padding-top: 8px;
+            margin-top: 6px;
             margin-bottom: 0 !important;
         }
         
@@ -310,28 +310,28 @@
         /* Footer - تحسين كبير */
         .invoice-footer {
             border-top: 3px solid var(--primary-color);
-            padding-top: 25px;
-            margin-top: 30px;
+            padding-top: 15px;
+            margin-top: 20px;
             background: linear-gradient(135deg, rgba({{ $primaryRgb }}, 0.03) 0%, white 100%);
-            padding: 25px 20px;
+            padding: 15px 20px;
             border-radius: 0 0 8px 8px;
         }
         
         .footer-terms {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 20px;
-            margin-bottom: 20px;
+            gap: 15px;
+            margin-bottom: 12px;
             font-size: 11px;
         }
         
         .dealer-info {
             text-align: center;
             font-size: 11px;
-            margin: 15px 0;
+            margin: 10px 0;
             font-style: italic;
             color: #666;
-            padding: 10px;
+            padding: 8px;
             background: rgba({{ $primaryRgb }}, 0.05);
             border-radius: 5px;
         }
@@ -341,8 +341,8 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin: 25px 0;
-            padding: 15px 10px;
+            margin: 15px 0;
+            padding: 10px 10px;
             width: 100%;
         }
         
@@ -372,10 +372,10 @@
         .contact-info {
             text-align: center;
             font-size: 11px;
-            margin-top: 20px;
-            line-height: 2;
+            margin-top: 12px;
+            line-height: 1.6;
             color: #555;
-            padding: 15px;
+            padding: 10px;
             background: white;
             border-radius: 8px;
             border: 1px solid #e0e0e0;
@@ -389,9 +389,9 @@
         .page-info {
             text-align: center;
             font-size: 10px;
-            margin-top: 15px;
+            margin-top: 10px;
             color: #999;
-            padding-top: 15px;
+            padding-top: 10px;
             border-top: 1px solid #e0e0e0;
         }
         
@@ -523,7 +523,7 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 5%;">SL No</th>
+                        <th style="width: 5%;">NO</th>
                         <th style="width: 45%;" class="text-left">DESCRIPTION</th>
                         <th style="width: 10%;">QTY</th>
                         <th style="width: 15%;">UNIT PRICE</th>
