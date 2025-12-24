@@ -271,6 +271,10 @@
                       <i class="bi bi-calendar3"></i>
                       {{ translations.created_at }}
                     </th>
+                    <th scope="col">
+                      <i class="bi bi-images"></i>
+                      المرفقات
+                    </th>
                     <th scope="col" class="actions-col">
                       <i class="bi bi-gear"></i>
                       الإجراءات
@@ -317,6 +321,20 @@
                           <span>{{ formatDate(tran.created_at) }}</span>
                         </div>
                       </td>
+                      <td class="attachments-cell">
+                        <div class="attachments-info">
+                          <button 
+                            v-if="tran.transactions_images && tran.transactions_images.length > 0"
+                            class="btn btn-sm btn-info"
+                            @click="viewImages(tran)"
+                            title="عرض المرفقات"
+                          >
+                            <i class="bi bi-images"></i>
+                            <span class="badge bg-white text-dark ms-1">{{ tran.transactions_images.length }}</span>
+                          </button>
+                          <span v-else class="text-muted">-</span>
+                        </div>
+                      </td>
                       <td class="actions-cell">
                         <div class="action-buttons">
                           <!-- Delete Button -->
@@ -357,17 +375,6 @@
                           >
                             <print />
                           </a>
-
-                          <!-- View Images Button -->
-                          <button 
-                            v-if="tran.transactions_images && tran.transactions_images.length > 0"
-                            class="action-icon view" 
-                            @click="viewImages(tran)"
-                            title="عرض المرفقات"
-                          >
-                            <i class="bi bi-images"></i>
-                            <span class="badge">{{ tran.transactions_images.length }}</span>
-                          </button>
                         </div>
                   </td>
                 </tr>
@@ -830,14 +837,14 @@
           <a
             v-for="(image, index) in selectedImages"
             :key="index"
-            :href="getDownloadUrl(image.name)"
+            :href="getImageUrl(image.name)"
             target="_blank"
             class="image-item"
           >
             <img :src="getImageUrl(image.name)" :alt="`صورة ${index + 1}`" />
             <div class="image-overlay">
-              <i class="bi bi-download"></i>
-              <span>تحميل</span>
+              <i class="bi bi-box-arrow-up-right"></i>
+              <span>فتح في تاب جديد</span>
             </div>
           </a>
         </div>
@@ -1890,6 +1897,38 @@ const getMonthName = (month) => {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.attachments-cell {
+  text-align: center;
+}
+
+.attachments-info {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.attachments-info .btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.25rem 0.75rem;
+  border-radius: 20px;
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+}
+
+.attachments-info .btn:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.attachments-info .badge {
+  font-size: 0.75rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 12px;
 }
 
 .date-cell .date-info {
