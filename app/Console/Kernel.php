@@ -19,6 +19,7 @@ class Kernel extends ConsoleKernel
         
         // مزامنة تلقائية كل 5 دقائق (من المحلي إلى السيرفر)
         // يعمل فقط إذا كان API Sync مفعّل وكان هناك إنترنت
+        // يستخدم SyncPendingChangesJob الموجود للمزامنة
         $schedule->call(function () {
             try {
                 // التحقق من أن API Sync مفعّل
@@ -46,20 +47,20 @@ class Kernel extends ConsoleKernel
                     return;
                 }
                 
-                \Log::info('Starting scheduled sync', [
+                \Log::info('Dispatching scheduled sync job', [
                     'pending_count' => $pendingCount,
                 ]);
                 
-                // بدء المزامنة
-                $syncService = new \App\Services\DatabaseSyncService();
-                $results = $syncService->syncPendingChanges(null, 100); // مزامنة حتى 100 سجل كل 5 دقائق
+                // استخدام SyncPendingChangesJob الموجود للمزامنة
+                // هذا Job يحتوي على retry mechanism وstatus tracking
+                $job = new \App\Jobs\SyncPendingChangesJob(null, 100); // مزامنة حتى 100 سجل كل 5 دقائق
+                dispatch($job)->onQueue('sync');
                 
-                \Log::info('Scheduled sync completed', [
-                    'synced' => $results['synced'] ?? 0,
-                    'failed' => $results['failed'] ?? 0,
+                \Log::info('Scheduled sync job dispatched successfully', [
+                    'job_id' => $job->getJobId(),
                 ]);
             } catch (\Exception $e) {
-                \Log::error('Scheduled sync failed', [
+                \Log::error('Scheduled sync dispatch failed', [
                     'error' => $e->getMessage(),
                     'trace' => $e->getTraceAsString(),
                 ]);

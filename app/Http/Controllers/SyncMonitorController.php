@@ -161,6 +161,33 @@ class SyncMonitorController extends Controller
                 });
             }
 
+            // تحديد نوع قاعدة البيانات وعدد الجداول بناءً على الاتصال الافتراضي
+            $defaultConnection = config('database.default');
+            $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
+            
+            // حساب عدد الجداول من الاتصال الصحيح فقط
+            $totalTables = 0;
+            $dbType = 'MySQL';
+            
+            if ($isSQLite) {
+                // في النظام المحلي: حساب فقط جداول SQLite
+                $totalTables = count(array_filter($tables, function($table) {
+                    return $table['connection'] === 'sync_sqlite';
+                }));
+                $dbType = 'SQLite';
+            } else {
+                // في السيرفر: حساب فقط جداول MySQL
+                $totalTables = count(array_filter($tables, function($table) {
+                    return $table['connection'] === 'mysql';
+                }));
+                $dbType = 'MySQL';
+            }
+            
+            // إذا لم يتم العثور على جداول من الاتصال المحدد، استخدم العدد الإجمالي
+            if ($totalTables === 0 && count($tables) > 0) {
+                $totalTables = count($tables);
+            }
+            
             return response()->json([
                 'success' => true,
                 'tables' => $tables,
@@ -168,8 +195,8 @@ class SyncMonitorController extends Controller
                 'queue_stats' => $queueStats,
                 'backups' => $backups,
                 'database_info' => [
-                    'type' => 'MySQL',
-                    'total_tables' => count($tables),
+                    'type' => $dbType,
+                    'total_tables' => $totalTables,
                 ],
             ]);
         } catch (\Exception $e) {
@@ -2751,6 +2778,326 @@ class SyncMonitorController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ أثناء مزامنة السجلات المفقودة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * جلب قائمة Jobs للمزامنة من السيرفر
+     */
+    public function getSyncFromServerJobs(Request $request)
+    {
+        try {
+            $status = $request->input('status'); // pending, processing, completed, failed
+            $limit = (int) $request->input('limit', 50);
+            $offset = (int) $request->input('offset', 0);
+
+            // استخدام جدول jobs من Laravel
+            $queueConnection = config('queue.default');
+            $connection = config("queue.connections.{$queueConnection}.connection") ?? config('database.default');
+            
+            if (!Schema::connection($connection)->hasTable('jobs')) {
+                return response()->json([
+                    'success' => true,
+                    'jobs' => [],
+                    'total' => 0,
+                    'message' => 'جدول jobs غير موجود',
+                ]);
+            }
+
+            $query = DB::connection($connection)->table('jobs')
+                ->where('queue', 'sync-from-server')
+                ->orderBy('id', 'desc');
+
+            $total = $query->count();
+            
+            $jobs = $query->offset($offset)->limit($limit)->get()->map(function ($job) {
+                $payload = json_decode($job->payload, true);
+                $jobClass = $payload['displayName'] ?? 'Unknown';
+                $jobId = null;
+                
+                // محاولة استخراج job_id من البيانات
+                if (isset($payload['data']['command'])) {
+                    $commandData = unserialize($payload['data']['command']);
+                    if (is_object($commandData) && method_exists($commandData, 'getJobId')) {
+                        $jobId = $commandData->getJobId();
+                    }
+                }
+                
+                // استخراج معلومات من payload
+                $tableName = null;
+                $recordId = null;
+                $action = null;
+                
+                if (isset($payload['data']['command'])) {
+                    try {
+                        $commandData = unserialize($payload['data']['command']);
+                        if (is_object($commandData)) {
+                            $reflection = new \ReflectionClass($commandData);
+                            if ($reflection->hasProperty('tableName')) {
+                                $prop = $reflection->getProperty('tableName');
+                                $prop->setAccessible(true);
+                                $tableName = $prop->getValue($commandData);
+                            }
+                            if ($reflection->hasProperty('recordId')) {
+                                $prop = $reflection->getProperty('recordId');
+                                $prop->setAccessible(true);
+                                $recordId = $prop->getValue($commandData);
+                            }
+                            if ($reflection->hasProperty('action')) {
+                                $prop = $reflection->getProperty('action');
+                                $prop->setAccessible(true);
+                                $action = $prop->getValue($commandData);
+                            }
+                        }
+                    } catch (\Exception $e) {
+                        // تجاهل الأخطاء في استخراج البيانات
+                    }
+                }
+
+                $jobStatus = 'pending';
+                if ($job->reserved_at) {
+                    $jobStatus = 'processing';
+                }
+
+                // محاولة الحصول على الحالة من Cache
+                $statusFromCache = null;
+                if ($jobId) {
+                    $statusFromCache = \Illuminate\Support\Facades\Cache::get("sync_from_server_status_{$jobId}");
+                    if ($statusFromCache && isset($statusFromCache['status'])) {
+                        $jobStatus = $statusFromCache['status'];
+                    }
+                }
+
+                return [
+                    'id' => $job->id,
+                    'job_id' => $jobId,
+                    'queue' => $job->queue,
+                    'class' => $jobClass,
+                    'table_name' => $tableName,
+                    'record_id' => $recordId,
+                    'action' => $action,
+                    'attempts' => $job->attempts,
+                    'status' => $jobStatus,
+                    'reserved_at' => $job->reserved_at ? date('Y-m-d H:i:s', $job->reserved_at) : null,
+                    'available_at' => date('Y-m-d H:i:s', $job->available_at),
+                    'created_at' => date('Y-m-d H:i:s', $job->created_at),
+                    'cache_status' => $statusFromCache,
+                ];
+            });
+
+            return response()->json([
+                'success' => true,
+                'jobs' => $jobs,
+                'total' => $total,
+                'limit' => $limit,
+                'offset' => $offset,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get sync from server jobs', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'jobs' => [],
+            ], 500);
+        }
+    }
+
+    /**
+     * حذف Job للمزامنة من السيرفر
+     */
+    public function deleteSyncFromServerJob(Request $request)
+    {
+        try {
+            $jobId = $request->input('job_id'); // ID من جدول jobs
+            
+            if (!$jobId) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'job_id مطلوب',
+                ], 400);
+            }
+
+            $queueConnection = config('queue.default');
+            $connection = config("queue.connections.{$queueConnection}.connection") ?? config('database.default');
+            
+            if (!Schema::connection($connection)->hasTable('jobs')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جدول jobs غير موجود',
+                ], 404);
+            }
+
+            $deleted = DB::connection($connection)->table('jobs')
+                ->where('id', $jobId)
+                ->where('queue', 'sync-from-server')
+                ->delete();
+
+            if ($deleted) {
+                Log::info('Deleted sync from server job', ['job_id' => $jobId]);
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم حذف Job بنجاح',
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Job غير موجود',
+                ], 404);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to delete sync from server job', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * حذف جميع Jobs للمزامنة من السيرفر
+     */
+    public function clearSyncFromServerJobs(Request $request)
+    {
+        try {
+            $status = $request->input('status'); // pending, processing, completed, failed
+
+            $queueConnection = config('queue.default');
+            $connection = config("queue.connections.{$queueConnection}.connection") ?? config('database.default');
+            
+            if (!Schema::connection($connection)->hasTable('jobs')) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'جدول jobs غير موجود',
+                ], 404);
+            }
+
+            $query = DB::connection($connection)->table('jobs')
+                ->where('queue', 'sync-from-server');
+
+            // إذا تم تحديد status، حذف فقط Jobs المحددة
+            // لكن جدول jobs لا يحتوي على status مباشرة، لذا سنحذف جميع jobs
+            // (يمكن تحسين هذا لاحقاً)
+
+            $deleted = $query->delete();
+
+            Log::info('Cleared sync from server jobs', [
+                'deleted_count' => $deleted,
+                'status' => $status,
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => "تم حذف {$deleted} Job(ات)",
+                'deleted_count' => $deleted,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to clear sync from server jobs', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * اختبار dispatch Job للمزامنة من السيرفر
+     */
+    public function testDispatchSyncFromServerJob(Request $request)
+    {
+        try {
+            $tableName = $request->input('table_name', 'orders');
+            $recordId = (int) $request->input('record_id', 1);
+            $action = $request->input('action', 'insert');
+
+            Log::info('Testing dispatch sync from server job', [
+                'table_name' => $tableName,
+                'record_id' => $recordId,
+                'action' => $action,
+                'app_env' => config('app.env'),
+            ]);
+
+            // محاولة dispatch الـ Job
+            try {
+                $job = new \App\Jobs\SyncFromServerJob($tableName, $recordId, $action);
+                $jobId = $job->getJobId();
+                
+                dispatch($job)->onQueue('sync-from-server');
+                
+                Log::info('Job dispatched successfully', [
+                    'job_id' => $jobId,
+                    'table_name' => $tableName,
+                    'record_id' => $recordId,
+                ]);
+
+                // التحقق من وجود Job في جدول jobs
+                $queueConnection = config('queue.default');
+                $connection = config("queue.connections.{$queueConnection}.connection") ?? config('database.default');
+                
+                $jobInQueue = null;
+                if (Schema::connection($connection)->hasTable('jobs')) {
+                    // البحث عن Job في جدول jobs (قد يستغرق لحظة)
+                    sleep(1);
+                    $jobInQueue = DB::connection($connection)->table('jobs')
+                        ->where('queue', 'sync-from-server')
+                        ->orderBy('id', 'desc')
+                        ->first();
+                }
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم dispatch الـ Job بنجاح',
+                    'job_id' => $jobId,
+                    'job_details' => [
+                        'table_name' => $tableName,
+                        'record_id' => $recordId,
+                        'action' => $action,
+                    ],
+                    'queue_info' => [
+                        'connection' => $connection,
+                        'queue' => 'sync-from-server',
+                        'queue_driver' => $queueConnection,
+                        'job_found_in_queue' => $jobInQueue ? true : false,
+                        'job_queue_id' => $jobInQueue ? $jobInQueue->id : null,
+                    ],
+                    'app_env' => config('app.env'),
+                    'note' => 'إذا كان app.env ليس server أو production، لن يتم dispatch الـ Job تلقائياً عند إنشاء فاتورة/منتج',
+                ]);
+            } catch (\Exception $e) {
+                Log::error('Failed to dispatch job', [
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ]);
+
+                return response()->json([
+                    'success' => false,
+                    'message' => 'فشل dispatch الـ Job: ' . $e->getMessage(),
+                    'error' => $e->getMessage(),
+                    'trace' => $e->getTraceAsString(),
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('Test dispatch job failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+                'error' => $e->getMessage(),
             ], 500);
         }
     }

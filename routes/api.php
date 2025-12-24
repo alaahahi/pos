@@ -182,6 +182,10 @@ Route::prefix('sync-monitor')->group(function () {
     Route::post('/compare-tables', [App\Http\Controllers\SyncMonitorController::class, 'compareTables']); // مقارنة البيانات بين السيرفر والمحلي
     Route::post('/sync-missing-records', [App\Http\Controllers\SyncMonitorController::class, 'syncMissingRecords']); // مزامنة السجلات المفقودة من SQLite إلى MySQL
     Route::post('/sync-from-server', [App\Http\Controllers\SyncMonitorController::class, 'syncFromServer']); // مزامنة البيانات من السيرفر (MySQL) إلى المحلي (SQLite) عبر API
+    Route::get('/sync-from-server-jobs', [App\Http\Controllers\SyncMonitorController::class, 'getSyncFromServerJobs']); // جلب قائمة Jobs للمزامنة من السيرفر
+    Route::delete('/sync-from-server-job', [App\Http\Controllers\SyncMonitorController::class, 'deleteSyncFromServerJob']); // حذف Job واحد
+    Route::delete('/sync-from-server-jobs', [App\Http\Controllers\SyncMonitorController::class, 'clearSyncFromServerJobs']); // حذف جميع Jobs
+    Route::post('/test-dispatch-sync-from-server-job', [App\Http\Controllers\SyncMonitorController::class, 'testDispatchSyncFromServerJob']); // اختبار dispatch Job
     Route::get('/id-conflicts', [App\Http\Controllers\SyncMonitorController::class, 'checkIdConflicts']);
     Route::get('/id-mappings', [App\Http\Controllers\SyncMonitorController::class, 'getIdMappings']);
     

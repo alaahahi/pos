@@ -27,7 +27,7 @@
 
               <div class="d-flex justify-content-center py-4">
                 <a href="index.html" class="logo d-flex align-items-center w-auto">
-                  <span class="d-none d-lg-block">Wedoo Events </span>
+                  <span class="d-none d-lg-block">{{ $page.props.company_name || 'WEDOO EVENTS' }}</span>
                 </a>
               </div><!-- End Logo -->
 

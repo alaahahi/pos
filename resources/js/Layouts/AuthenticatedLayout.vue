@@ -15,8 +15,8 @@
                 <i class="bi bi-list fs-3"></i>
             </button>
             <Link class="logo d-flex align-items-center" :href="route('dashboard')">
-            <img src="/dashboard-assets/img/WEDOO  LOGO PNG.webp" alt="">
-            <span class="d-none d-lg-block dark:text-white">{{ translations.app_name || 'WEDOO EVENTS' }}</span>
+            <img :src="`/${companyLogo}`" alt="">
+            <span class="d-none d-lg-block dark:text-white">{{ companyName }}</span>
             </Link>
         </div>
         <!-- End Logo -->
@@ -276,9 +276,10 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { Link } from '@inertiajs/vue3';
+import { Link, usePage } from '@inertiajs/vue3';
 import DarkModeToggle from '@/Components/DarkToggle.vue';
 
+const page = usePage();
 defineProps({translations: Object})
 
 const showingNavigationDropdown = ref(false);
@@ -286,6 +287,10 @@ const isSidebarOpen = ref(false);
 
 // Access window.translations safely
 const translations = computed(() => window.translations || {});
+
+// Company name and logo from props
+const companyName = computed(() => page.props.company_name || 'WEDOO EVENTS');
+const companyLogo = computed(() => page.props.company_logo || 'dashboard-assets/img/WEDOO  LOGO PNG.webp');
 
 // Toggle sidebar function
 const toggleSidebar = () => {

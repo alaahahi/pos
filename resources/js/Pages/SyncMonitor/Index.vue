@@ -561,6 +561,86 @@
                 </div>
               </div>
 
+              <!-- Jobs للمزامنة من السيرفر -->
+              <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                  <h4 class="text-md font-semibold dark:text-gray-50">📥 Jobs للمزامنة من السيرفر ({{ syncFromServerJobs?.total || 0 }})</h4>
+                  <div class="flex gap-2">
+                    <button 
+                      @click="loadSyncFromServerJobs" 
+                      :disabled="loadingSyncJobs" 
+                      class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 text-sm"
+                    >
+                      <span v-if="!loadingSyncJobs">🔄 تحديث</span>
+                      <span v-else>⏳ جاري...</span>
+                    </button>
+                    <button 
+                      @click="clearSyncFromServerJobs" 
+                      :disabled="loadingSyncJobs" 
+                      class="px-4 py-2 bg-red-500 text-white rounded hover:bg-red-600 disabled:opacity-50 text-sm"
+                    >
+                      🗑️ إفراغ الكل
+                    </button>
+                  </div>
+                </div>
+                
+                <div v-if="loadingSyncJobs" class="text-center py-4">
+                  <span>⏳ جاري التحميل...</span>
+                </div>
+                <div v-else-if="syncFromServerJobs && syncFromServerJobs.jobs && syncFromServerJobs.jobs.length > 0" class="overflow-x-auto">
+                  <table class="min-w-full border-collapse border border-gray-300 dark:border-gray-500">
+                    <thead class="bg-gray-50 dark:bg-gray-700">
+                      <tr>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">ID</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الجدول</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">Record ID</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الإجراء</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الحالة</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">المحاولات</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ الإنشاء</th>
+                        <th class="px-4 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الإجراءات</th>
+                      </tr>
+                    </thead>
+                    <tbody class="bg-white dark:bg-gray-800">
+                      <tr v-for="job in syncFromServerJobs.jobs" :key="job.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ job.id }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ job.table_name || '-' }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ job.record_id || '-' }}</td>
+                        <td class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-500">
+                          <span class="px-2 py-1 text-xs rounded-full bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100">
+                            {{ job.action || 'insert' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-500">
+                          <span :class="{
+                            'bg-yellow-100 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-100': job.status === 'pending',
+                            'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100': job.status === 'processing' || job.status === 'running',
+                            'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100': job.status === 'completed',
+                            'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100': job.status === 'failed'
+                          }" class="px-2 py-1 text-xs rounded-full">
+                            {{ job.status === 'pending' ? 'في الانتظار' : job.status === 'processing' || job.status === 'running' ? 'قيد التنفيذ' : job.status === 'completed' ? 'مكتمل' : 'فاشل' }}
+                          </span>
+                        </td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ job.attempts || 0 }}</td>
+                        <td class="px-4 py-2 text-sm text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ job.created_at || '-' }}</td>
+                        <td class="px-4 py-2 text-sm border border-gray-300 dark:border-gray-500">
+                          <button 
+                            @click="deleteSyncFromServerJob(job.id)" 
+                            class="px-3 py-1 bg-red-500 text-white rounded hover:bg-red-600 text-xs"
+                            title="حذف"
+                          >
+                            🗑️
+                          </button>
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+                <div v-else class="text-center py-4 text-gray-500 dark:text-gray-400">
+                  <p>لا توجد Jobs للمزامنة من السيرفر</p>
+                </div>
+              </div>
+
               <!-- عرض التغييرات المعلقة -->
               <div v-if="pendingChanges && pendingChanges.length > 0" class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
                 <h4 class="text-md font-semibold mb-4 dark:text-gray-50">📋 التغييرات المعلقة ({{ pendingChanges.length }})</h4>
@@ -1103,6 +1183,73 @@ const currentJobId = ref(null);
 const syncQueueDetails = ref(null);
 const loadingQueueDetails = ref(false);
 
+// Jobs للمزامنة من السيرفر
+const syncFromServerJobs = ref(null);
+const loadingSyncJobs = ref(false);
+
+// Jobs للمزامنة من السيرفر
+const loadSyncFromServerJobs = async () => {
+  loadingSyncJobs.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/sync-from-server-jobs', {
+      params: { limit: 50 },
+      withCredentials: true
+    });
+    
+    if (response.data.success) {
+      syncFromServerJobs.value = response.data;
+    } else {
+      toast.error(response.data.message || 'فشل تحميل Jobs');
+    }
+  } catch (error) {
+    console.error('Error loading sync from server jobs:', error);
+    toast.error('فشل تحميل Jobs: ' + (error.response?.data?.message || error.message));
+  } finally {
+    loadingSyncJobs.value = false;
+  }
+};
+
+const deleteSyncFromServerJob = async (jobId) => {
+  if (!confirm('هل تريد حذف هذا Job؟')) return;
+  
+  try {
+    const response = await axios.delete('/api/sync-monitor/sync-from-server-job', {
+      params: { job_id: jobId },
+      withCredentials: true
+    });
+    
+    if (response.data.success) {
+      toast.success('تم حذف Job بنجاح');
+      await loadSyncFromServerJobs();
+    } else {
+      toast.error(response.data.message || 'فشل حذف Job');
+    }
+  } catch (error) {
+    console.error('Error deleting sync from server job:', error);
+    toast.error('فشل حذف Job: ' + (error.response?.data?.message || error.message));
+  }
+};
+
+const clearSyncFromServerJobs = async () => {
+  if (!confirm('هل تريد حذف جميع Jobs للمزامنة من السيرفر؟')) return;
+  
+  try {
+    const response = await axios.delete('/api/sync-monitor/sync-from-server-jobs', {
+      withCredentials: true
+    });
+    
+    if (response.data.success) {
+      toast.success(`تم حذف ${response.data.deleted_count || 0} Job(ات)`);
+      await loadSyncFromServerJobs();
+    } else {
+      toast.error(response.data.message || 'فشل حذف Jobs');
+    }
+  } catch (error) {
+    console.error('Error clearing sync from server jobs:', error);
+    toast.error('فشل حذف Jobs: ' + (error.response?.data?.message || error.message));
+  }
+};
+
 // مقارنة الجداول
 const compareTableName = ref('orders');
 const comparingTables = ref(false);
@@ -1159,14 +1306,67 @@ const syncAll = async () => {
     toast.warning('غير متصل بالإنترنت');
     return;
   }
+  
+  if (syncStatus.value.pendingCount === 0) {
+    toast.info('لا توجد سجلات في الانتظار للمزامنة');
+    return;
+  }
+  
   isSyncing.value = true;
   try {
     toast.info('🔄 بدء المزامنة...', { timeout: 3000 });
-    await refreshData();
-    toast.success('✅ تمت المزامنة بنجاح!', { timeout: 3000 });
+    
+    // استخدام smartSync للمزامنة الذكية
+    const response = await axios.post('/api/sync-monitor/smart-sync', {
+      limit: 1000 // مزامنة حتى 1000 سجل
+    }, { withCredentials: true });
+    
+    if (!response.data || !response.data.success) {
+      throw new Error(response.data?.message || 'فشل بدء المزامنة');
+    }
+    
+    const jobId = response.data.job_id;
+    toast.info('🔄 تم بدء المزامنة في الخلفية...', { timeout: 3000 });
+    
+    // Polling: التحقق من حالة المزامنة كل ثانية
+    const pollInterval = setInterval(async () => {
+      try {
+        const statusResponse = await axios.get('/api/sync-monitor/sync-status', {
+          params: { job_id: jobId }
+        });
+        
+        if (statusResponse.data && statusResponse.data.success) {
+          const status = statusResponse.data.status;
+          
+          if (status.status === 'completed') {
+            clearInterval(pollInterval);
+            toast.success(`✅ تمت المزامنة بنجاح! (${status.synced || 0} سجل)`);
+            await refreshData(); // تحديث البيانات بعد المزامنة
+            isSyncing.value = false;
+          } else if (status.status === 'failed') {
+            clearInterval(pollInterval);
+            toast.error('❌ فشلت المزامنة: ' + (status.error || 'خطأ غير معروف'));
+            isSyncing.value = false;
+          }
+          // إذا كان status === 'running' أو 'waiting'، نستمر في الانتظار
+        }
+      } catch (error) {
+        console.error('Error checking sync status:', error);
+      }
+    }, 1000); // كل ثانية
+    
+    // timeout بعد 5 دقائق
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (isSyncing.value) {
+        toast.warning('⏱️ انتهت مهلة الانتظار - المزامنة قد تستمر في الخلفية');
+        isSyncing.value = false;
+      }
+    }, 300000); // 5 دقائق
+    
   } catch (error) {
-    toast.error('❌ فشلت المزامنة');
-  } finally {
+    console.error('Error syncing:', error);
+    toast.error('❌ فشلت المزامنة: ' + (error.response?.data?.message || error.message));
     isSyncing.value = false;
   }
 };
@@ -1743,6 +1943,8 @@ onMounted(() => {
   loadAllData();
   // تحديث الإحصائيات تلقائياً
   checkSyncMetadata();
+  // جلب Jobs للمزامنة من السيرفر
+  loadSyncFromServerJobs();
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 });

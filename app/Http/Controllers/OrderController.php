@@ -224,6 +224,22 @@ class OrderController extends Controller
                  'discount_rate' => $discountRate,
                  'final_amount' => $finalAmount,
              ]);
+             
+             // إضافة job للمزامنة من السيرفر إلى المحلي
+             // ملاحظة: يتم dispatch الـ Job دائماً، لكنه يعمل فقط على المحلي
+             try {
+                 \App\Jobs\SyncFromServerJob::dispatch('orders', $order->id, 'insert')
+                     ->onQueue('sync-from-server');
+                 Log::info('Dispatched sync from server job for order', [
+                     'order_id' => $order->id,
+                     'app_env' => config('app.env'),
+                 ]);
+             } catch (\Exception $e) {
+                 Log::warning('Failed to dispatch sync from server job for order', [
+                     'order_id' => $order->id,
+                     'error' => $e->getMessage(),
+                 ]);
+             }
      
              // إرفاق المنتجات مع الكميات
              $products = [];
@@ -667,8 +683,8 @@ public function print($id)
     // Retrieve the order with its related customer and products
     $order = Order::with(['customer', 'products'])->findOrFail($id);
 
-    // Return the view with the order data
-    return view('orders.print-invoice', compact('order'));
+    // Return the tax invoice view with the order data
+    return view('orders.tax-invoice', compact('order'));
 }
 
 /**

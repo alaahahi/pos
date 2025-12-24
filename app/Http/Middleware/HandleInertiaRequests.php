@@ -45,7 +45,9 @@ class HandleInertiaRequests extends Middleware
             'flash' => [
                 'success' => $request->session()->get('success')
             ],
-            'auth_permissions' => $user ? $this->getUserPermissions($user) : []
+            'auth_permissions' => $user ? $this->getUserPermissions($user) : [],
+            'company_name' => env('COMPANY_NAME', 'WEDOO EVENTS'),
+            'company_logo' => env('COMPANY_LOGO', 'dashboard-assets/img/WEDOO  LOGO PNG.webp'),
 
         ];
     }

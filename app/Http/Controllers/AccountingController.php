@@ -709,6 +709,22 @@ class AccountingController extends Controller
             if($id = $user->wallet->id){
             $transactionDetils = ['type' => $type,'wallet_id'=>$id,'description'=>$desc,'amount'=>$amount,'is_pay'=>$is_pay,'morphed_id'=>$morphed_id,'morphed_type'=>$morphed_type,'user_added'=>0,'created'=>$created,'discount'=>$discount??0,'currency'=>$currency,'parent_id'=>$parent_id,'details'=>$details];
             $transaction = Transactions::create($transactionDetils);
+            
+            // إضافة job للمزامنة من السيرفر إلى المحلي
+            try {
+                \App\Jobs\SyncFromServerJob::dispatch('transactions', $transaction->id, 'insert')
+                    ->onQueue('sync-from-server');
+                \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for transaction', [
+                    'transaction_id' => $transaction->id,
+                    'app_env' => config('app.env'),
+                ]);
+            } catch (\Exception $e) {
+                \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for transaction', [
+                    'transaction_id' => $transaction->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+            
             $wallet = Wallet::find($id);
             if($currency=='IQD'){
                 $wallet->increment('balance_dinar', $amount);
@@ -749,6 +765,22 @@ class AccountingController extends Controller
         $wallet = Wallet::find($id);
         $transactionDetils = ['type' => $type,'wallet_id'=>$id,'description'=>$desc,'amount'=>$amount*-1,'is_pay'=>$is_pay,'morphed_id'=>$morphed_id,'morphed_type'=>$morphed_type,'user_added'=>0,'created'=>$created,'discount'=>$discount??0,'currency'=>$currency,'parent_id'=>$parent_id,'details'=>$details];
         $transaction =Transactions::create($transactionDetils);
+        
+        // إضافة job للمزامنة من السيرفر إلى المحلي
+        try {
+            \App\Jobs\SyncFromServerJob::dispatch('transactions', $transaction->id, 'insert')
+                ->onQueue('sync-from-server');
+            \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for transaction (decrease)', [
+                'transaction_id' => $transaction->id,
+                'app_env' => config('app.env'),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for transaction (decrease)', [
+                'transaction_id' => $transaction->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+        
         if($currency=='IQD'){
             $wallet->decrement('balance_dinar', $amount);
         }else{

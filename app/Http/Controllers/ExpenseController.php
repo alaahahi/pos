@@ -126,6 +126,21 @@ class ExpenseController extends Controller
             ...$validated,
             'created_by' => Auth::id(),
         ]);
+        
+        // إضافة job للمزامنة من السيرفر إلى المحلي
+        try {
+            \App\Jobs\SyncFromServerJob::dispatch('expenses', $expense->id, 'insert')
+                ->onQueue('sync-from-server');
+            \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for expense', [
+                'expense_id' => $expense->id,
+                'app_env' => config('app.env'),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for expense', [
+                'expense_id' => $expense->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Update box balance
         $this->updateBoxBalance($expense, 'create');
@@ -165,6 +180,21 @@ class ExpenseController extends Controller
 
         $oldExpense = $expense->replicate();
         $expense->update($validated);
+        
+        // إضافة job للمزامنة من السيرفر إلى المحلي
+        try {
+            \App\Jobs\SyncFromServerJob::dispatch('expenses', $expense->id, 'update')
+                ->onQueue('sync-from-server');
+            \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for expense update', [
+                'expense_id' => $expense->id,
+                'app_env' => config('app.env'),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for expense update', [
+                'expense_id' => $expense->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Update box balance
         $this->updateBoxBalance($oldExpense, 'delete'); // Remove old amount
@@ -183,6 +213,21 @@ class ExpenseController extends Controller
 
         // Update box balance before deleting
         $this->updateBoxBalance($expense, 'delete');
+        
+        // إضافة job للمزامنة من السيرفر إلى المحلي (للحذف)
+        try {
+            \App\Jobs\SyncFromServerJob::dispatch('expenses', $expense->id, 'delete')
+                ->onQueue('sync-from-server');
+            \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for expense delete', [
+                'expense_id' => $expense->id,
+                'app_env' => config('app.env'),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for expense delete', [
+                'expense_id' => $expense->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
         
         $expense->delete();
 

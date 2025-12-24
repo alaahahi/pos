@@ -166,6 +166,22 @@ class ProductController extends Controller
         
         // إنشاء المنتج
         $product = Product::create($validated);
+        
+        // إضافة job للمزامنة من السيرفر إلى المحلي
+        // ملاحظة: يتم dispatch الـ Job دائماً، لكنه يعمل فقط على المحلي
+        try {
+            \App\Jobs\SyncFromServerJob::dispatch('products', $product->id, 'insert')
+                ->onQueue('sync-from-server');
+            \Illuminate\Support\Facades\Log::info('Dispatched sync from server job for product', [
+                'product_id' => $product->id,
+                'app_env' => config('app.env'),
+            ]);
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::warning('Failed to dispatch sync from server job for product', [
+                'product_id' => $product->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
 
         // Log product creation (redundant with model event but ensures coverage when events disabled)
         LogService::createLog(
