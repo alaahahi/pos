@@ -44,7 +44,7 @@ class BoxesController extends Controller
         ];
 
         // Start the Box query
-        $transactionsQuery = Transactions::with('morphed')->orderBy('created_at', 'desc');
+        $transactionsQuery = Transactions::with('morphed', 'TransactionsImages')->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
         // Search by name in the morphed relationship
@@ -319,7 +319,7 @@ class BoxesController extends Controller
         ];
 
         // Start the Box query
-        $transactionsQuery = transactions::with('TransactionsImages')->with('morphed')->orderBy('created_at', 'desc');
+        $transactionsQuery = Transactions::with('TransactionsImages', 'morphed')->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
         $transactionsQuery->when($filters['name'], function ($query, $name) {
