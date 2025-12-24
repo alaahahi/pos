@@ -133,8 +133,8 @@ class AccountingController extends Controller
         $manager = new ImageManager(new Driver());
         $image = $manager->read(public_path('uploads/' . $name));
     
-        // Resize the image
-        $image->scale(width: 50, height: 50);
+        // Resize the image maintaining aspect ratio
+        $image->scaleDown(width: 50, height: 50);
     
         // Save the resized image to the second directory
         $image->save(public_path('uploadsResized/' . $name));
