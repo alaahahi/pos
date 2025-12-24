@@ -152,7 +152,7 @@
             </div>
 
             <!-- طلبات الديكور -->
-            <div class="col-xxl-3 col-md-6">
+            <div v-if="hasPermission('read decoration')" class="col-xxl-3 col-md-6">
               <div class="card info-card customers-card">
                 <div class="card-body">
                   <h5 class="card-title">طلبات الديكور</h5>
@@ -169,7 +169,7 @@
             </div>
 
             <!-- طلبات الديكور المعلقة -->
-            <div class="col-xxl-3 col-md-6">
+            <div v-if="hasPermission('read decoration')" class="col-xxl-3 col-md-6">
               <div class="card info-card revenue-card">
                 <div class="card-body">
                   <h5 class="card-title">طلبات الديكور المعلقة</h5>
@@ -186,7 +186,7 @@
             </div>
 
             <!-- طلبات الديكور المكتملة -->
-            <div class="col-xxl-3 col-md-6">
+            <div v-if="hasPermission('read decoration')" class="col-xxl-3 col-md-6">
               <div class="card info-card sales-card">
                 <div class="card-body">
                   <h5 class="card-title">طلبات الديكور المكتملة</h5>
@@ -246,7 +246,7 @@
 
               <div class="row mt-4">
                 <!-- إحصائيات الديكور -->
-                <div class="col-md-6">
+                <div v-if="hasPermission('read decoration')" class="col-md-6">
                   <h6>طلبات الديكور حسب الحالة</h6>
                   <Chart :chartData="decorationOrdersChartData" chartId="decorationOrdersChart" chartType="pie" />
                 </div>
@@ -271,6 +271,13 @@
 <script setup>
 import AuthenticatedLayout from "@/Layouts/AuthenticatedLayout.vue";
 import Chart from '@/Components/Chart.vue';
+import { usePage } from '@inertiajs/vue3';
+
+const page = usePage();
+
+const hasPermission = (permission) => {
+  return page.props.auth_permissions && page.props.auth_permissions.includes(permission);
+};
 
 defineProps({
   // Basic counts
