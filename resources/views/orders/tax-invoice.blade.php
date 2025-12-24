@@ -1,22 +1,65 @@
+@php
+    // تحديد لغة الفاتورة من .env (ar أو en)
+    $invoiceLang = strtolower(env('INVOICE_LANGUAGE', 'en'));
+    $isArabic = ($invoiceLang === 'ar');
+    $dir = $isArabic ? 'rtl' : 'ltr';
+    $lang = $isArabic ? 'ar' : 'en';
+    $fontFamily = $isArabic ? "'Cairo', 'Arial', sans-serif" : "'Arial', 'Helvetica', sans-serif";
+    
+    // النصوص المتعددة اللغات
+    $texts = [
+        'title' => $isArabic ? 'فاتورة ضريبية' : 'TAX INVOICE',
+        'inv_no' => $isArabic ? 'رقم الفاتورة:' : 'INV NO:',
+        'inv_date' => $isArabic ? 'تاريخ الفاتورة:' : 'INV DATE:',
+        'do_no' => $isArabic ? 'رقم الطلب:' : 'DO NO:',
+        'salesman' => $isArabic ? 'البائع:' : 'SALESMAN:',
+        'customer_details' => $isArabic ? 'بيانات العميل' : 'CUSTOMER DETAILS',
+        'customer' => $isArabic ? 'العميل:' : 'CUSTOMER:',
+        'tel' => $isArabic ? 'الهاتف:' : 'TEL:',
+        'no' => $isArabic ? 'رقم' : 'NO',
+        'description' => $isArabic ? 'الوصف' : 'DESCRIPTION',
+        'qty' => $isArabic ? 'الكمية' : 'QTY',
+        'unit_price' => $isArabic ? 'سعر الوحدة' : 'UNIT PRICE',
+        'total' => $isArabic ? 'الإجمالي' : 'TOTAL',
+        'sub_total' => $isArabic ? 'المجموع الفرعي:' : 'SUB TOTAL:',
+        'discount' => $isArabic ? 'الخصم' : 'DISCOUNT',
+        'total_label' => $isArabic ? 'المجموع:' : 'TOTAL:',
+        'amount_in_words' => $isArabic ? 'المبلغ كتابة:' : 'AMOUNT IN WORDS:',
+        'only' => $isArabic ? 'فقط' : 'ONLY',
+        'terms' => $isArabic ? 'الشروط:' : 'TERMS:',
+        'received_by' => $isArabic ? 'تم الاستلام من:' : 'RECEIVED BY:',
+        'authorised_dealer' => $isArabic ? 'وكيل معتمد:' : 'Authorised Dealer of:',
+        'tel_label' => $isArabic ? 'الهاتف:' : 'Tel:',
+        'address_label' => $isArabic ? 'العنوان:' : 'Address:',
+        'email_label' => $isArabic ? 'البريد الإلكتروني:' : 'Email:',
+        'web_label' => $isArabic ? 'الموقع:' : 'Web:',
+        'page_info' => $isArabic ? 'صفحة' : 'Page',
+        'of' => $isArabic ? 'من' : 'of',
+        'print_time' => $isArabic ? 'وقت الطباعة:' : 'Print Time:',
+        'cash' => $isArabic ? 'نقدي' : 'CASH',
+    ];
+    
+    function hexToRgb($hex) {
+        $hex = str_replace('#', '', $hex);
+        $r = hexdec(substr($hex, 0, 2));
+        $g = hexdec(substr($hex, 2, 2));
+        $b = hexdec(substr($hex, 4, 2));
+        return "$r, $g, $b";
+    }
+    $primaryColor = env('PRIMARY_COLOR', '#6bcce1');
+    $primaryColorDark = env('PRIMARY_COLOR_DARK', '#0056b3');
+    $primaryRgb = hexToRgb($primaryColor);
+@endphp
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="{{ $lang }}" dir="{{ $dir }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>TAX INVOICE #{{ $order->id }}</title>
+    @if($isArabic)
+    <link href='https://fonts.googleapis.com/css?family=Cairo' rel='stylesheet'>
+    @endif
+    <title>{{ $texts['title'] }} #{{ $order->id }}</title>
     <style>
-        @php
-            function hexToRgb($hex) {
-                $hex = str_replace('#', '', $hex);
-                $r = hexdec(substr($hex, 0, 2));
-                $g = hexdec(substr($hex, 2, 2));
-                $b = hexdec(substr($hex, 4, 2));
-                return "$r, $g, $b";
-            }
-            $primaryColor = env('PRIMARY_COLOR', '#6bcce1');
-            $primaryColorDark = env('PRIMARY_COLOR_DARK', '#0056b3');
-            $primaryRgb = hexToRgb($primaryColor);
-        @endphp
         
         @page {
             size: A4;
@@ -30,12 +73,13 @@
         }
         
         body {
-            font-family: 'Arial', 'Helvetica', sans-serif;
+            font-family: {{ $fontFamily }};
             font-size: 11px;
             line-height: 1.4;
             color: #333;
             background: #f5f5f5;
             padding: 10mm;
+            direction: {{ $dir }};
         }
         
         .invoice-container {
@@ -130,7 +174,7 @@
             color: var(--primary-color-dark);
             text-shadow: 1px 1px 2px rgba(0,0,0,0.1);
             white-space: nowrap;
-            margin-left: 20px;
+            {{ $isArabic ? 'margin-right: 20px;' : 'margin-left: 20px;' }}
         }
         
         .invoice-info-grid {
@@ -165,7 +209,7 @@
         
         .info-value {
             flex: 1;
-            text-align: right;
+            text-align: {{ $isArabic ? 'left' : 'right' }};
             color: #333;
             font-weight: 500;
         }
@@ -218,14 +262,23 @@
             text-transform: uppercase;
             font-size: 10px;
             letter-spacing: 0.5px;
+            position: relative;
         }
         
         .items-table th:first-child {
             border-radius: 8px 0 0 0;
+            border-top: 2px solid var(--primary-color-dark);
+            border-left: 2px solid var(--primary-color-dark);
         }
         
         .items-table th:last-child {
             border-radius: 0 8px 0 0;
+            border-top: 2px solid var(--primary-color-dark);
+            border-right: 2px solid var(--primary-color-dark);
+        }
+        
+        .items-table th:not(:first-child):not(:last-child) {
+            border-top: 2px solid var(--primary-color-dark);
         }
         
         .items-table td {
@@ -244,7 +297,7 @@
         }
         
         .items-table td.text-left {
-            text-align: left;
+            text-align: {{ $isArabic ? 'right' : 'left' }};
             font-weight: 500;
         }
         
@@ -303,7 +356,7 @@
         }
         
         .amount-words-row span:last-child {
-            text-align: right;
+            text-align: {{ $isArabic ? 'left' : 'right' }};
             font-size: 12px;
         }
         
@@ -477,27 +530,27 @@
                             @endif
                         </div>
                     </div>
-                    <div class="document-type">TAX INVOICE</div>
+                    <div class="document-type">{{ $texts['title'] }}</div>
                 </div>
                 
                 <div class="invoice-info-grid">
                     <div>
                         <div class="info-row">
-                            <span class="info-label">INV NO:</span>
+                            <span class="info-label">{{ $texts['inv_no'] }}</span>
                             <span class="info-value">{{ $order->id }}</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">INV DATE:</span>
+                            <span class="info-label">{{ $texts['inv_date'] }}</span>
                             <span class="info-value">{{ $order->date ? \Carbon\Carbon::parse($order->date)->format('d/m/Y') : $order->created_at->format('d/m/Y') }}</span>
                         </div>
                     </div>
                     <div>
                         <div class="info-row">
-                            <span class="info-label">DO NO:</span>
+                            <span class="info-label">{{ $texts['do_no'] }}</span>
                             <span class="info-value">{{ $order->id }}</span>
                         </div>
                         <div class="info-row">
-                            <span class="info-label">SALESMAN:</span>
+                            <span class="info-label">{{ $texts['salesman'] }}</span>
                             <span class="info-value">{{ $order->salesman ?? auth()->user()->name ?? '' }}</span>
                         </div>
                     </div>
@@ -506,14 +559,14 @@
             
             <!-- Customer Details -->
             <div class="customer-section">
-                <div class="section-title">CUSTOMER DETAILS</div>
+                <div class="section-title">{{ $texts['customer_details'] }}</div>
                 <div class="customer-grid">
                     <div class="info-row">
-                        <span class="info-label">CUSTOMER:</span>
-                        <span class="info-value">{{ $order->customer->name ?? 'CASH' }}</span>
+                        <span class="info-label">{{ $texts['customer'] }}</span>
+                        <span class="info-value">{{ $order->customer->name ?? $texts['cash'] }}</span>
                     </div>
                     <div class="info-row">
-                        <span class="info-label">TEL:</span>
+                        <span class="info-label">{{ $texts['tel'] }}</span>
                         <span class="info-value">{{ $order->customer->phone ?? '' }}</span>
                     </div>
                 </div>
@@ -523,11 +576,11 @@
             <table class="items-table">
                 <thead>
                     <tr>
-                        <th style="width: 5%;">NO</th>
-                        <th style="width: 45%;" class="text-left">DESCRIPTION</th>
-                        <th style="width: 10%;">QTY</th>
-                        <th style="width: 15%;">UNIT PRICE</th>
-                        <th style="width: 25%;">TOTAL</th>
+                        <th style="width: 5%;">{{ $texts['no'] }}</th>
+                        <th style="width: 45%;" class="text-left">{{ $texts['description'] }}</th>
+                        <th style="width: 10%;">{{ $texts['qty'] }}</th>
+                        <th style="width: 15%;">{{ $texts['unit_price'] }}</th>
+                        <th style="width: 25%;">{{ $texts['total'] }}</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -548,8 +601,8 @@
                         <td>{{ $index + 1 }}</td>
                         <td class="text-left">{{ $product->name }}</td>
                         <td>{{ number_format($quantity, 0) }}</td>
-                        <td>{{ number_format($unitPrice, 2) }}</td>
-                        <td>{{ number_format($itemTotal, 2) }}</td>
+                        <td>{{ rtrim(rtrim(number_format($unitPrice, 2), '0'), '.') }}</td>
+                        <td>{{ rtrim(rtrim(number_format($itemTotal, 2), '0'), '.') }}</td>
                     </tr>
                     @endforeach
                     @php
@@ -562,22 +615,22 @@
             <div class="summary-section">
                 <div class="summary-right">
                     <div class="summary-row">
-                        <span class="summary-label">SUB TOTAL:</span>
-                        <span>{{ number_format($subtotal, 2) }}</span>
+                        <span class="summary-label">{{ $texts['sub_total'] }}</span>
+                        <span>{{ rtrim(rtrim(number_format($subtotal, 2), '0'), '.') }}</span>
                     </div>
                     @if($discountAmount > 0)
                     <div class="summary-row">
-                        <span class="summary-label">DISCOUNT{{ $discountRate > 0 ? ' (' . number_format($discountRate, 2) . '%)' : '' }}:</span>
-                        <span style="color: #dc3545; font-weight: bold;">- {{ number_format($discountAmount, 2) }}</span>
+                        <span class="summary-label">{{ $texts['discount'] }}{{ $discountRate > 0 ? ' (' . rtrim(rtrim(number_format($discountRate, 2), '0'), '.') . '%)' : '' }}:</span>
+                        <span style="color: #dc3545; font-weight: bold;">- {{ rtrim(rtrim(number_format($discountAmount, 2), '0'), '.') }}</span>
                     </div>
                     @endif
                     <div class="summary-row summary-total">
-                        <span>TOTAL:</span>
-                        <span>{{ number_format($grandTotal, 2) }}</span>
+                        <span>{{ $texts['total_label'] }}</span>
+                        <span>{{ rtrim(rtrim(number_format($grandTotal, 2), '0'), '.') }}</span>
                     </div>
                     <div class="summary-row amount-words-row">
-                        <span class="summary-label">AMOUNT IN WORDS:</span>
-                        <span style="font-weight: 500;">{{ \App\Helpers\NumberToWords::convert($grandTotal) }} ONLY</span>
+                        <span class="summary-label">{{ $texts['amount_in_words'] }}</span>
+                        <span style="font-weight: 500;">{{ $isArabic ? rtrim(rtrim(number_format($grandTotal, 2), '0'), '.') . ' ' . $texts['only'] : \App\Helpers\NumberToWords::convert($grandTotal) . ' ' . $texts['only'] }}</span>
                     </div>
                 </div>
             </div>
@@ -587,20 +640,20 @@
                 <div class="footer-terms">
                     <div>
                         <div class="info-row">
-                            <span class="info-label">TERMS:</span>
+                            <span class="info-label">{{ $texts['terms'] }}</span>
                             <span class="info-value">{{ $order->terms ?? '' }}</span>
                         </div>
                     </div>
                     <div>
                         <div class="info-row">
-                            <span class="info-label">RECEIVED BY:</span>
+                            <span class="info-label">{{ $texts['received_by'] }}</span>
                             <span class="info-value">{{ $order->received_by ?? '' }}</span>
                         </div>
                     </div>
                 </div>
                 
                 @if(env('COMPANY_DEALER'))
-                <div class="dealer-info">Authorised Dealer of: {{ env('COMPANY_DEALER') }}</div>
+                <div class="dealer-info">{{ $texts['authorised_dealer'] }} {{ env('COMPANY_DEALER') }}</div>
                 @endif
                 
                 @php
@@ -640,21 +693,21 @@
                 
                 <div class="contact-info">
                     @if(env('COMPANY_PHONE'))
-                    <strong>Tel:</strong> {{ env('COMPANY_PHONE') }}
+                    <strong>{{ $texts['tel_label'] }}</strong> {{ env('COMPANY_PHONE') }}
                     @endif
                     @if(env('COMPANY_ADDRESS'))
-                    <br><strong>Address:</strong> {{ env('COMPANY_ADDRESS') }}
+                    <br><strong>{{ $texts['address_label'] }}</strong> {{ env('COMPANY_ADDRESS') }}
                     @endif
                     @if(env('COMPANY_EMAIL'))
-                    <br><strong>Email:</strong> {{ env('COMPANY_EMAIL') }}
+                    <br><strong>{{ $texts['email_label'] }}</strong> {{ env('COMPANY_EMAIL') }}
                     @endif
                     @if(env('COMPANY_WEBSITE'))
-                    <br><strong>Web:</strong> {{ env('COMPANY_WEBSITE') }}
+                    <br><strong>{{ $texts['web_label'] }}</strong> {{ env('COMPANY_WEBSITE') }}
                     @endif
                 </div>
                 
                 <div class="page-info">
-                    Page 1 of 1 | Print Time: {{ now()->format('g:i:s A') }} | {{ env('COMPANY_WEBSITE', 'http://intellij-app.com/') }}
+                    {{ $texts['page_info'] }} 1 {{ $texts['of'] }} 1 | {{ $texts['print_time'] }} {{ now()->format('g:i:s A') }} | {{ env('COMPANY_WEBSITE', 'http://intellij-app.com/') }}
                 </div>
             </div>
         </div>

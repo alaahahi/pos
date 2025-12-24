@@ -14,6 +14,7 @@ use App\Http\Controllers\CategoryController;
 use App\Http\Controllers\LangController;
 use App\Http\Controllers\LogController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\ReportController;
 use Illuminate\Foundation\Application;
 use Illuminate\Support\Facades\Route;
 use Inertia\Inertia;
@@ -130,6 +131,17 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::get('orders/trashed', [OrderController::class, 'trashed'])->name('orders.trashed');
   Route::post('orders/{id}/restore', [OrderController::class, 'restore'])->name('orders.restore');
   Route::get('order/print/{id}', [OrderController::class, 'print'])->name('order.print');
+
+  // Reports routes
+  Route::get('reports', [ReportController::class, 'index'])->name('reports.index');
+  Route::get('api/reports/sales', [ReportController::class, 'sales'])->name('reports.sales');
+  Route::get('api/reports/purchases', [ReportController::class, 'purchases'])->name('reports.purchases');
+  Route::get('api/reports/expenses', [ReportController::class, 'expenses'])->name('reports.expenses');
+  Route::get('api/reports/summary', [ReportController::class, 'summary'])->name('reports.summary');
+  Route::get('reports/sales/print', [ReportController::class, 'sales'])->name('reports.sales.print');
+  Route::get('reports/purchases/print', [ReportController::class, 'purchases'])->name('reports.purchases.print');
+  Route::get('reports/expenses/print', [ReportController::class, 'expenses'])->name('reports.expenses.print');
+  Route::get('reports/summary/print', [ReportController::class, 'summary'])->name('reports.summary.print');
 
 
 

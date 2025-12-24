@@ -142,6 +142,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read reports')">
+    <Link  class="nav-link "  :href="route('reports.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/reports') }" >
+            <i class="bi bi-graph-up"></i>
+            <span>التقارير</span>
+               </Link>
+    </li>
+
     <li class="nav-item" v-if="hasPermission('read expenses')">
     <Link  class="nav-link "  :href="route('expenses.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/expenses') }" >
             <i class="bi bi-receipt"></i>

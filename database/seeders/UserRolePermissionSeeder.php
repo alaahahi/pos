@@ -124,6 +124,10 @@ class UserRolePermissionSeeder extends Seeder
         Permission::firstOrCreate(['name' => 'delete category']);
         Permission::firstOrCreate(['name' => 'view category']);
 
+        // Report permissions
+        Permission::firstOrCreate(['name' => 'read reports']);
+        Permission::firstOrCreate(['name' => 'view reports']);
+
 
     // Create Roles 
         $superAdminRole = Role::firstOrCreate(['name' => 'superadmin']); //as super-admin
@@ -146,6 +150,7 @@ class UserRolePermissionSeeder extends Seeder
          $adminRole->givePermissionTo(['manage migrations']);
          $adminRole->givePermissionTo(['read system_config', 'update system_config']);
          $adminRole->givePermissionTo(['create expenses', 'read expenses', 'update expenses', 'delete expenses']);
+         $adminRole->givePermissionTo(['read reports', 'view reports']);
          
          // Add missing permissions for admin role
          $adminRole->givePermissionTo(['create customer', 'read customers', 'update customer', 'delete customer', 'view customer']);
@@ -160,6 +165,7 @@ class UserRolePermissionSeeder extends Seeder
          $staffRole->givePermissionTo(['read decoration', 'view decoration', 'create decoration']);
          $staffRole->givePermissionTo(['read payment', 'view payment', 'create payment']);
          $staffRole->givePermissionTo(['read monthly_accounting', 'view monthly_accounting']);
+         $staffRole->givePermissionTo(['read reports', 'view reports']);
          
          // Add basic permissions for staff role
          $staffRole->givePermissionTo(['read product', 'view product']);

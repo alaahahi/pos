@@ -844,7 +844,12 @@ const getStockClass = (quantity) => {
 
 // Format price
 const formatPrice = (price, currency = 'IQD') => {
-  return parseFloat(price || 0).toFixed(2) + ' ' + currency;
+  const formatted = parseFloat(price || 0).toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+  // إزالة .00 إذا كان الرقم صحيحاً
+  return formatted.replace(/\.00$/, '') + ' ' + currency;
 };
 
 // Format date
@@ -868,24 +873,32 @@ const getActiveCount = () => {
 
 // Get total value in Dollar (only products with USD currency)
 const getTotalValueDollar = () => {
-  if (!props.products?.data) return '0.00';
+  if (!props.products?.data) return '0';
   const total = props.products.data
     .filter(product => product.currency === 'USD')
     .reduce((sum, product) => {
       return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
     }, 0);
-  return total.toFixed(2);
+  const formatted = total.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+  return formatted.replace(/\.00$/, '');
 };
 
 // Get total value in Dinar (only products with IQD currency)
 const getTotalValueDinar = () => {
-  if (!props.products?.data) return '0.00';
+  if (!props.products?.data) return '0';
   const total = props.products.data
     .filter(product => product.currency === 'IQD')
     .reduce((sum, product) => {
       return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
     }, 0);
-  return total.toFixed(2);
+  const formatted = total.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+  return formatted.replace(/\.00$/, '');
 };
 
 // Barcode functions

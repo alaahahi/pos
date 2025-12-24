@@ -259,8 +259,8 @@
                       <div class="alert alert-info">
                         <i class="bi bi-graph-up me-2"></i>
                         <strong>{{ translations.profit_margin }}:</strong> 
-                        {{ profitMargin.toFixed(2) }} {{ translations.dinar }}
-                        ({{ profitPercentage.toFixed(1) }}%)
+                        {{ profitMargin ? profitMargin.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 }).replace(/\.00$/, '') : '0' }} {{ translations.dinar }}
+                        ({{ profitPercentage ? profitPercentage.toFixed(1) : '0' }}%)
                       </div>
                     </div>
                   </div>
