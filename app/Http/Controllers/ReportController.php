@@ -8,6 +8,9 @@ use App\Models\Expense;
 use App\Models\Customer;
 use App\Models\Supplier;
 use App\Models\Product;
+use App\Models\Transactions;
+use App\Models\DailyClose;
+use App\Models\MonthlyClose;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Carbon\Carbon;
@@ -113,6 +116,32 @@ class ReportController extends Controller
         }
         $groupedByProduct = collect($productsData)->sortByDesc('total')->values();
 
+        // حساب الإضافة المباشرة للصندوق (direct deposits)
+        // transactions من نوع 'in' وليس لها morphed_type = Order
+        $directDeposits = Transactions::where('type', 'in')
+            ->whereBetween('created', [$startDate, $endDate])
+            ->where(function($query) {
+                $query->whereNull('morphed_type')
+                    ->orWhere('morphed_type', '!=', Order::class);
+            })
+            ->get();
+        
+        $directDepositsUsd = $directDeposits->whereIn('currency', ['USD', '$'])->sum('amount');
+        $directDepositsIqd = $directDeposits->where('currency', 'IQD')->sum('amount');
+
+        // حساب المصاريف/السحب المباشر للصندوق (direct withdrawals)
+        // transactions من نوع 'out' وليس لها morphed_type = Expense
+        $directWithdrawals = Transactions::where('type', 'out')
+            ->whereBetween('created', [$startDate, $endDate])
+            ->where(function($query) {
+                $query->whereNull('morphed_type')
+                    ->orWhere('morphed_type', '!=', Expense::class);
+            })
+            ->get();
+        
+        $directWithdrawalsUsd = abs($directWithdrawals->whereIn('currency', ['USD', '$'])->sum('amount'));
+        $directWithdrawalsIqd = abs($directWithdrawals->where('currency', 'IQD')->sum('amount'));
+
         $data = [
             'orders' => $orders,
             'filters' => [
@@ -128,6 +157,10 @@ class ReportController extends Controller
                 'total_count' => $totalCount,
                 'average_order' => $averageOrder,
                 'remaining' => $totalAmount - $totalPaid,
+                'direct_deposits_usd' => $directDepositsUsd,
+                'direct_deposits_iqd' => $directDepositsIqd,
+                'direct_withdrawals_usd' => $directWithdrawalsUsd,
+                'direct_withdrawals_iqd' => $directWithdrawalsIqd,
             ],
             'grouped_by_date' => $groupedByDate->values(),
             'grouped_by_customer' => $groupedByCustomer,

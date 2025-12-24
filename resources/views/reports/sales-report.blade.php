@@ -19,6 +19,10 @@
         'total_paid' => $isArabic ? 'إجمالي المدفوع:' : 'TOTAL PAID:',
         'total_remaining' => $isArabic ? 'المتبقي:' : 'REMAINING:',
         'total_count' => $isArabic ? 'عدد الفواتير:' : 'TOTAL INVOICES:',
+        'direct_deposits_usd' => $isArabic ? 'الإضافة المباشرة (USD):' : 'DIRECT DEPOSITS (USD):',
+        'direct_deposits_iqd' => $isArabic ? 'الإضافة المباشرة (IQD):' : 'DIRECT DEPOSITS (IQD):',
+        'direct_withdrawals_usd' => $isArabic ? 'السحب المباشر (USD):' : 'DIRECT WITHDRAWALS (USD):',
+        'direct_withdrawals_iqd' => $isArabic ? 'السحب المباشر (IQD):' : 'DIRECT WITHDRAWALS (IQD):',
         'print_time' => $isArabic ? 'وقت الطباعة:' : 'Print Time:',
     ];
     
@@ -386,6 +390,22 @@
                     <div class="info-row">
                         <span class="info-label">{{ $texts['total_count'] }}</span>
                         <span class="info-value">{{ $statistics['total_count'] }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ $texts['direct_deposits_usd'] }}</span>
+                        <span class="info-value">{{ rtrim(rtrim(number_format($statistics['direct_deposits_usd'] ?? 0, 2), '0'), '.') }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ $texts['direct_deposits_iqd'] }}</span>
+                        <span class="info-value">{{ rtrim(rtrim(number_format($statistics['direct_deposits_iqd'] ?? 0, 2), '0'), '.') }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ $texts['direct_withdrawals_usd'] }}</span>
+                        <span class="info-value">{{ rtrim(rtrim(number_format($statistics['direct_withdrawals_usd'] ?? 0, 2), '0'), '.') }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">{{ $texts['direct_withdrawals_iqd'] }}</span>
+                        <span class="info-value">{{ rtrim(rtrim(number_format($statistics['direct_withdrawals_iqd'] ?? 0, 2), '0'), '.') }}</span>
                     </div>
                 </div>
             </div>

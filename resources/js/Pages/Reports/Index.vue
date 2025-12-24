@@ -213,6 +213,42 @@
                   </div>
                 </div>
               </div>
+              
+              <!-- Direct Deposits and Withdrawals -->
+              <div class="row mb-4">
+                <div class="col-md-3">
+                  <div class="card bg-success text-white">
+                    <div class="card-body">
+                      <h6>الإضافة المباشرة (USD)</h6>
+                      <h3>{{ formatNumber(reportData.statistics.direct_deposits_usd || 0) }}</h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card bg-success text-white">
+                    <div class="card-body">
+                      <h6>الإضافة المباشرة (IQD)</h6>
+                      <h3>{{ formatNumber(reportData.statistics.direct_deposits_iqd || 0) }}</h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card bg-danger text-white">
+                    <div class="card-body">
+                      <h6>السحب المباشر (USD)</h6>
+                      <h3>{{ formatNumber(reportData.statistics.direct_withdrawals_usd || 0) }}</h3>
+                    </div>
+                  </div>
+                </div>
+                <div class="col-md-3">
+                  <div class="card bg-danger text-white">
+                    <div class="card-body">
+                      <h6>السحب المباشر (IQD)</h6>
+                      <h3>{{ formatNumber(reportData.statistics.direct_withdrawals_iqd || 0) }}</h3>
+                    </div>
+                  </div>
+                </div>
+              </div>
 
               <!-- Orders Table -->
               <h5 class="mb-3">الفواتير</h5>
