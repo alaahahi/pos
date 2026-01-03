@@ -14,6 +14,7 @@ use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Services\LogService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use App\Http\Controllers\AccountingController;
 
 class CustomersController extends Controller
@@ -337,6 +338,21 @@ class CustomersController extends Controller
             ->whereNull('deleted_at')
             ->get();
         
+        // Log للتحقق من الحركات
+        Log::debug('Box transactions for customer', [
+            'customer_id' => $customerId,
+            'total_transactions' => $boxTransactions->count(),
+            'transactions' => $boxTransactions->map(function($t) {
+                return [
+                    'id' => $t->id,
+                    'type' => $t->type,
+                    'amount' => $t->amount,
+                    'currency' => $t->currency,
+                    'details' => $t->details,
+                ];
+            })->toArray(),
+        ]);
+        
         $totalDepositsDollar = 0;
         $totalDepositsDinar = 0;
         $totalWithdrawalsDollar = 0;
@@ -382,7 +398,25 @@ class CustomersController extends Controller
                 ];
             } elseif ($transaction->type === 'payment') {
                 // التحقق من طريقة الدفع من details
-                $paymentMethod = $transaction->details['payment_method'] ?? null;
+                $details = $transaction->details ?? [];
+                
+                // إذا كان details string، قم بتحويله إلى array
+                if (is_string($details)) {
+                    $details = json_decode($details, true) ?? [];
+                }
+                
+                $paymentMethod = is_array($details) ? ($details['payment_method'] ?? null) : null;
+                
+                // Log للتحقق
+                Log::debug('Payment transaction processing', [
+                    'transaction_id' => $transaction->id,
+                    'type' => $transaction->type,
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'details_raw' => $transaction->details,
+                    'details_parsed' => $details,
+                    'payment_method' => $paymentMethod,
+                ]);
                 
                 // دفع من الرصيد - يعتبر سحب من الرصيد
                 if ($paymentMethod === 'balance') {
@@ -455,6 +489,20 @@ class CustomersController extends Controller
         
         $shouldFix = $request->get('fix', false);
         $autoFix = $request->get('auto_fix', true); // تصحيح تلقائي افتراضي
+        
+        // Log للتحقق من الحسابات
+        Log::info('Balance verification', [
+            'customer_id' => $customer->id,
+            'stored' => $calculatedBalance['stored'],
+            'calculated' => $calculatedBalance['calculated'],
+            'difference' => $calculatedBalance['difference'],
+            'is_balanced' => $calculatedBalance['is_balanced'],
+            'transactions' => [
+                'deposits_dinar' => $calculatedBalance['transactions']['total_deposits_dinar'],
+                'withdrawals_dinar' => $calculatedBalance['transactions']['total_withdrawals_dinar'],
+                'details_count' => count($calculatedBalance['transactions']['details'] ?? []),
+            ],
+        ]);
         
         // إذا كان هناك اختلاف، قم بالتصحيح تلقائياً (ما لم يتم تعطيله)
         if (($shouldFix || ($autoFix && !$calculatedBalance['is_balanced']))) {
@@ -533,6 +581,8 @@ class CustomersController extends Controller
             'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|in:cash,balance,transfer',
             'notes' => 'nullable|string',
+            'total_paid' => 'nullable|numeric|min:0', // مجموع الدفعات بعد إضافة الدفعة الجديدة
+            'total_payments' => 'nullable|numeric|min:0', // مجموع الدفعات الإجمالي للعميل
         ]);
         
         DB::beginTransaction();
@@ -547,7 +597,22 @@ class CustomersController extends Controller
                 throw new \Exception('المبلغ المدفوع أكبر من المبلغ المتبقي');
             }
             
-            $newPaidAmount = $currentPaid + $validated['amount'];
+            // استخدام total_paid المرسل من الفرونت إذا كان موجوداً، وإلا حسابها
+            $newPaidAmount = $validated['total_paid'] ?? ($currentPaid + $validated['amount']);
+            
+            // Log مجموع الدفعات المرسل من الفرونت
+            if (isset($validated['total_paid'])) {
+                Log::info('Total paid received from frontend', [
+                    'order_id' => $order->id,
+                    'customer_id' => $customer->id,
+                    'current_paid' => $currentPaid,
+                    'payment_amount' => $validated['amount'],
+                    'total_paid_from_frontend' => $validated['total_paid'],
+                    'calculated_total_paid' => $currentPaid + $validated['amount'],
+                    'total_payments_customer' => $validated['total_payments'] ?? null,
+                ]);
+            }
+            
             $newStatus = $newPaidAmount >= $finalAmount ? 'paid' : 'due';
             
             // Update order
@@ -626,7 +691,7 @@ class CustomersController extends Controller
                 // تسجيل الحركة في Box للعميل فقط (بدون إضافة في الصندوق الرئيسي)
                 // لأن المبلغ لم يدخل الصندوق فعلياً - فقط تحويل داخلي
                 $currencyCode = $isDollar ? 'USD' : 'IQD';
-                \App\Models\Box::create([
+                $paymentBox = \App\Models\Box::create([
                     'name' => "دفع فاتورة رقم {$order->id} من الرصيد - {$customer->name}",
                     'amount' => $validated['amount'],
                     'type' => 'payment',
@@ -644,6 +709,17 @@ class CustomersController extends Controller
                     'is_active' => true,
                     'balance' => 0,
                     'balance_usd' => 0,
+                ]);
+                
+                // Log للتحقق من إنشاء الحركة
+                Log::info('Payment from balance Box created', [
+                    'box_id' => $paymentBox->id,
+                    'customer_id' => $customer->id,
+                    'order_id' => $order->id,
+                    'amount' => $validated['amount'],
+                    'currency' => $currencyCode,
+                    'payment_method' => 'balance',
+                    'details' => $paymentBox->details,
                 ]);
             }
             

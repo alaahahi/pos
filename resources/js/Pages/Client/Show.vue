@@ -626,12 +626,22 @@ const submitPayment = () => {
   
   processing.value = true;
   
+  // حساب مجموع الدفعات (المدفوع سابقاً + المبلغ الجديد)
+  const totalPaid = (selectedInvoice.value.total_paid || 0) + parseFloat(paymentForm.value.amount);
+  
+  // إعداد البيانات المرسلة
+  const paymentData = {
+    ...paymentForm.value,
+    total_paid: totalPaid, // إرسال مجموع الدفعات
+    total_payments: props.statistics.total_paid || 0, // إرسال مجموع الدفعات الإجمالي للعميل
+  };
+  
   router.post(
     route('customers.orders.pay', {
       customer: props.customer.id,
       order: selectedInvoice.value.id,
     }),
-    paymentForm.value,
+    paymentData,
     {
       onSuccess: () => {
         Swal.fire('نجح', 'تم دفع الفاتورة بنجاح', 'success');

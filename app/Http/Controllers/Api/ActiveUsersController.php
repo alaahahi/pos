@@ -15,6 +15,15 @@ class ActiveUsersController extends Controller
     public function index(Request $request)
     {
         try {
+            // التحقق من أن المستخدم مسجل دخول
+            if (!auth()->check()) {
+                return response()->json([
+                    'active_users' => [],
+                    'count' => 0,
+                    'error' => 'Unauthorized'
+                ], 401);
+            }
+            
             // المستخدمين النشطين (آخر تفاعل خلال 3 دقائق)
             $activeThreshold = Carbon::now()->subMinutes(3);
             
@@ -24,7 +33,7 @@ class ActiveUsersController extends Controller
             $activeUsers = User::on($connection)
                 ->where('is_active', true)
                 ->where('last_activity_at', '>=', $activeThreshold)
-                ->where('id', '!=', $request->user()->id) // استثناء المستخدم الحالي
+                ->where('id', '!=', auth()->id()) // استثناء المستخدم الحالي
                 ->select('id', 'name', 'email', 'avatar', 'last_activity_at')
                 ->orderBy('last_activity_at', 'desc')
                 ->get()
@@ -39,14 +48,17 @@ class ActiveUsersController extends Controller
                 });
             
             return response()->json([
+                'success' => true,
                 'active_users' => $activeUsers,
                 'count' => $activeUsers->count(),
             ]);
         } catch (\Exception $e) {
             \Log::error('Error fetching active users: ' . $e->getMessage());
             return response()->json([
+                'success' => false,
                 'active_users' => [],
                 'count' => 0,
+                'error' => $e->getMessage()
             ], 200);
         }
     }

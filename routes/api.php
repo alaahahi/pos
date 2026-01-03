@@ -59,8 +59,8 @@ Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsIma
 Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
 Route::get('today-sales',[OrderController::class, 'getTodaySales'])->name('today-sales');
 
-// Active Users API
-Route::middleware(['auth:sanctum'])->get('active-users', [ActiveUsersController::class, 'index'])->name('api.active-users');
+// Active Users API - استخدام web middleware للسماح بالوصول من نفس الجلسة
+Route::middleware(['web', 'auth'])->get('active-users', [ActiveUsersController::class, 'index'])->name('api.active-users');
 
 Route::get('/check-session', function () {
     $user = Auth::user();
