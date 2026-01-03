@@ -380,6 +380,22 @@ class CustomersController extends Controller
                     'currency' => $currency,
                     'date' => $transaction->created ?? $transaction->created_at,
                 ];
+            } elseif ($transaction->type === 'payment' && isset($transaction->details['payment_method']) && $transaction->details['payment_method'] === 'balance') {
+                // دفع من الرصيد - يعتبر سحب من الرصيد
+                if ($isDollar) {
+                    $totalWithdrawalsDollar += $amount;
+                } elseif ($isDinar) {
+                    $totalWithdrawalsDinar += $amount;
+                }
+                
+                $transactionDetails[] = [
+                    'id' => $transaction->id,
+                    'type' => 'payment',
+                    'amount' => $amount,
+                    'currency' => $currency,
+                    'date' => $transaction->created ?? $transaction->created_at,
+                    'payment_method' => 'balance',
+                ];
             }
         }
         
@@ -578,23 +594,28 @@ class CustomersController extends Controller
                 $customerBalance->last_transaction_date = now();
                 $customerBalance->save();
                 
-                // إضافة المعاملة في الصندوق الرئيسي (دفع من الرصيد)
-                if ($this->mainBox && $this->mainBox->wallet) {
-                    $this->accountingController->increaseWallet(
-                        (int) round($validated['amount']),
-                        "دفع فاتورة رقم {$order->id} من الرصيد - {$customer->name}",
-                        $this->mainBox->id,
-                        $order->id,
-                        Order::class,
-                        0,
-                        0,
-                        $this->defaultCurrency,
-                        $order->date ?? now()->format('Y-m-d'),
-                        0,
-                        'in',
-                        ['notes' => $validated['notes'] ?? '', 'customer_id' => $customer->id, 'payment_method' => 'balance']
-                    );
-                }
+                // تسجيل الحركة في Box للعميل فقط (بدون إضافة في الصندوق الرئيسي)
+                // لأن المبلغ لم يدخل الصندوق فعلياً - فقط تحويل داخلي
+                $currencyCode = $this->defaultCurrency === 'IQD' ? 'IQD' : 'USD';
+                \App\Models\Box::create([
+                    'name' => "دفع فاتورة رقم {$order->id} من الرصيد - {$customer->name}",
+                    'amount' => $validated['amount'],
+                    'type' => 'payment',
+                    'description' => "دفع فاتورة رقم {$order->id} من الرصيد - {$customer->name}",
+                    'currency' => $currencyCode,
+                    'created' => $order->date ?? now()->format('Y-m-d'),
+                    'details' => [
+                        'notes' => $validated['notes'] ?? '',
+                        'customer_id' => $customer->id,
+                        'order_id' => $order->id,
+                        'payment_method' => 'balance',
+                    ],
+                    'morphed_id' => $customer->id,
+                    'morphed_type' => Customer::class,
+                    'is_active' => true,
+                    'balance' => 0,
+                    'balance_usd' => 0,
+                ]);
             }
             
             // Log the payment
