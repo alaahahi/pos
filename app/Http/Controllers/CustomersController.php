@@ -589,8 +589,18 @@ class CustomersController extends Controller
         
         try {
             $finalAmount = $order->final_amount ?? $order->total_amount;
-            $currentPaid = $order->total_paid ?? 0;
+            $currentPaid = (float) ($order->total_paid ?? 0);
             $remaining = $finalAmount - $currentPaid;
+            
+            // Log القيم الأولية
+            Log::info('Payment processing started', [
+                'order_id' => $order->id,
+                'final_amount' => $finalAmount,
+                'current_paid' => $currentPaid,
+                'payment_amount' => $validated['amount'],
+                'remaining' => $remaining,
+                'payment_method' => $validated['payment_method'],
+            ]);
             
             // Validate payment amount
             if ($validated['amount'] > $remaining) {
@@ -598,7 +608,12 @@ class CustomersController extends Controller
             }
             
             // استخدام total_paid المرسل من الفرونت إذا كان موجوداً، وإلا حسابها
-            $newPaidAmount = $validated['total_paid'] ?? ($currentPaid + $validated['amount']);
+            $newPaidAmount = isset($validated['total_paid']) ? (float) $validated['total_paid'] : ($currentPaid + (float) $validated['amount']);
+            
+            // التأكد من أن newPaidAmount لا يتجاوز finalAmount
+            if ($newPaidAmount > $finalAmount) {
+                $newPaidAmount = $finalAmount;
+            }
             
             // Log مجموع الدفعات المرسل من الفرونت
             if (isset($validated['total_paid'])) {
@@ -613,12 +628,32 @@ class CustomersController extends Controller
                 ]);
             }
             
+            $oldStatus = $order->status;
             $newStatus = $newPaidAmount >= $finalAmount ? 'paid' : 'due';
             
-            // Update order
-            $order->update([
-                'total_paid' => $newPaidAmount,
-                'status' => $newStatus,
+            // Update order - تحديث الفاتورة أولاً
+            $order->total_paid = $newPaidAmount;
+            $order->status = $newStatus;
+            
+            // التأكد من الحفظ
+            if (!$order->save()) {
+                throw new \Exception('فشل في تحديث الفاتورة');
+            }
+            
+            // إعادة تحميل الفاتورة للتأكد من التحديث
+            $order->refresh();
+            
+            // Log للتحقق من التحديث
+            Log::info('Order updated after payment', [
+                'order_id' => $order->id,
+                'old_paid' => $currentPaid,
+                'new_paid' => $newPaidAmount,
+                'final_amount' => $finalAmount,
+                'old_status' => $oldStatus,
+                'new_status' => $newStatus,
+                'payment_method' => $validated['payment_method'],
+                'order_total_paid_after_refresh' => $order->total_paid,
+                'order_status_after_refresh' => $order->status,
             ]);
             
             // Handle payment based on method
@@ -743,7 +778,7 @@ class CustomersController extends Controller
                 'Order Payment',
                 'Payment Made',
                 $order->id,
-                ['old_paid' => $currentPaid, 'old_status' => $order->getOriginal('status')],
+                ['old_paid' => $currentPaid, 'old_status' => $oldStatus],
                 ['new_paid' => $newPaidAmount, 'new_status' => $newStatus, 'payment_method' => $validated['payment_method']],
                 'success'
             );
