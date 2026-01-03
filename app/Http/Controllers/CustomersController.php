@@ -623,7 +623,7 @@ class CustomersController extends Controller
             
             // Handle payment based on method
             if ($validated['payment_method'] === 'cash') {
-                // Add to main box (similar to OrderController)
+                // Add to main box (لأن المال يدخل فعلياً)
                 $accountingController = app(AccountingController::class);
                 $userAccount = \App\Models\UserType::where('name', 'account')->first()?->id;
                 $mainBox = \App\Models\User::with('wallet')
@@ -631,8 +631,11 @@ class CustomersController extends Controller
                     ->where('email', 'mainBox@account.com')
                     ->first();
                 
-                if ($mainBox) {
-                    $accountingController->increaseWallet(
+                if ($mainBox && $mainBox->wallet) {
+                    $currencyCode = $order->currency ?? env('DEFAULT_CURRENCY', 'IQD');
+                    $currency = in_array(strtoupper($currencyCode), ['USD', '$', 'DOLLAR']) ? '$' : 'IQD';
+                    
+                    $transaction = $accountingController->increaseWallet(
                         $validated['amount'],
                         'دفع نقدي فاتورة رقم ' . $order->id . ' - ' . $customer->name,
                         $mainBox->id,
@@ -640,9 +643,17 @@ class CustomersController extends Controller
                         Order::class,
                         0,
                         0,
-                        env('DEFAULT_CURRENCY', 'IQD'),
+                        $currency,
                         $order->date ?? now()->format('Y-m-d')
                     );
+                    
+                    Log::info('Cash payment added to main box', [
+                        'order_id' => $order->id,
+                        'customer_id' => $customer->id,
+                        'amount' => $validated['amount'],
+                        'currency' => $currency,
+                        'transaction_id' => $transaction?->id,
+                    ]);
                 }
             } elseif ($validated['payment_method'] === 'balance') {
                 // Deduct from customer balance
@@ -711,8 +722,11 @@ class CustomersController extends Controller
                     'balance_usd' => 0,
                 ]);
                 
+                // التأكد من عدم إضافة المعاملة في الصندوق الرئيسي
+                // (لا نستدعي increaseWallet هنا لأن المال لم يدخل فعلياً)
+                
                 // Log للتحقق من إنشاء الحركة
-                Log::info('Payment from balance Box created', [
+                Log::info('Payment from balance Box created (NO main box transaction)', [
                     'box_id' => $paymentBox->id,
                     'customer_id' => $customer->id,
                     'order_id' => $order->id,
@@ -720,6 +734,7 @@ class CustomersController extends Controller
                     'currency' => $currencyCode,
                     'payment_method' => 'balance',
                     'details' => $paymentBox->details,
+                    'note' => 'This transaction should NOT appear in main box',
                 ]);
             }
             

@@ -1358,13 +1358,20 @@ class DecorationController extends Controller
             $customerBalance->last_transaction_date = now();
             $customerBalance->save();
 
-            // إضافة المعاملة في الصندوق الرئيسي
-            if ($this->mainBox && $this->mainBox->wallet) {
+            // إضافة المعاملة في الصندوق الرئيسي (لأن المال يدخل فعلياً)
+            // الحصول على mainBox مرة أخرى للتأكد من وجوده
+            $userAccount = UserType::where('name', 'account')->first()?->id;
+            $mainBoxUser = User::with('wallet')
+                ->where('type_id', $userAccount)
+                ->where('email', 'mainBox@account.com')
+                ->first();
+            
+            if ($mainBoxUser && $mainBoxUser->wallet) {
                 $currency = $request->currency === 'dollar' ? '$' : 'IQD';
-                $this->accountingController->increaseWallet(
+                $transaction = $this->accountingController->increaseWallet(
                     (int) round($request->amount),
                     "إضافة رصيد للعميل {$customer->name}",
-                    $this->mainBox->id,
+                    $mainBoxUser->id,
                     $customer->id,
                     Customer::class,
                     0,
@@ -1373,8 +1380,23 @@ class DecorationController extends Controller
                     now()->format('Y-m-d'),
                     0,
                     'in',
-                    ['notes' => $request->notes, 'customer_id' => $customer->id]
+                    ['notes' => $request->notes, 'customer_id' => $customer->id, 'type' => 'balance_deposit']
                 );
+                
+                // Log للتحقق من إضافة المعاملة في الصندوق
+                Log::info('Balance deposit added to main box', [
+                    'customer_id' => $customer->id,
+                    'amount' => $request->amount,
+                    'currency' => $currency,
+                    'main_box_user_id' => $mainBoxUser->id,
+                    'wallet_id' => $mainBoxUser->wallet->id,
+                    'transaction_id' => $transaction?->id,
+                ]);
+            } else {
+                Log::error('Main box user or wallet not found when adding balance', [
+                    'customer_id' => $customer->id,
+                    'amount' => $request->amount,
+                ]);
             }
 
             DB::commit();
