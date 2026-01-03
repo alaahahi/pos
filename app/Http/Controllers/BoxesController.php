@@ -16,6 +16,7 @@ use App\Models\User;
 use App\Models\Transactions;
 use Carbon\Carbon;
 use App\Services\LogService;
+use Illuminate\Support\Facades\DB;
 class BoxesController extends Controller
 {
     public function __construct(AccountingController $accountingController)
@@ -156,14 +157,74 @@ class BoxesController extends Controller
     }
 
     /**
-     * Update the specified resource (placeholder - not used in current implementation)
+     * Update the specified resource
      */
     public function update(Request $request, Box $box)
     {
-        // This method is required by the route but not actively used
-        // The actual box updates happen through wallet transactions
-        return redirect()->route('boxes.index')
-            ->with('success', 'تم التحديث بنجاح');
+        $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+        ]);
+
+        DB::beginTransaction();
+
+        try {
+            $oldAmount = $box->amount;
+            $box->update([
+                'amount' => $request->amount,
+            ]);
+
+            // إذا كانت الحركة مرتبطة بعميل، يجب تحديث رصيد العميل
+            if ($box->morphed_type === \App\Models\Customer::class && $box->morphed_id) {
+                $customerBalance = \App\Models\CustomerBalance::where('customer_id', $box->morphed_id)->first();
+                
+                if ($customerBalance) {
+                    $difference = $request->amount - $oldAmount;
+                    $currency = $box->currency;
+                    
+                    if ($box->type === 'deposit') {
+                        // إيداع: الفرق يضاف للرصيد
+                        if ($currency === 'USD' || $currency === '$') {
+                            $customerBalance->balance_dollar += $difference;
+                        } else {
+                            $customerBalance->balance_dinar += $difference;
+                        }
+                    } elseif ($box->type === 'withdrawal') {
+                        // سحب: الفرق يطرح من الرصيد
+                        if ($currency === 'USD' || $currency === '$') {
+                            $customerBalance->balance_dollar -= $difference;
+                        } else {
+                            $customerBalance->balance_dinar -= $difference;
+                        }
+                    }
+                    
+                    $customerBalance->last_transaction_date = now();
+                    $customerBalance->save();
+                }
+            }
+
+            DB::commit();
+
+            LogService::createLog(
+                'Box',
+                'Update Amount',
+                $box->id,
+                ['old_amount' => $oldAmount],
+                ['new_amount' => $request->amount],
+                'info'
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تحديث المبلغ بنجاح',
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ أثناء تحديث المبلغ: ' . $e->getMessage(),
+            ], 500);
+        }
     }
     public function addToBox(Request $request)
     {

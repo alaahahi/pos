@@ -9,22 +9,44 @@ use App\Models\CustomerBalance;
 use App\Models\Box;
 use App\Models\SystemConfig;
 use App\Models\MonthlyAccount;
+use App\Models\User;
+use App\Models\UserType;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use App\Models\EmployeeCommission;
+use App\Http\Controllers\AccountingController;
 
 class DecorationController extends Controller
 {
-    public function __construct()
+    protected $accountingController;
+    protected $mainBox;
+    protected $defaultCurrency;
+
+    public function __construct(AccountingController $accountingController)
     {
+        $this->accountingController = $accountingController;
+        
         // Middleware for permission handling
         $this->middleware('permission:read decoration', ['only' => ['index', 'show', 'dashboard', 'orders', 'showOrder', 'myOrders']]);
         $this->middleware('permission:create decoration', ['only' => ['create', 'store', 'createOrder']]);
         $this->middleware('permission:update decoration', ['only' => ['edit', 'update', 'updateOrderStatus']]);
         $this->middleware('permission:delete decoration', ['only' => ['destroy']]);
+        
+        // Get main box
+        try {
+            $userAccount = UserType::where('name', 'account')->first()?->id;
+            $this->mainBox = User::with('wallet')
+                ->where('type_id', $userAccount)
+                ->where('email', 'mainBox@account.com')
+                ->first();
+        } catch (\Exception $e) {
+            $this->mainBox = null;
+        }
+        
+        $this->defaultCurrency = env('DEFAULT_CURRENCY', 'IQD');
     }
 
     /**
@@ -1336,6 +1358,25 @@ class DecorationController extends Controller
             $customerBalance->last_transaction_date = now();
             $customerBalance->save();
 
+            // إضافة المعاملة في الصندوق الرئيسي
+            if ($this->mainBox && $this->mainBox->wallet) {
+                $currency = $request->currency === 'dollar' ? '$' : 'IQD';
+                $this->accountingController->increaseWallet(
+                    (int) round($request->amount),
+                    "إضافة رصيد للعميل {$customer->name}",
+                    $this->mainBox->id,
+                    $customer->id,
+                    Customer::class,
+                    0,
+                    0,
+                    $currency,
+                    now()->format('Y-m-d'),
+                    0,
+                    'in',
+                    ['notes' => $request->notes, 'customer_id' => $customer->id]
+                );
+            }
+
             DB::commit();
 
             Log::info('Customer balance added', [
@@ -1424,6 +1465,25 @@ class DecorationController extends Controller
 
             $customerBalance->last_transaction_date = now();
             $customerBalance->save();
+
+            // إضافة المعاملة في الصندوق الرئيسي (سحب من الصندوق)
+            if ($this->mainBox && $this->mainBox->wallet) {
+                $currency = $request->currency === 'dollar' ? '$' : 'IQD';
+                $this->accountingController->decreaseWallet(
+                    (int) round($request->amount),
+                    "سحب رصيد من العميل {$customer->name}",
+                    $this->mainBox->id,
+                    $customer->id,
+                    Customer::class,
+                    0,
+                    0,
+                    $currency,
+                    now()->format('Y-m-d'),
+                    0,
+                    'out',
+                    ['notes' => $request->notes, 'customer_id' => $customer->id]
+                );
+            }
 
             DB::commit();
 

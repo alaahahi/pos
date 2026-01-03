@@ -52,6 +52,25 @@ createInertiaApp({
         }
 
 
+        // Global number formatter function
+        app.config.globalProperties.$formatNumber = (number, currency = '') => {
+            if (number === null || number === undefined || number === '') return '0';
+            
+            const num = parseFloat(number);
+            if (isNaN(num)) return '0';
+            
+            // Format with commas and remove .00 if it's a whole number
+            const formatted = num.toLocaleString('en-US', {
+                minimumFractionDigits: 0,
+                maximumFractionDigits: 2
+            });
+            
+            // Remove .00 if it's a whole number
+            const cleaned = formatted.replace(/\.00$/, '');
+            
+            return currency ? `${cleaned} ${currency}` : cleaned;
+        };
+
         app.mount(el);
     },
     progress: {

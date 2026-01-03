@@ -28,15 +28,21 @@
             </div>
           </div>
           <div class="row mt-3" v-if="customer.balance">
-            <div class="col-md-4">
+            <div class="col-md-3">
               <strong>الرصيد بالدولار:</strong> 
               <span class="badge bg-info fs-6">{{ formatCurrency(customer.balance.balance_dollar || 0, 'dollar') }}</span>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
               <strong>الرصيد بالدينار:</strong> 
               <span class="badge bg-info fs-6">{{ formatCurrency(customer.balance.balance_dinar || 0, 'dinar') }}</span>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
+              <button class="btn btn-sm btn-primary" @click="verifyBalance(true)" :disabled="verifyingBalance">
+                <span v-if="verifyingBalance" class="spinner-border spinner-border-sm me-2"></span>
+                <i class="bi bi-check-circle"></i> التحقق من الرصيد
+              </button>
+            </div>
+            <div class="col-md-3">
               <button class="btn btn-sm btn-success me-2" @click="showAddBalanceModal">
                 <i class="bi bi-plus-circle"></i> إضافة رصيد
               </button>
@@ -46,6 +52,42 @@
                 :disabled="(customer.balance.balance_dollar || 0) <= 0 && (customer.balance.balance_dinar || 0) <= 0"
               >
                 <i class="bi bi-dash-circle"></i> سحب رصيد
+              </button>
+            </div>
+          </div>
+          
+          <!-- Balance Verification Alert -->
+          <div v-if="balanceVerification" class="alert mt-3" :class="balanceVerification.is_balanced ? 'alert-success' : 'alert-warning'">
+            <div class="d-flex justify-content-between align-items-center">
+              <div>
+                <strong v-if="balanceVerification.is_balanced">✓ الرصيد متطابق</strong>
+                <strong v-else>⚠ يوجد اختلاف في الرصيد</strong>
+                <div class="mt-2" v-if="!balanceVerification.is_balanced">
+                  <small>
+                    <strong>المحفوظ:</strong> 
+                    {{ formatCurrency(balanceVerification.stored.dinar) }} / 
+                    {{ formatCurrency(balanceVerification.stored.dollar, 'dollar') }}
+                    <br>
+                    <strong>المحسوب:</strong> 
+                    {{ formatCurrency(balanceVerification.calculated.dinar) }} / 
+                    {{ formatCurrency(balanceVerification.calculated.dollar, 'dollar') }}
+                    <br>
+                    <strong>الفرق:</strong> 
+                    <span class="text-danger">
+                      {{ formatCurrency(balanceVerification.difference.dinar) }} / 
+                      {{ formatCurrency(balanceVerification.difference.dollar, 'dollar') }}
+                    </span>
+                  </small>
+                </div>
+              </div>
+              <button 
+                v-if="!balanceVerification.is_balanced"
+                class="btn btn-sm btn-warning"
+                @click="fixBalance"
+                :disabled="fixingBalance"
+              >
+                <span v-if="fixingBalance" class="spinner-border spinner-border-sm me-2"></span>
+                تصحيح الرصيد
               </button>
             </div>
           </div>
@@ -88,14 +130,37 @@
         </div>
       </div>
 
-      <!-- Invoices Table -->
+      <!-- Tabs for Invoices and Transactions -->
       <div class="card">
         <div class="card-header">
-          <h5 class="mb-0">الفواتير المرتبطة</h5>
+          <ul class="nav nav-tabs card-header-tabs" role="tablist">
+            <li class="nav-item" role="presentation">
+              <button 
+                class="nav-link" 
+                :class="{ active: activeTab === 'invoices' }"
+                @click="activeTab = 'invoices'"
+                type="button"
+              >
+                <i class="bi bi-receipt"></i> الفواتير
+              </button>
+            </li>
+            <li class="nav-item" role="presentation">
+              <button 
+                class="nav-link" 
+                :class="{ active: activeTab === 'transactions' }"
+                @click="activeTab = 'transactions'"
+                type="button"
+              >
+                <i class="bi bi-arrow-left-right"></i> الحركات المالية
+              </button>
+            </li>
+          </ul>
         </div>
         <div class="card-body">
-          <div class="table-responsive">
-            <table class="table table-hover">
+          <!-- Invoices Tab -->
+          <div v-show="activeTab === 'invoices'" class="tab-content">
+            <div class="table-responsive">
+              <table class="table table-hover">
               <thead>
                 <tr>
                   <th>رقم الفاتورة</th>
@@ -149,6 +214,51 @@
                 </tr>
               </tbody>
             </table>
+          </div>
+          </div>
+          
+          <!-- Transactions Tab -->
+          <div v-show="activeTab === 'transactions'" class="tab-content">
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    <th>التاريخ</th>
+                    <th>نوع الحركة</th>
+                    <th>المبلغ</th>
+                    <th>العملة</th>
+                    <th>الوصف</th>
+                    <th>الملاحظات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  <tr v-for="(transaction, index) in transactions" :key="transaction.id">
+                    <td>{{ index + 1 }}</td>
+                    <td>{{ formatDate(transaction.date) }}</td>
+                    <td>
+                      <span :class="getTransactionTypeBadgeClass(transaction.type)">
+                        {{ getTransactionTypeText(transaction.type) }}
+                      </span>
+                    </td>
+                    <td 
+                      :class="transaction.type === 'deposit' ? 'text-success' : transaction.type === 'withdrawal' ? 'text-danger' : 'text-info'"
+                    >
+                      <strong>
+                        {{ transaction.type === 'deposit' ? '+' : transaction.type === 'withdrawal' ? '-' : '' }}
+                        {{ formatCurrency(transaction.amount, transaction.currency === 'USD' || transaction.currency === '$' ? 'dollar' : 'dinar') }}
+                      </strong>
+                    </td>
+                    <td>{{ transaction.currency === 'USD' || transaction.currency === '$' ? 'دولار' : 'دينار' }}</td>
+                    <td>{{ transaction.description || transaction.name || '-' }}</td>
+                    <td>{{ transaction.details?.notes || '-' }}</td>
+                  </tr>
+                  <tr v-if="transactions.length === 0">
+                    <td colspan="7" class="text-center text-muted">لا توجد حركات مالية</td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       </div>
@@ -341,16 +451,19 @@
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed, nextTick } from 'vue';
+import { ref, computed, nextTick, onMounted } from 'vue';
 import Swal from 'sweetalert2';
 import axios from 'axios';
 
 const props = defineProps({
   customer: Object,
   invoices: Array,
+  transactions: Array,
   statistics: Object,
   translations: Object,
 });
+
+const transactions = ref(props.transactions || []);
 
 const page = usePage();
 const showModal = ref(false);
@@ -360,6 +473,10 @@ const amountInput = ref(null);
 const showAddBalanceModalFlag = ref(false);
 const showWithdrawBalanceModalFlag = ref(false);
 const isLoading = ref(false);
+const verifyingBalance = ref(false);
+const fixingBalance = ref(false);
+const balanceVerification = ref(null);
+const activeTab = ref('invoices');
 
 const paymentForm = ref({
   amount: '',
@@ -387,12 +504,22 @@ const canPayFromBalance = computed(() => {
 });
 
 const formatCurrency = (amount, currency = 'dinar') => {
-  if (!amount) return '0';
+  if (amount === null || amount === undefined || amount === '') return '0';
+  
   const num = parseFloat(amount);
-  // إزالة .00 إذا كان الرقم صحيحاً
-  const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
-  const symbol = currency === 'dollar' ? '$' : 'د.ع';
-  return `${formatted} ${symbol}`;
+  if (isNaN(num)) return '0';
+  
+  // Format with commas and remove .00 if it's a whole number
+  const formatted = num.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+  
+  // Remove .00 if it's a whole number
+  const cleaned = formatted.replace(/\.00$/, '');
+  
+  const currencySymbol = currency === 'dollar' ? '$' : 'د.ع';
+  return `${cleaned} ${currencySymbol}`;
 };
 
 const formatDate = (date) => {
@@ -429,6 +556,28 @@ const getPaymentMethodText = (method) => {
     'transfer': 'تحويل',
   };
   return methodMap[method] || method;
+};
+
+const getTransactionTypeText = (type) => {
+  const typeMap = {
+    'deposit': 'إيداع',
+    'withdrawal': 'سحب',
+    'payment': 'دفع',
+    'in': 'داخل',
+    'out': 'خارج',
+  };
+  return typeMap[type] || type;
+};
+
+const getTransactionTypeBadgeClass = (type) => {
+  const classMap = {
+    'deposit': 'badge bg-success',
+    'withdrawal': 'badge bg-danger',
+    'payment': 'badge bg-primary',
+    'in': 'badge bg-success',
+    'out': 'badge bg-danger',
+  };
+  return classMap[type] || 'badge bg-secondary';
 };
 
 const showPaymentModal = async (invoice) => {
@@ -502,6 +651,52 @@ const submitPayment = () => {
 const hasPermission = (permission) => {
   return page.props.auth_permissions?.includes(permission) || false;
 };
+
+const verifyBalance = async (showAlert = false) => {
+  verifyingBalance.value = true;
+  
+  try {
+    const response = await axios.get(route('customers.verify-balance', props.customer.id));
+    
+    if (response.data.success) {
+      balanceVerification.value = response.data.balance;
+    }
+  } catch (error) {
+    console.error('Error verifying balance:', error);
+  } finally {
+    verifyingBalance.value = false;
+  }
+};
+
+const fixBalance = async () => {
+  fixingBalance.value = true;
+  
+  try {
+    const response = await axios.get(route('customers.verify-balance', props.customer.id), {
+      params: { fix: true }
+    });
+    
+    if (response.data.success) {
+      balanceVerification.value = response.data.balance;
+      // تحديث الرصيد في customer object
+      if (props.customer.balance) {
+        props.customer.balance.balance_dollar = response.data.balance.calculated.dollar;
+        props.customer.balance.balance_dinar = response.data.balance.calculated.dinar;
+      }
+      // إعادة تحميل الصفحة لتحديث البيانات
+      router.reload({ only: ['customer'] });
+    }
+  } catch (error) {
+    console.error('Error fixing balance:', error);
+  } finally {
+    fixingBalance.value = false;
+  }
+};
+
+// التحقق من الرصيد تلقائياً عند تحميل الصفحة (بدون عرض تنبيه)
+onMounted(() => {
+  verifyBalance(false);
+});
 
 const showAddBalanceModal = () => {
   balanceForm.value = {

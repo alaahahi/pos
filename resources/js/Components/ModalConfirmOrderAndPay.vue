@@ -1,5 +1,5 @@
 <script setup>
-import { ref, watch, computed, nextTick, onMounted } from 'vue';
+import { ref, watch, computed, nextTick, onMounted, getCurrentInstance } from 'vue';
 
 const props = defineProps({
   show: Boolean,
@@ -7,6 +7,27 @@ const props = defineProps({
   translations: Object,
   defaultCurrency: String
 });
+
+const instance = getCurrentInstance();
+
+// Format number function (removes .00 and adds commas)
+const formatNumber = (number, currency = '') => {
+  if (number === null || number === undefined || number === '') return '0';
+  
+  const num = parseFloat(number);
+  if (isNaN(num)) return '0';
+  
+  // Format with commas and remove .00 if it's a whole number
+  const formatted = num.toLocaleString('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+  
+  // Remove .00 if it's a whole number
+  const cleaned = formatted.replace(/\.00$/, '');
+  
+  return currency ? `${cleaned} ${currency}` : cleaned;
+};
 
 function getTodayDate() {
   const today = new Date();
@@ -166,15 +187,15 @@ onMounted(() => {
                 <div class="summary-grid">
                   <div class="summary-item">
                     <div class="summary-label">المبلغ الأصلي</div>
-                    <div class="summary-value amount">{{ total.toFixed(2) }} {{ defaultCurrency }}</div>
+                    <div class="summary-value amount">{{ formatNumber(total, defaultCurrency) }}</div>
                   </div>
                   <div class="summary-item" v-if="discountAmount > 0">
                     <div class="summary-label">الخصم</div>
-                    <div class="summary-value discount">-{{ discountAmount.toFixed(2) }} {{ defaultCurrency }}</div>
+                    <div class="summary-value discount">-{{ formatNumber(discountAmount, defaultCurrency) }}</div>
                   </div>
                   <div class="summary-item total-item">
                     <div class="summary-label">المبلغ النهائي</div>
-                    <div class="summary-value final-total">{{ finalTotal.toFixed(2) }} {{ defaultCurrency }}</div>
+                    <div class="summary-value final-total">{{ formatNumber(finalTotal, defaultCurrency) }}</div>
                   </div>
                 </div>
               </div>

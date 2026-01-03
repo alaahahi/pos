@@ -64,7 +64,8 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
   Route::resource('customers', CustomersController::class);
   Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('customers.activate');
   Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update');
-  Route::post('customers/{customer}/orders/{order}/pay', [CustomersController::class, 'payInvoice'])->name('customers.orders.pay'); 
+  Route::post('customers/{customer}/orders/{order}/pay', [CustomersController::class, 'payInvoice'])->name('customers.orders.pay');
+  Route::get('customers/{customer}/verify-balance', [CustomersController::class, 'verifyBalance'])->name('customers.verify-balance'); 
 
   Route::resource('suppliers', SuppliersController::class);
   Route::post('suppliers/{supplier}/activate', [SuppliersController::class, 'activate'])->name('suppliers.activate');
@@ -188,7 +189,7 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   
   Route::resource('boxes', BoxesController::class);
   Route::post('boxes/{box}/activate', [BoxesController::class, 'activate'])->name('activate');
-  Route::post('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update');
+  Route::put('boxes/{box}', [BoxesController::class, 'update'])->name('boxes.update');
 
   // System Config routes
   Route::get('system-config', [SystemConfigController::class, 'index'])->name('system-config.index');
