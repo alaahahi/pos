@@ -656,10 +656,18 @@ const verifyBalance = async (showAlert = false) => {
   verifyingBalance.value = true;
   
   try {
-    const response = await axios.get(route('customers.verify-balance', props.customer.id));
+    // إرسال auto_fix=true لتصحيح الرصيد تلقائياً إذا كان هناك اختلاف
+    const response = await axios.get(route('customers.verify-balance', props.customer.id), {
+      params: { auto_fix: true }
+    });
     
     if (response.data.success) {
       balanceVerification.value = response.data.balance;
+      
+      // إذا تم التصحيح، قم بإعادة تحميل الصفحة لتحديث الرصيد
+      if (response.data.corrected) {
+        router.reload({ only: ['customer'] });
+      }
     }
   } catch (error) {
     console.error('Error verifying balance:', error);

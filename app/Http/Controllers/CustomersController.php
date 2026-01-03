@@ -380,22 +380,27 @@ class CustomersController extends Controller
                     'currency' => $currency,
                     'date' => $transaction->created ?? $transaction->created_at,
                 ];
-            } elseif ($transaction->type === 'payment' && isset($transaction->details['payment_method']) && $transaction->details['payment_method'] === 'balance') {
-                // دفع من الرصيد - يعتبر سحب من الرصيد
-                if ($isDollar) {
-                    $totalWithdrawalsDollar += $amount;
-                } elseif ($isDinar) {
-                    $totalWithdrawalsDinar += $amount;
-                }
+            } elseif ($transaction->type === 'payment') {
+                // التحقق من طريقة الدفع من details
+                $paymentMethod = $transaction->details['payment_method'] ?? null;
                 
-                $transactionDetails[] = [
-                    'id' => $transaction->id,
-                    'type' => 'payment',
-                    'amount' => $amount,
-                    'currency' => $currency,
-                    'date' => $transaction->created ?? $transaction->created_at,
-                    'payment_method' => 'balance',
-                ];
+                // دفع من الرصيد - يعتبر سحب من الرصيد
+                if ($paymentMethod === 'balance') {
+                    if ($isDollar) {
+                        $totalWithdrawalsDollar += $amount;
+                    } elseif ($isDinar) {
+                        $totalWithdrawalsDinar += $amount;
+                    }
+                    
+                    $transactionDetails[] = [
+                        'id' => $transaction->id,
+                        'type' => 'payment',
+                        'amount' => $amount,
+                        'currency' => $currency,
+                        'date' => $transaction->created ?? $transaction->created_at,
+                        'payment_method' => 'balance',
+                    ];
+                }
             }
         }
         
@@ -449,9 +454,10 @@ class CustomersController extends Controller
         $calculatedBalance = $this->calculateCustomerBalance($customer->id);
         
         $shouldFix = $request->get('fix', false);
+        $autoFix = $request->get('auto_fix', true); // تصحيح تلقائي افتراضي
         
-        // إذا كان هناك اختلاف، قم بالتصحيح تلقائياً
-        if ($shouldFix || !$calculatedBalance['is_balanced']) {
+        // إذا كان هناك اختلاف، قم بالتصحيح تلقائياً (ما لم يتم تعطيله)
+        if (($shouldFix || ($autoFix && !$calculatedBalance['is_balanced']))) {
             DB::beginTransaction();
             
             try {
