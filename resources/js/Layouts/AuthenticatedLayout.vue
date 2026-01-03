@@ -24,100 +24,41 @@
 
         <nav class="header-nav ms-auto text-gray-600 dark:text-gray-400">
             <ul class="d-flex align-items-center text-gray-600 dark:text-gray-400">
-
-                <!-- <li class="nav-item d-block d-lg-none">
-                    <a class="nav-link nav-icon search-bar-toggle " href="#">
-                        <i class="bi bi-search"></i>
-                    </a>
-                </li> -->
-                <!-- End Search Icon-->
-                <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
-                    <select class="form-control changeLang" @change="changeLanguage">
+                
+                <!-- Language Selector -->
+                <li class="nav-item dropdown text-gray-600 dark:text-gray-400 me-2">
+                    <select class="form-control changeLang" @change="changeLanguage" style="min-width: 120px;">
                         <option value="" selected> {{ translations.language || 'اللغة' }} 🌍 </option>
                         <option value="en"> English</option>
                         <option value="ar">العربية</option>
                     </select>
                 </li>
-                <li class="nav-item text-gray-600 dark:text-gray-400">
+                <!-- End Language Selector -->
+
+                <!-- Dark Mode Toggle -->
+                <li class="nav-item text-gray-600 dark:text-gray-400 me-2">
                     <DarkModeToggle />
                 </li>
-                <li class="nav-item dropdown text-gray-600 dark:text-gray-400">
+                <!-- End Dark Mode Toggle -->
+
+                <!-- Active Users -->
+                <li class="nav-item text-gray-600 dark:text-gray-400 me-2">
+                    <ActiveUsers />
+                </li>
+                <!-- End Active Users -->
+
+                <!-- Notifications -->
+                <li class="nav-item dropdown text-gray-600 dark:text-gray-400 me-2">
                     <Link
-                    class="nav-link nav-icon" 
-            :href="route('notification.index')"
-          >
+                        class="nav-link nav-icon position-relative" 
+                        :href="route('notification.index')"
+                    >
                         <i class="bi bi-bell"></i>
-                        <span class="badge bg-primary badge-number">{{ notificationCount }}</span>
-                 </Link>
+                        <span v-if="notificationCount > 0" class="badge bg-primary badge-number position-absolute top-0 start-100 translate-middle">
+                            {{ notificationCount }}
+                        </span>
+                    </Link>
                     <!-- End Notification Icon -->
-
-                    <ul class="dropdown-menu dropdown-menu-end dropdown-menu-arrow notifications">
-                        <li class="dropdown-header">
-                            You have 4 new notifications
-                            <a href="#"><span class="badge rounded-pill bg-primary p-2 ms-2">View all</span></a>
-                        </li>
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <li class="notification-item">
-                            <i class="bi bi-exclamation-circle text-warning"></i>
-                            <div>
-                                <h4>Lorem Ipsum</h4>
-                                <p>Quae dolorem earum veritatis oditseno</p>
-                                <p>30 min. ago</p>
-                            </div>
-                        </li>
-
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <li class="notification-item">
-                            <i class="bi bi-x-circle text-danger"></i>
-                            <div>
-                                <h4>Atque rerum nesciunt</h4>
-                                <p>Quae dolorem earum veritatis oditseno</p>
-                                <p>1 hr. ago</p>
-                            </div>
-                        </li>
-
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <li class="notification-item">
-                            <i class="bi bi-check-circle text-success"></i>
-                            <div>
-                                <h4>Sit rerum fuga</h4>
-                                <p>Quae dolorem earum veritatis oditseno</p>
-                                <p>2 hrs. ago</p>
-                            </div>
-                        </li>
-
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-
-                        <li class="notification-item">
-                            <i class="bi bi-info-circle text-primary"></i>
-                            <div>
-                                <h4>Dicta reprehenderit</h4>
-                                <p>Quae dolorem earum veritatis oditseno</p>
-                                <p>4 hrs. ago</p>
-                            </div>
-                        </li>
-
-                        <li>
-                            <hr class="dropdown-divider">
-                        </li>
-                        <li class="dropdown-footer">
-                            <a href="#">Show all notifications</a>
-                        </li>
-
-                    </ul>
-                    <!-- End Notification Dropdown Items -->
-
                 </li>
                 <!-- End Notification Nav -->
 <!-- 
@@ -188,6 +129,7 @@
                 </li> -->
                 <!-- End Messages Nav -->
 
+                <!-- User Profile -->
                 <li class="nav-item dropdown pe-3 text-gray-600 dark:text-gray-400">
 
                     <a class="nav-link nav-profile d-flex align-items-center pe-0" href="#" data-bs-toggle="dropdown">
@@ -342,6 +284,7 @@ const changeLanguage = (event) => {
 import Sidebar from '@/Components/SideBar.vue';
 import SyncStatusBar from '@/Components/SyncStatusBar.vue';
 import WiFiIcon from '@/Components/WiFiIcon.vue';
+import ActiveUsers from '@/Components/ActiveUsers.vue';
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
 
@@ -364,6 +307,7 @@ export default {
         Sidebar,
         SyncStatusBar,
         WiFiIcon,
+        ActiveUsers,
     },
   data() {
     return {
@@ -374,6 +318,35 @@ export default {
 </script>
 
 <style scoped>
+/* Header Navigation Spacing */
+.header-nav ul {
+    gap: 0.5rem;
+}
+
+.header-nav .nav-item {
+    margin: 0;
+}
+
+.header-nav .changeLang {
+    font-size: 0.875rem;
+    padding: 0.375rem 0.75rem;
+    border-radius: 0.375rem;
+    border: 1px solid #dee2e6;
+    background-color: #fff;
+}
+
+.header-nav .changeLang:focus {
+    outline: none;
+    border-color: #86b7fe;
+    box-shadow: 0 0 0 0.25rem rgba(13, 110, 253, 0.25);
+}
+
+.dark .header-nav .changeLang {
+    background-color: #1f2937;
+    border-color: #374151;
+    color: #d1d5db;
+}
+
 /* Sidebar Overlay for Mobile */
 .sidebar-overlay {
     position: fixed;

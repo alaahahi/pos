@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BoxesController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\Api\ActiveUsersController;
 
 /*
 |--------------------------------------------------------------------------
@@ -57,6 +58,9 @@ Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUplo
 Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
 Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
 Route::get('today-sales',[OrderController::class, 'getTodaySales'])->name('today-sales');
+
+// Active Users API
+Route::middleware(['auth:sanctum'])->get('active-users', [ActiveUsersController::class, 'index'])->name('api.active-users');
 
 Route::get('/check-session', function () {
     $user = Auth::user();

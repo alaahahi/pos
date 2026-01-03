@@ -40,6 +40,7 @@ class Kernel extends HttpKernel
             \Illuminate\Http\Middleware\AddLinkHeadersForPreloadedAssets::class,
             // \App\Http\Middleware\SetLocale::class, // Add your middleware here
             \App\Http\Middleware\LanguageManager::class,
+            \App\Http\Middleware\UpdateUserActivity::class,
 
 
         ],

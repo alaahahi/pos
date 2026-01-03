@@ -28,13 +28,25 @@
             </div>
           </div>
           <div class="row mt-3" v-if="customer.balance">
-            <div class="col-md-6">
+            <div class="col-md-4">
               <strong>الرصيد بالدولار:</strong> 
-              <span class="badge bg-info">{{ formatCurrency(customer.balance.balance_dollar || 0, 'dollar') }}</span>
+              <span class="badge bg-info fs-6">{{ formatCurrency(customer.balance.balance_dollar || 0, 'dollar') }}</span>
             </div>
-            <div class="col-md-6">
+            <div class="col-md-4">
               <strong>الرصيد بالدينار:</strong> 
-              <span class="badge bg-info">{{ formatCurrency(customer.balance.balance_dinar || 0, 'dinar') }}</span>
+              <span class="badge bg-info fs-6">{{ formatCurrency(customer.balance.balance_dinar || 0, 'dinar') }}</span>
+            </div>
+            <div class="col-md-4">
+              <button class="btn btn-sm btn-success me-2" @click="showAddBalanceModal">
+                <i class="bi bi-plus-circle"></i> إضافة رصيد
+              </button>
+              <button 
+                class="btn btn-sm btn-warning" 
+                @click="showWithdrawBalanceModal"
+                :disabled="(customer.balance.balance_dollar || 0) <= 0 && (customer.balance.balance_dinar || 0) <= 0"
+              >
+                <i class="bi bi-dash-circle"></i> سحب رصيد
+              </button>
             </div>
           </div>
         </div>
@@ -143,77 +155,195 @@
     </section>
 
     <!-- Payment Modal -->
-    <div class="modal fade" :class="{ show: showModal, 'd-block': showModal }" tabindex="-1" v-if="showModal">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">دفع الفاتورة {{ selectedInvoice?.order_number }}</h5>
-            <button type="button" class="btn-close" @click="closeModal"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="submitPayment">
-              <div class="mb-3">
-                <label class="form-label">المبلغ المتبقي</label>
-                <input 
-                  type="text" 
-                  class="form-control" 
-                  :value="formatCurrency(selectedInvoice?.remaining || 0)" 
-                  disabled
-                />
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showModal" class="modal-overlay" @click.self="closeModal">
+          <div class="modal-container">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">دفع الفاتورة {{ selectedInvoice?.order_number }}</h5>
+                <button type="button" class="btn-close" @click="closeModal" aria-label="Close">
+                  <span aria-hidden="true">&times;</span>
+                </button>
               </div>
-              <div class="mb-3">
-                <label class="form-label">المبلغ المدفوع <span class="text-danger">*</span></label>
-                <input 
-                  type="number" 
-                  class="form-control" 
-                  v-model="paymentForm.amount"
-                  step="0.01"
-                  min="0.01"
-                  :max="selectedInvoice?.remaining"
-                  required
-                />
+              <div class="modal-body">
+                <form @submit.prevent="submitPayment">
+                  <div class="mb-3">
+                    <label class="form-label">المبلغ المتبقي</label>
+                    <input 
+                      type="text" 
+                      class="form-control" 
+                      :value="formatCurrency(selectedInvoice?.remaining || 0)" 
+                      disabled
+                    />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">المبلغ المدفوع <span class="text-danger">*</span></label>
+                    <input 
+                      type="number" 
+                      class="form-control" 
+                      v-model="paymentForm.amount"
+                      step="0.01"
+                      min="0.01"
+                      :max="selectedInvoice?.remaining"
+                      required
+                      ref="amountInput"
+                    />
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">طريقة الدفع <span class="text-danger">*</span></label>
+                    <select class="form-select" v-model="paymentForm.payment_method" required>
+                      <option value="cash">نقدي</option>
+                      <option value="balance" :disabled="!canPayFromBalance">
+                        من الرصيد 
+                        <span v-if="customer.balance">
+                          (المتاح: {{ formatCurrency(customer.balance.balance_dinar || 0) }})
+                        </span>
+                      </option>
+                      <option value="transfer">تحويل</option>
+                    </select>
+                    <small v-if="paymentForm.payment_method === 'balance' && !canPayFromBalance" class="text-danger">
+                      الرصيد غير كافي (المتاح: {{ formatCurrency(customer.balance?.balance_dinar || 0) }})
+                    </small>
+                    <small v-if="paymentForm.payment_method === 'balance' && canPayFromBalance" class="text-success">
+                      ✓ الرصيد كافي للدفع
+                    </small>
+                  </div>
+                  <div class="mb-3">
+                    <label class="form-label">ملاحظات</label>
+                    <textarea class="form-control" v-model="paymentForm.notes" rows="3"></textarea>
+                  </div>
+                  <div class="alert alert-info" v-if="selectedInvoice">
+                    <strong>المبلغ النهائي:</strong> {{ formatCurrency(selectedInvoice.final_amount) }}<br>
+                    <strong>المدفوع سابقاً:</strong> {{ formatCurrency(selectedInvoice.total_paid) }}<br>
+                    <strong>المتبقي:</strong> {{ formatCurrency(selectedInvoice.remaining) }}
+                  </div>
+                </form>
               </div>
-              <div class="mb-3">
-                <label class="form-label">طريقة الدفع <span class="text-danger">*</span></label>
-                <select class="form-select" v-model="paymentForm.payment_method" required>
-                  <option value="cash">نقدي</option>
-                  <option value="balance" :disabled="!canPayFromBalance">من الرصيد</option>
-                  <option value="transfer">تحويل</option>
-                </select>
-                <small v-if="paymentForm.payment_method === 'balance' && !canPayFromBalance" class="text-danger">
-                  الرصيد غير كافي
-                </small>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeModal">إلغاء</button>
+                <button type="button" class="btn btn-primary" @click="submitPayment" :disabled="processing">
+                  <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+                  دفع
+                </button>
               </div>
-              <div class="mb-3">
-                <label class="form-label">ملاحظات</label>
-                <textarea class="form-control" v-model="paymentForm.notes" rows="3"></textarea>
-              </div>
-              <div class="alert alert-info" v-if="selectedInvoice">
-                <strong>المبلغ النهائي:</strong> {{ formatCurrency(selectedInvoice.final_amount) }}<br>
-                <strong>المدفوع سابقاً:</strong> {{ formatCurrency(selectedInvoice.total_paid) }}<br>
-                <strong>المتبقي:</strong> {{ formatCurrency(selectedInvoice.remaining) }}
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="closeModal">إلغاء</button>
-            <button type="button" class="btn btn-primary" @click="submitPayment" :disabled="processing">
-              <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-              دفع
-            </button>
+            </div>
           </div>
         </div>
-      </div>
-      <div class="modal-backdrop fade show" v-if="showModal"></div>
-    </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Add Balance Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showAddBalanceModalFlag" class="modal-overlay" @click.self="closeAddBalanceModal">
+          <div class="modal-container">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">إضافة رصيد للعميل</h5>
+                <button type="button" class="btn-close" @click="closeAddBalanceModal">
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label class="form-label">المبلغ <span class="text-danger">*</span></label>
+                  <input 
+                    type="number" 
+                    class="form-control" 
+                    v-model="balanceForm.amount"
+                    step="0.01"
+                    min="0.01"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">العملة <span class="text-danger">*</span></label>
+                  <select class="form-select" v-model="balanceForm.currency" required>
+                    <option value="dollar">دولار</option>
+                    <option value="dinar">دينار</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">ملاحظات</label>
+                  <textarea class="form-control" v-model="balanceForm.notes" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeAddBalanceModal">إلغاء</button>
+                <button type="button" class="btn btn-success" @click="addBalance" :disabled="isLoading">
+                  <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+                  إضافة
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
+
+    <!-- Withdraw Balance Modal -->
+    <Teleport to="body">
+      <Transition name="modal">
+        <div v-if="showWithdrawBalanceModalFlag" class="modal-overlay" @click.self="closeWithdrawBalanceModal">
+          <div class="modal-container">
+            <div class="modal-content">
+              <div class="modal-header">
+                <h5 class="modal-title">سحب رصيد من العميل</h5>
+                <button type="button" class="btn-close" @click="closeWithdrawBalanceModal">
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div class="modal-body">
+                <div class="alert alert-info">
+                  <strong>الرصيد المتاح:</strong><br>
+                  دولار: {{ formatCurrency(customer.balance?.balance_dollar || 0, 'dollar') }}<br>
+                  دينار: {{ formatCurrency(customer.balance?.balance_dinar || 0, 'dinar') }}
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">المبلغ <span class="text-danger">*</span></label>
+                  <input 
+                    type="number" 
+                    class="form-control" 
+                    v-model="withdrawForm.amount"
+                    step="0.01"
+                    min="0.01"
+                    required
+                  />
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">العملة <span class="text-danger">*</span></label>
+                  <select class="form-select" v-model="withdrawForm.currency" required>
+                    <option value="dollar">دولار</option>
+                    <option value="dinar">دينار</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label class="form-label">ملاحظات</label>
+                  <textarea class="form-control" v-model="withdrawForm.notes" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" @click="closeWithdrawBalanceModal">إلغاء</button>
+                <button type="button" class="btn btn-warning" @click="withdrawBalance" :disabled="isLoading">
+                  <span v-if="isLoading" class="spinner-border spinner-border-sm me-2"></span>
+                  سحب
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </Transition>
+    </Teleport>
   </AuthenticatedLayout>
 </template>
 
 <script setup>
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
-import { ref, computed } from 'vue';
+import { ref, computed, nextTick } from 'vue';
 import Swal from 'sweetalert2';
+import axios from 'axios';
 
 const props = defineProps({
   customer: Object,
@@ -226,10 +356,26 @@ const page = usePage();
 const showModal = ref(false);
 const selectedInvoice = ref(null);
 const processing = ref(false);
+const amountInput = ref(null);
+const showAddBalanceModalFlag = ref(false);
+const showWithdrawBalanceModalFlag = ref(false);
+const isLoading = ref(false);
 
 const paymentForm = ref({
   amount: '',
   payment_method: 'cash',
+  notes: '',
+});
+
+const balanceForm = ref({
+  amount: '',
+  currency: 'dinar',
+  notes: '',
+});
+
+const withdrawForm = ref({
+  amount: '',
+  currency: 'dinar',
   notes: '',
 });
 
@@ -241,8 +387,10 @@ const canPayFromBalance = computed(() => {
 });
 
 const formatCurrency = (amount, currency = 'dinar') => {
-  if (!amount) return '0.00';
-  const formatted = parseFloat(amount).toFixed(2);
+  if (!amount) return '0';
+  const num = parseFloat(amount);
+  // إزالة .00 إذا كان الرقم صحيحاً
+  const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
   const symbol = currency === 'dollar' ? '$' : 'د.ع';
   return `${formatted} ${symbol}`;
 };
@@ -283,7 +431,7 @@ const getPaymentMethodText = (method) => {
   return methodMap[method] || method;
 };
 
-const showPaymentModal = (invoice) => {
+const showPaymentModal = async (invoice) => {
   selectedInvoice.value = invoice;
   paymentForm.value = {
     amount: invoice.remaining.toFixed(2),
@@ -291,6 +439,12 @@ const showPaymentModal = (invoice) => {
     notes: '',
   };
   showModal.value = true;
+  // Focus on amount input after modal is shown
+  await nextTick();
+  if (amountInput.value) {
+    amountInput.value.focus();
+    amountInput.value.select();
+  }
 };
 
 const closeModal = () => {
@@ -348,11 +502,221 @@ const submitPayment = () => {
 const hasPermission = (permission) => {
   return page.props.auth_permissions?.includes(permission) || false;
 };
+
+const showAddBalanceModal = () => {
+  balanceForm.value = {
+    amount: '',
+    currency: 'dinar',
+    notes: '',
+  };
+  showAddBalanceModalFlag.value = true;
+};
+
+const closeAddBalanceModal = () => {
+  showAddBalanceModalFlag.value = false;
+  balanceForm.value = {
+    amount: '',
+    currency: 'dinar',
+    notes: '',
+  };
+};
+
+const addBalance = async () => {
+  if (!balanceForm.value.amount || parseFloat(balanceForm.value.amount) <= 0) {
+    Swal.fire('خطأ', 'يرجى إدخال مبلغ صحيح', 'error');
+    return;
+  }
+
+  isLoading.value = true;
+  
+  try {
+    const response = await axios.post('/decoration-payments/balance/add', {
+      customer_id: props.customer.id,
+      amount: balanceForm.value.amount,
+      currency: balanceForm.value.currency,
+      notes: balanceForm.value.notes,
+    });
+
+    if (response.data.success) {
+      Swal.fire('نجح', 'تم إضافة الرصيد بنجاح', 'success');
+      closeAddBalanceModal();
+      router.reload();
+    } else {
+      Swal.fire('خطأ', response.data.message || 'حدث خطأ أثناء إضافة الرصيد', 'error');
+    }
+  } catch (error) {
+    console.error('Error adding balance:', error);
+    Swal.fire('خطأ', error.response?.data?.message || 'حدث خطأ أثناء إضافة الرصيد', 'error');
+  } finally {
+    isLoading.value = false;
+  }
+};
+
+const showWithdrawBalanceModal = () => {
+  withdrawForm.value = {
+    amount: '',
+    currency: 'dinar',
+    notes: '',
+  };
+  showWithdrawBalanceModalFlag.value = true;
+};
+
+const closeWithdrawBalanceModal = () => {
+  showWithdrawBalanceModalFlag.value = false;
+  withdrawForm.value = {
+    amount: '',
+    currency: 'dinar',
+    notes: '',
+  };
+};
+
+const withdrawBalance = async () => {
+  if (!withdrawForm.value.amount || parseFloat(withdrawForm.value.amount) <= 0) {
+    Swal.fire('خطأ', 'يرجى إدخال مبلغ صحيح', 'error');
+    return;
+  }
+
+  const balance = withdrawForm.value.currency === 'dollar' 
+    ? (props.customer.balance?.balance_dollar || 0)
+    : (props.customer.balance?.balance_dinar || 0);
+
+  if (parseFloat(withdrawForm.value.amount) > balance) {
+    Swal.fire('خطأ', 'الرصيد غير كافي', 'error');
+    return;
+  }
+
+  isLoading.value = true;
+  
+  try {
+    const response = await axios.post('/decoration-payments/balance/withdraw', {
+      customer_id: props.customer.id,
+      amount: withdrawForm.value.amount,
+      currency: withdrawForm.value.currency,
+      notes: withdrawForm.value.notes,
+    });
+
+    if (response.data.success) {
+      Swal.fire('نجح', 'تم سحب الرصيد بنجاح', 'success');
+      closeWithdrawBalanceModal();
+      router.reload();
+    } else {
+      Swal.fire('خطأ', response.data.message || 'حدث خطأ أثناء سحب الرصيد', 'error');
+    }
+  } catch (error) {
+    console.error('Error withdrawing balance:', error);
+    Swal.fire('خطأ', error.response?.data?.message || 'حدث خطأ أثناء سحب الرصيد', 'error');
+  } finally {
+    isLoading.value = false;
+  }
+};
 </script>
 
 <style scoped>
-.modal-backdrop {
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1050;
+  padding: 1rem;
+}
+
+.modal-container {
+  position: relative;
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-content {
+  background: white;
+  border-radius: 10px;
+  box-shadow: 0 0.25rem 0.5rem rgba(0, 0, 0, 0.5);
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  pointer-events: auto;
+}
+
+.modal-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem;
+  border-bottom: 1px solid #dee2e6;
+  border-top-left-radius: 10px;
+  border-top-right-radius: 10px;
+}
+
+.modal-title {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 500;
+}
+
+.modal-body {
+  padding: 1rem;
+  flex: 1 1 auto;
+}
+
+.modal-footer {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  padding: 1rem;
+  border-top: 1px solid #dee2e6;
+  border-bottom-left-radius: 10px;
+  border-bottom-right-radius: 10px;
+  gap: 0.5rem;
+}
+
+.btn-close {
+  background: none;
+  border: none;
+  font-size: 1.5rem;
+  font-weight: 700;
+  line-height: 1;
+  color: #000;
+  text-shadow: 0 1px 0 #fff;
   opacity: 0.5;
+  cursor: pointer;
+  padding: 0;
+  width: 2rem;
+  height: 2rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.btn-close:hover {
+  opacity: 0.75;
+}
+
+/* Modal transition */
+.modal-enter-active,
+.modal-leave-active {
+  transition: opacity 0.3s ease;
+}
+
+.modal-enter-from,
+.modal-leave-to {
+  opacity: 0;
+}
+
+.modal-enter-active .modal-container,
+.modal-leave-active .modal-container {
+  transition: transform 0.3s ease;
+}
+
+.modal-enter-from .modal-container,
+.modal-leave-to .modal-container {
+  transform: scale(0.9);
 }
 </style>
 

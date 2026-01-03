@@ -226,7 +226,10 @@ const exportUsers = () => {
 };
 
 const formatCurrency = (amount) => {
-  if (!amount) return '0.00';
-  return parseFloat(amount).toFixed(2) + ' د.ع';
+  if (!amount) return '0';
+  const num = parseFloat(amount);
+  // إزالة .00 إذا كان الرقم صحيحاً
+  const formatted = num % 1 === 0 ? num.toString() : num.toFixed(2);
+  return formatted + ' د.ع';
 };
 </script>

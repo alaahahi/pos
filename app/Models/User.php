@@ -74,7 +74,8 @@ class User extends Authenticatable
         'avatar',
         'updated_at',
         'commission_enabled',
-        'commission_rate_percent'
+        'commission_rate_percent',
+        'last_activity_at'
     ];
 
     protected $appends = ['avatar_url'];
@@ -107,6 +108,7 @@ class User extends Authenticatable
         'email_verified_at' => 'datetime',
         'password' => 'hashed',
         'created_at'  => 'date:Y-m-d',
+        'last_activity_at' => 'datetime',
     ];
 
     public function wallet()
