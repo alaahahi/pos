@@ -584,19 +584,42 @@ class CustomersController extends Controller
                     ]
                 );
                 
-                // Assuming default currency is IQD (dinar)
-                // You may need to adjust this based on your system
-                if ($customerBalance->balance_dinar < $validated['amount']) {
-                    throw new \Exception('الرصيد غير كافي');
+                // تحديد العملة من الفاتورة أو استخدام العملة الافتراضية
+                $orderCurrency = $order->currency ?? $this->defaultCurrency;
+                $isDollar = in_array(strtoupper($orderCurrency), ['USD', '$', 'DOLLAR']);
+                $isDinar = in_array(strtoupper($orderCurrency), ['IQD', 'IQD', 'DINAR']);
+                
+                // إذا لم يتم تحديد العملة، استخدم العملة الافتراضية
+                if (!$isDollar && !$isDinar) {
+                    $isDinar = ($this->defaultCurrency === 'IQD');
                 }
                 
-                $customerBalance->balance_dinar -= $validated['amount'];
+                // التحقق من الرصيد وخصمه
+                if ($isDollar) {
+                    if ($customerBalance->balance_dollar < $validated['amount']) {
+                        throw new \Exception('الرصيد بالدولار غير كافي');
+                    }
+                    $customerBalance->balance_dollar -= $validated['amount'];
+                } else {
+                    if ($customerBalance->balance_dinar < $validated['amount']) {
+                        throw new \Exception('الرصيد بالدينار غير كافي');
+                    }
+                    $customerBalance->balance_dinar -= $validated['amount'];
+                }
+                
                 $customerBalance->last_transaction_date = now();
-                $customerBalance->save();
+                
+                // حفظ الرصيد مع التأكد من الحفظ
+                if (!$customerBalance->save()) {
+                    throw new \Exception('فشل في تحديث رصيد العميل');
+                }
+                
+                // إعادة تحميل الرصيد للتأكد من التحديث
+                $customerBalance->refresh();
                 
                 // تسجيل الحركة في Box للعميل فقط (بدون إضافة في الصندوق الرئيسي)
                 // لأن المبلغ لم يدخل الصندوق فعلياً - فقط تحويل داخلي
-                $currencyCode = $this->defaultCurrency === 'IQD' ? 'IQD' : 'USD';
+                $currencyCode = $isDollar ? 'USD' : 'IQD';
                 \App\Models\Box::create([
                     'name' => "دفع فاتورة رقم {$order->id} من الرصيد - {$customer->name}",
                     'amount' => $validated['amount'],

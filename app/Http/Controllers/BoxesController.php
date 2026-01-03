@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Box;
 use App\Models\DailyClose;
 use App\Models\MonthlyClose;
+use App\Models\Customer;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
@@ -45,7 +46,25 @@ class BoxesController extends Controller
         ];
 
         // Start the Box query
-        $transactionsQuery = Transactions::with('morphed', 'TransactionsImages')->orderBy('created_at', 'desc');
+        // استبعاد معاملات الدفع من الرصيد (payment_method = balance) لأنها تحويلات داخلية فقط
+        $transactionsQuery = Transactions::with('morphed', 'TransactionsImages')
+            ->where(function($query) {
+                // استبعاد المعاملات المرتبطة بعملاء والتي هي دفعات من الرصيد
+                $query->where(function($q) {
+                    $q->where('morphed_type', '!=', Customer::class)
+                      ->orWhere(function($subQ) {
+                          // إذا كانت مرتبطة بعميل، تأكد أنها ليست دفعة من الرصيد
+                          $subQ->where('morphed_type', Customer::class)
+                               ->where(function($detailsQ) {
+                                   // استبعاد المعاملات التي تحتوي على payment_method = balance في details
+                                   $detailsQ->whereRaw("JSON_EXTRACT(details, '$.payment_method') != 'balance'")
+                                            ->orWhereNull('details')
+                                            ->orWhereRaw("JSON_EXTRACT(details, '$.payment_method') IS NULL");
+                               });
+                      });
+                });
+            })
+            ->orderBy('created_at', 'desc');
 
         // Apply the filters if they exist
         // Search by name in the morphed relationship
