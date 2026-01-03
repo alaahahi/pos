@@ -62,8 +62,9 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
   Route::post('users/{user}', [UsersController::class, 'update'])->name('users.update'); //  inertia does not support send files using put request
 
   Route::resource('customers', CustomersController::class);
-  Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('activate');
-  Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update'); 
+  Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('customers.activate');
+  Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update');
+  Route::post('customers/{customer}/orders/{order}/pay', [CustomersController::class, 'payInvoice'])->name('customers.orders.pay'); 
 
   Route::resource('suppliers', SuppliersController::class);
   Route::post('suppliers/{supplier}/activate', [SuppliersController::class, 'activate'])->name('suppliers.activate');

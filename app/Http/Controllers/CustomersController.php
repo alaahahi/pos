@@ -3,12 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Order;
+use App\Models\CustomerBalance;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
 use Spatie\Permission\Models\Role;
 use App\Http\Requests\StoreCustomerRequest;
 use App\Http\Requests\UpdateCustomerRequest;
 use App\Services\LogService;
+use Illuminate\Support\Facades\DB;
+use App\Http\Controllers\AccountingController;
 
 class CustomersController extends Controller
 {
@@ -50,6 +54,19 @@ class CustomersController extends Controller
 
         // Paginate the filtered customers
         $customers = $customersQuery->paginate(10);
+        
+        // Calculate debt for each customer
+        $customers->getCollection()->transform(function ($customer) {
+            $orders = Order::where('customer_id', $customer->id)
+                ->where('status', 'due')
+                ->get();
+            
+            $customer->total_debt = $orders->sum(function($order) {
+                return ($order->final_amount ?? $order->total_amount) - ($order->total_paid ?? 0);
+            });
+            
+            return $customer;
+        });
 
         return Inertia('Client/index', [
             'translations' => __('messages'),
@@ -192,5 +209,164 @@ class CustomersController extends Controller
 
         return redirect()->route('customers.index')
             ->with('success', __('messages.data_deleted_successfully'));
+    }
+
+    /**
+     * Show customer details with invoices
+     */
+    public function show(Customer $customer)
+    {
+        // Load customer with balance
+        $customer->load('balance');
+        
+        // Get all orders for this customer
+        $orders = Order::where('customer_id', $customer->id)
+            ->with('products')
+            ->orderBy('created_at', 'desc')
+            ->get();
+        
+        // Calculate totals
+        $totalDebt = $orders->where('status', 'due')->sum(function($order) {
+            return ($order->final_amount ?? $order->total_amount) - ($order->total_paid ?? 0);
+        });
+        
+        $totalPaid = $orders->sum('total_paid');
+        $totalInvoices = $orders->sum(function($order) {
+            return $order->final_amount ?? $order->total_amount;
+        });
+        
+        // Format orders data
+        $invoices = $orders->map(function($order) {
+            $finalAmount = $order->final_amount ?? $order->total_amount;
+            $paidAmount = $order->total_paid ?? 0;
+            $remaining = $finalAmount - $paidAmount;
+            
+            return [
+                'id' => $order->id,
+                'order_number' => $order->order_number ?? '#' . $order->id,
+                'date' => $order->date ?? $order->created_at->format('Y-m-d'),
+                'total_amount' => $order->total_amount,
+                'discount_amount' => $order->discount_amount ?? 0,
+                'final_amount' => $finalAmount,
+                'total_paid' => $paidAmount,
+                'remaining' => $remaining,
+                'status' => $order->status,
+                'payment_method' => $order->payment_method ?? 'cash',
+                'notes' => $order->notes,
+                'created_at' => $order->created_at->format('Y-m-d H:i:s'),
+            ];
+        });
+        
+        return Inertia::render('Client/Show', [
+            'translations' => __('messages'),
+            'customer' => $customer,
+            'invoices' => $invoices,
+            'statistics' => [
+                'total_invoices' => $invoices->count(),
+                'total_amount' => $totalInvoices,
+                'total_paid' => $totalPaid,
+                'total_debt' => $totalDebt,
+            ],
+        ]);
+    }
+
+    /**
+     * Pay invoice from customer page
+     */
+    public function payInvoice(Request $request, Customer $customer, Order $order)
+    {
+        $validated = $request->validate([
+            'amount' => 'required|numeric|min:0.01',
+            'payment_method' => 'required|in:cash,balance,transfer',
+            'notes' => 'nullable|string',
+        ]);
+        
+        DB::beginTransaction();
+        
+        try {
+            $finalAmount = $order->final_amount ?? $order->total_amount;
+            $currentPaid = $order->total_paid ?? 0;
+            $remaining = $finalAmount - $currentPaid;
+            
+            // Validate payment amount
+            if ($validated['amount'] > $remaining) {
+                throw new \Exception('المبلغ المدفوع أكبر من المبلغ المتبقي');
+            }
+            
+            $newPaidAmount = $currentPaid + $validated['amount'];
+            $newStatus = $newPaidAmount >= $finalAmount ? 'paid' : 'due';
+            
+            // Update order
+            $order->update([
+                'total_paid' => $newPaidAmount,
+                'status' => $newStatus,
+            ]);
+            
+            // Handle payment based on method
+            if ($validated['payment_method'] === 'cash') {
+                // Add to main box (similar to OrderController)
+                $accountingController = app(AccountingController::class);
+                $userAccount = \App\Models\UserType::where('name', 'account')->first()?->id;
+                $mainBox = \App\Models\User::with('wallet')
+                    ->where('type_id', $userAccount)
+                    ->where('email', 'mainBox@account.com')
+                    ->first();
+                
+                if ($mainBox) {
+                    $accountingController->increaseWallet(
+                        $validated['amount'],
+                        'دفع نقدي فاتورة رقم ' . $order->id . ' - ' . $customer->name,
+                        $mainBox->id,
+                        $order->id,
+                        Order::class,
+                        0,
+                        0,
+                        env('DEFAULT_CURRENCY', 'IQD'),
+                        $order->date ?? now()->format('Y-m-d')
+                    );
+                }
+            } elseif ($validated['payment_method'] === 'balance') {
+                // Deduct from customer balance
+                $customerBalance = CustomerBalance::firstOrCreate(
+                    ['customer_id' => $customer->id],
+                    [
+                        'balance_dollar' => 0,
+                        'balance_dinar' => 0,
+                        'last_transaction_date' => now(),
+                    ]
+                );
+                
+                // Assuming default currency is IQD (dinar)
+                // You may need to adjust this based on your system
+                if ($customerBalance->balance_dinar < $validated['amount']) {
+                    throw new \Exception('الرصيد غير كافي');
+                }
+                
+                $customerBalance->balance_dinar -= $validated['amount'];
+                $customerBalance->last_transaction_date = now();
+                $customerBalance->save();
+            }
+            
+            // Log the payment
+            LogService::createLog(
+                'Order Payment',
+                'Payment Made',
+                $order->id,
+                ['old_paid' => $currentPaid, 'old_status' => $order->getOriginal('status')],
+                ['new_paid' => $newPaidAmount, 'new_status' => $newStatus, 'payment_method' => $validated['payment_method']],
+                'success'
+            );
+            
+            DB::commit();
+            
+            return redirect()->route('customers.show', $customer)
+                ->with('success', 'تم دفع الفاتورة بنجاح');
+                
+        } catch (\Exception $e) {
+            DB::rollBack();
+            
+            return redirect()->back()
+                ->with('error', $e->getMessage());
+        }
     }
 }

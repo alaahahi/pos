@@ -70,6 +70,7 @@
                   <th scope="col">{{ translations.phone }}</th>
                   <th scope="col">{{ translations.balance_dollar }}</th>
                   <th scope="col">{{ translations.balance_dinar }}</th>
+                  <th scope="col">إجمالي الدين</th>
                   <th scope="col">{{ translations.last_purchase_date }}</th>
                   <th scope="col">{{ translations.status }}</th>
                   <th scope="col">{{ translations.status }}</th>
@@ -86,9 +87,14 @@
                   <th scope="row">{{ index + 1 }}</th>
                   <td>{{ customer.name }}</td>
                   <td>{{ customer.phone }}</td>
-                  <td>{{ customer.balance?.balance_dollar }}</td>
-                  <td>{{ customer.balance?.balance_dinar }}</td>
-                  <td>{{ customer.balance?.last_transaction_date }}</td>
+                  <td>{{ customer.balance?.balance_dollar || 0 }}</td>
+                  <td>{{ customer.balance?.balance_dinar || 0 }}</td>
+                  <td>
+                    <span :class="customer.total_debt > 0 ? 'text-danger fw-bold' : 'text-success'">
+                      {{ formatCurrency(customer.total_debt || 0) }}
+                    </span>
+                  </td>
+                  <td>{{ customer.balance?.last_transaction_date || '-' }}</td>
                   <td>{{ customer.is_active == 1 ? translations.active : translations.not_active }}</td>
 
                   <td>
@@ -106,13 +112,16 @@
                       </label>
                     </div>
                   </td>
-                  <td v-if="hasPermission('update customer')">
-                    <a class="btn btn-primary" :href="route('customers.edit', { customer: customer.id })">
+                  <td v-if="hasPermission('update customer') || hasPermission('read customers')">
+                    <a class="btn btn-info btn-sm me-1" :href="route('customers.show', { customer: customer.id })" title="عرض التفاصيل والفواتير">
+                      <i class="bi bi-eye"></i>
+                    </a>
+                    <a class="btn btn-primary btn-sm" :href="route('customers.edit', { customer: customer.id })" title="تعديل">
                       <i class="bi bi-pencil-square"></i>
                     </a>
                   </td>
                   <td v-if="hasPermission('delete customer')">
-                    <button type="button" class="btn btn-danger" @click="Delete(customer.id)">
+                    <button type="button" class="btn btn-danger btn-sm" @click="Delete(customer.id)">
                       <i class="bi bi-trash"></i>
                     </button>
                   </td>
@@ -214,5 +223,10 @@ const exportUsers = () => {
   document.body.appendChild(link);
   link.click();
   document.body.removeChild(link);
+};
+
+const formatCurrency = (amount) => {
+  if (!amount) return '0.00';
+  return parseFloat(amount).toFixed(2) + ' د.ع';
 };
 </script>
