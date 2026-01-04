@@ -631,17 +631,37 @@ class CustomersController extends Controller
             $oldStatus = $order->status;
             $newStatus = $newPaidAmount >= $finalAmount ? 'paid' : 'due';
             
-            // Update order - تحديث الفاتورة أولاً
-            $order->total_paid = $newPaidAmount;
-            $order->status = $newStatus;
+            // Update order - تحديث الفاتورة أولاً باستخدام update() مباشرة
+            $updated = Order::where('id', $order->id)->update([
+                'total_paid' => $newPaidAmount,
+                'status' => $newStatus,
+            ]);
             
-            // التأكد من الحفظ
-            if (!$order->save()) {
-                throw new \Exception('فشل في تحديث الفاتورة');
+            if ($updated === 0) {
+                throw new \Exception('فشل في تحديث الفاتورة - لم يتم تحديث أي صف');
             }
             
-            // إعادة تحميل الفاتورة للتأكد من التحديث
-            $order->refresh();
+            // إعادة تحميل الفاتورة من قاعدة البيانات للتأكد من التحديث
+            $order = $order->fresh();
+            
+            // التحقق من أن التحديث تم بشكل صحيح
+            if (abs((float)$order->total_paid - $newPaidAmount) > 0.01) {
+                Log::error('Order total_paid mismatch after update', [
+                    'order_id' => $order->id,
+                    'expected' => $newPaidAmount,
+                    'actual' => $order->total_paid,
+                ]);
+                throw new \Exception('فشل في تحديث الفاتورة - عدم تطابق المبلغ المدفوع');
+            }
+            
+            if ($order->status !== $newStatus) {
+                Log::error('Order status mismatch after update', [
+                    'order_id' => $order->id,
+                    'expected' => $newStatus,
+                    'actual' => $order->status,
+                ]);
+                throw new \Exception('فشل في تحديث الفاتورة - عدم تطابق الحالة');
+            }
             
             // Log للتحقق من التحديث
             Log::info('Order updated after payment', [
@@ -654,6 +674,7 @@ class CustomersController extends Controller
                 'payment_method' => $validated['payment_method'],
                 'order_total_paid_after_refresh' => $order->total_paid,
                 'order_status_after_refresh' => $order->status,
+                'rows_updated' => $updated,
             ]);
             
             // Handle payment based on method
