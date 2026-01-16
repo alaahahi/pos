@@ -73,14 +73,8 @@ class AppServiceProvider extends ServiceProvider
                     $sqlitePath = database_path('sync.sqlite');
                 }
             } else {
-                // المسار نسبي - استخدم base_path() أو database_path()
-                if (str_contains($sqlitePath, 'database') || str_contains($sqlitePath, 'sync.sqlite')) {
-                    // إذا كان المسار يحتوي على 'database' أو 'sync.sqlite'، استخدم database_path()
-                    $sqlitePath = database_path('sync.sqlite');
-                } else {
-                    // خلاف ذلك، استخدم base_path()
-                    $sqlitePath = base_path($sqlitePath);
-                }
+                // المسار نسبي - استخدم database_path() دائماً (أكثر أماناً)
+                $sqlitePath = database_path('sync.sqlite');
             }
             
             // تنظيف المسار من أي تكرار (مثل D:\pos\D:\pos\...)
