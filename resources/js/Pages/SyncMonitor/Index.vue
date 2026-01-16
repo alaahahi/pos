@@ -1,7 +1,7 @@
 <template>
     <Head title="مراقبة المزامنة" />
 
-    <template #header>
+    <template>
       <div class="flex justify-between items-center">
         <h2 class="font-semibold text-xl dark:text-gray-50 text-gray-800">
           🔄 مراقبة المزامنة والـ Offline Mode
