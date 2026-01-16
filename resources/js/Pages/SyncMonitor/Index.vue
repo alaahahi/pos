@@ -1,5 +1,4 @@
 <template>
-  <AuthenticatedLayout :translations="translations">
     <Head title="مراقبة المزامنة" />
 
     <template #header>
@@ -1116,12 +1115,10 @@
         </div>
       </div>
     </Modal>
-  </AuthenticatedLayout>
 </template>
 
 <script setup>
 import { Head, router } from '@inertiajs/vue3';
-import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Modal from '@/Components/Modal.vue';
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
