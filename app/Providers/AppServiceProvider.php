@@ -54,26 +54,44 @@ class AppServiceProvider extends ServiceProvider
         
         // إذا كان Local، استخدم SQLite مباشرة (لا حاجة للتحقق من MySQL)
         if ($isLocal) {
+            // الحصول على المسار من config أولاً
             $sqlitePath = config('database.connections.sync_sqlite.database');
+            
+            // التحقق من أن المسار مطلق (يبدأ بـ / على Unix أو يحتوي على :\ على Windows)
+            $isAbsolute = str_starts_with($sqlitePath, '/') || 
+                         (strlen($sqlitePath) >= 2 && preg_match('/^[A-Za-z]:[\/\\\\]/', $sqlitePath));
+            
+            if ($isAbsolute) {
+                // المسار مطلق - تحقق من أنه داخل المشروع
+                $basePath = base_path();
+                $basePathNormalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $basePath);
+                $sqlitePathNormalized = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $sqlitePath);
+                
+                // إذا كان المسار المطلق لا يبدأ بـ base_path، استخدم database_path() بدلاً منه
+                if (!str_starts_with($sqlitePathNormalized, $basePathNormalized)) {
+                    // المسار المطلق خارج المشروع أو مسار قديم - استخدم database_path() بدلاً منه
+                    $sqlitePath = database_path('sync.sqlite');
+                }
+            } else {
+                // المسار نسبي - استخدم base_path() أو database_path()
+                if (str_contains($sqlitePath, 'database') || str_contains($sqlitePath, 'sync.sqlite')) {
+                    // إذا كان المسار يحتوي على 'database' أو 'sync.sqlite'، استخدم database_path()
+                    $sqlitePath = database_path('sync.sqlite');
+                } else {
+                    // خلاف ذلك، استخدم base_path()
+                    $sqlitePath = base_path($sqlitePath);
+                }
+            }
             
             // تنظيف المسار من أي تكرار (مثل D:\pos\D:\pos\...)
             $normalizedPath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $sqlitePath);
             
             // إذا كان المسار يحتوي على تكرار (مثل D:\pos\D:\pos\...)
-            // استخراج محرك الأقراص والمسار الأساسي
             if (preg_match('/^([A-Za-z]:[^' . preg_quote(DIRECTORY_SEPARATOR, '/') . ']+)' . preg_quote(DIRECTORY_SEPARATOR, '/') . '\1/', $normalizedPath, $matches)) {
                 // استخراج الجزء الأول فقط (D:\pos)
                 $root = $matches[1];
                 $rest = preg_replace('/^' . preg_quote($root, '/') . '/', '', $normalizedPath);
                 $normalizedPath = $root . $rest;
-            }
-            
-            // تحويل المسار النسبي إلى مطلق إذا لزم الأمر
-            $isAbsolute = str_starts_with($normalizedPath, '/') || 
-                         (strlen($normalizedPath) >= 2 && preg_match('/^[A-Za-z]:/', $normalizedPath));
-            
-            if (!$isAbsolute) {
-                $normalizedPath = base_path($normalizedPath);
             }
             
             $sqlitePath = $normalizedPath;
