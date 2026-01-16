@@ -56,10 +56,27 @@ class AppServiceProvider extends ServiceProvider
         if ($isLocal) {
             $sqlitePath = config('database.connections.sync_sqlite.database');
             
-            // تحويل المسار النسبي إلى مطلق إذا لزم الأمر
-            if (!str_starts_with($sqlitePath, '/') && !str_starts_with($sqlitePath, 'C:')) {
-                $sqlitePath = base_path($sqlitePath);
+            // تنظيف المسار من أي تكرار (مثل D:\pos\D:\pos\...)
+            $normalizedPath = str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $sqlitePath);
+            
+            // إذا كان المسار يحتوي على تكرار (مثل D:\pos\D:\pos\...)
+            // استخراج محرك الأقراص والمسار الأساسي
+            if (preg_match('/^([A-Za-z]:[^' . preg_quote(DIRECTORY_SEPARATOR, '/') . ']+)' . preg_quote(DIRECTORY_SEPARATOR, '/') . '\1/', $normalizedPath, $matches)) {
+                // استخراج الجزء الأول فقط (D:\pos)
+                $root = $matches[1];
+                $rest = preg_replace('/^' . preg_quote($root, '/') . '/', '', $normalizedPath);
+                $normalizedPath = $root . $rest;
             }
+            
+            // تحويل المسار النسبي إلى مطلق إذا لزم الأمر
+            $isAbsolute = str_starts_with($normalizedPath, '/') || 
+                         (strlen($normalizedPath) >= 2 && preg_match('/^[A-Za-z]:/', $normalizedPath));
+            
+            if (!$isAbsolute) {
+                $normalizedPath = base_path($normalizedPath);
+            }
+            
+            $sqlitePath = $normalizedPath;
             
             if (!file_exists($sqlitePath)) {
                 $this->createSQLiteFileIfNeeded($sqlitePath);

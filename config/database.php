@@ -46,11 +46,16 @@ return [
         'sync_sqlite' => [
             'driver' => 'sqlite',
             'url' => env('DATABASE_URL'),
-            'database' => env('SYNC_SQLITE_PATH') 
-                ? (str_starts_with(env('SYNC_SQLITE_PATH'), '/') || str_starts_with(env('SYNC_SQLITE_PATH'), 'C:') 
-                    ? env('SYNC_SQLITE_PATH') 
-                    : base_path(env('SYNC_SQLITE_PATH')))
-                : database_path('sync.sqlite'),
+            'database' => (function() {
+                $path = env('SYNC_SQLITE_PATH');
+                if ($path) {
+                    // التحقق من أن المسار مطلق (يبدأ بـ / على Unix أو يحتوي على :\ على Windows)
+                    $isAbsolute = str_starts_with($path, '/') || 
+                                 (strlen($path) >= 2 && preg_match('/^[A-Za-z]:[\/\\\\]/', $path));
+                    return $isAbsolute ? $path : base_path($path);
+                }
+                return database_path('sync.sqlite');
+            })(),
             'prefix' => '',
             'foreign_key_constraints' => true,
         ],
