@@ -53,6 +53,7 @@ Route::get('link', function () {
 });
 Route::get('/', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
 Route::get('/dashboard', [DashboardController::class, 'index'])->middleware(['auth', 'verified'])->name('dashboard');
+Route::get('sync-monitor', [App\Http\Controllers\SyncMonitorController::class, 'index'])->name('sync-monitor.index');
 
 Route::middleware(['auth', 'active.session', 'license'])->group(function () {
 
@@ -199,7 +200,6 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::resource('expenses', App\Http\Controllers\ExpenseController::class); 
 
   // Sync Monitor routes
-  Route::get('sync-monitor', [App\Http\Controllers\SyncMonitorController::class, 'index'])->name('sync-monitor.index');
 
   // Barcode routes (with authentication)
   Route::prefix('barcode')->name('barcode.')->group(function () {
