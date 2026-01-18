@@ -9,7 +9,10 @@
           <button v-if="hasPermission('create decoration')" class="btn btn-primary" @click="showCreateModal = true">
             <i class="bi bi-plus-circle"></i> {{ translations.create_decoration }}
           </button>
-          <button class="btn btn-success" @click="changeTab('orders')">
+          <Link v-if="hasPermission('read decoration')" :href="route('decorations.orders.simple')" class="btn btn-success">
+            <i class="bi bi-table"></i> 📊 عرض بسيط (Excel)
+          </Link>
+          <button v-if="hasPermission('read decoration')" class="btn btn-info" @click="changeTab('orders')">
             <i class="bi bi-calendar-check"></i> {{ translations.decoration_orders }}
           </button>
         </div>
@@ -118,7 +121,7 @@
 
 <script setup>
 import { ref, computed } from 'vue'
-import { router, usePage } from '@inertiajs/vue3'
+import { router, usePage, Link } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import DecorationsList from '@/Components/Decorations/DecorationsList.vue'
 import OrdersList from '@/Components/Decorations/OrdersList.vue'

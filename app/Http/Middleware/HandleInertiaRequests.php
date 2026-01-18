@@ -46,6 +46,7 @@ class HandleInertiaRequests extends Middleware
                 'success' => $request->session()->get('success')
             ],
             'auth_permissions' => $user ? $this->getUserPermissions($user) : [],
+            'syncPendingCount' => $this->getSyncPendingCount(),
             'company_name' => env('COMPANY_NAME', 'WEDOO EVENTS'),
             'company_logo' => env('COMPANY_LOGO', 'dashboard-assets/img/WEDOO  LOGO PNG.webp'),
 
@@ -160,6 +161,24 @@ class HandleInertiaRequests extends Middleware
             }
         } catch (\Exception $e) {
             return [];
+        }
+    }
+    
+    /**
+     * جلب عدد الملفات المعلقة للمزامنة
+     */
+    protected function getSyncPendingCount()
+    {
+        try {
+            // جلب من sync_queue
+            $connection = config('database.default');
+            return \DB::connection($connection)
+                ->table('sync_queue')
+                ->where('status', 'pending')
+                ->count();
+        } catch (\Exception $e) {
+            // إذا فشل، أرجع 0
+            return 0;
         }
     }
 

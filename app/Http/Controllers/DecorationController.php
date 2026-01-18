@@ -30,7 +30,7 @@ class DecorationController extends Controller
         $this->accountingController = $accountingController;
         
         // Middleware for permission handling
-        $this->middleware('permission:read decoration', ['only' => ['index', 'show', 'dashboard', 'orders', 'showOrder', 'myOrders']]);
+        $this->middleware('permission:read decoration', ['only' => ['index', 'show', 'dashboard', 'orders', 'simpleOrders', 'showOrder', 'myOrders']]);
         $this->middleware('permission:create decoration', ['only' => ['create', 'store', 'createOrder']]);
         $this->middleware('permission:update decoration', ['only' => ['edit', 'update', 'updateOrderStatus']]);
         $this->middleware('permission:delete decoration', ['only' => ['destroy']]);
@@ -739,6 +739,44 @@ class DecorationController extends Controller
             'orders' => $orders,
             'employees' => $employees,
             'filters' => $request->only(['status', 'search'])
+        ]);
+    }
+
+    /**
+     * Display simple decoration orders (Excel-like view)
+     */
+    public function simpleOrders(Request $request)
+    {
+        $orders = DecorationOrder::with(['decoration', 'assignedEmployee', 'customer'])
+            ->when($request->status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->when($request->employee, function ($query, $employeeId) {
+                return $query->where('assigned_employee_id', $employeeId);
+            })
+            ->when($request->search, function ($query, $search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('customer_name', 'LIKE', "%{$search}%")
+                      ->orWhere('customer_phone', 'LIKE', "%{$search}%")
+                      ->orWhereHas('decoration', function ($decorationQuery) use ($search) {
+                          $decorationQuery->where('name', 'LIKE', "%{$search}%");
+                      });
+                });
+            })
+            ->latest()
+            ->paginate(20);
+
+        // Get employees list for filters
+        $employees = \App\Models\User::where('is_active', true)
+            ->select('id', 'name')
+            ->orderBy('name')
+            ->get();
+
+        return Inertia::render('Decorations/SimpleOrders', [
+            'translations' => __('messages'),
+            'orders' => $orders,
+            'employees' => $employees,
+            'filters' => $request->only(['status', 'search', 'employee'])
         ]);
     }
 

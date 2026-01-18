@@ -5,9 +5,14 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
           {{ translations.decoration_orders }}
         </h2>
+        <div class="d-flex gap-2">
+          <Link v-if="hasPermission('read decoration')" class="btn btn-success" :href="route('decorations.orders.simple')">
+            <i class="bi bi-table"></i> عرض بسيط
+          </Link>
         <Link class="btn btn-secondary" :href="route('decorations.index')">
           <i class="bi bi-arrow-left"></i> {{ translations.cancel }}
         </Link>
+        </div>
       </div>
     </template>
 
@@ -271,11 +276,13 @@
 
 <script setup>
 import { ref, reactive } from 'vue'
-import { router } from '@inertiajs/vue3'
+import { router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import PricingEditModal from '@/Components/Decorations/PricingEditModal.vue'
 import { Link } from '@inertiajs/vue3'
+
+const page = usePage()
 
 const props = defineProps({
   orders: Object,
@@ -283,6 +290,11 @@ const props = defineProps({
   translations: Object,
   employees: Array
 })
+
+// Check permissions
+const hasPermission = (permission) => {
+  return page.props.auth_permissions && page.props.auth_permissions.includes(permission)
+}
 
 // Modal states
 const showStatusModal = ref(false)

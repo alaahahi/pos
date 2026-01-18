@@ -177,7 +177,16 @@ Route::prefix('sync-monitor')->group(function () {
     
     // Smart Sync routes (المزامنة الذكية)
     Route::get('/sync-health', [App\Http\Controllers\SyncMonitorController::class, 'checkSyncHealth']); // فحص شامل لحالة المزامنة
+    Route::get('/check-health', [App\Http\Controllers\SyncMonitorController::class, 'checkSystemStatus']); // فحص سريع - Offline First (لا يتطلب اتصال)
+    Route::get('/auto-sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getAutoSyncStatus']); // حالة المزامنة التلقائية
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
+    
+    // Migration routes (تنفيذ Migrations بأمان)
+    Route::get('/migrations', [App\Http\Controllers\SyncMonitorController::class, 'getMigrations']); // جلب قائمة Migrations
+    Route::post('/check-migration', [App\Http\Controllers\SyncMonitorController::class, 'checkMigration']); // فحص Migration قبل التنفيذ
+    Route::post('/run-migration', [App\Http\Controllers\SyncMonitorController::class, 'runMigration']); // تنفيذ Migration محدد
+    Route::post('/auto-sync', [App\Http\Controllers\SyncMonitorController::class, 'performAutoSync']); // تنفيذ المزامنة التلقائية
+    Route::post('/force-sync', [App\Http\Controllers\SyncMonitorController::class, 'forceSyncNow']); // فرض المزامنة الآن
     Route::get('/sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getSyncStatus']); // جديد: الحصول على حالة المزامنة
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
     Route::get('/sync-queue-details', [App\Http\Controllers\SyncMonitorController::class, 'getSyncQueueDetails']); // جديد: تفاصيل sync_queue

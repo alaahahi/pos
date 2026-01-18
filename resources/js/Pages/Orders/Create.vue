@@ -961,7 +961,7 @@ const saveInvoice = async (event) => {
       });
 
       if(event.printInvoice){
-        window.open(`/api/getIndexAccountsSelas?print=2&transactions_id=${id}&order_id=${order_id}`, '_blank');
+        window.open(`/order/print/${order_id}`, '_blank');
       }
       
       // Update daily sales statistics

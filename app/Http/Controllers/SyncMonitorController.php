@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 use Inertia\Inertia;
 use App\Services\DatabaseSyncService;
 use App\Services\SyncQueueService;
@@ -441,16 +443,22 @@ class SyncMonitorController extends Controller
                 // جميع الجداول
                 if ($direction === 'down') {
                     // من MySQL إلى SQLite - جلب جميع جداول MySQL
-                    // على السيرفر: استخدام MySQL فقط
-                    $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
-                    $dbName = DB::connection('mysql')->getDatabaseName();
-                    $tableKey = "Tables_in_{$dbName}";
-                    foreach ($mysqlTables as $table) {
-                        $tableName = $table->$tableKey;
-                        // استثناء جداول النظام
-                        if (!in_array($tableName, ['migrations', 'sync_metadata', 'sync_queue', 'failed_jobs', 'jobs', 'password_reset_tokens', 'personal_access_tokens'])) {
-                            $tablesToSync[] = $tableName;
+                    try {
+                        $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
+                        $dbName = DB::connection('mysql')->getDatabaseName();
+                        $tableKey = "Tables_in_{$dbName}";
+                        foreach ($mysqlTables as $table) {
+                            $tableName = $table->$tableKey;
+                            // استثناء جداول النظام
+                            if (!in_array($tableName, ['migrations', 'sync_metadata', 'sync_queue', 'failed_jobs', 'jobs', 'password_reset_tokens', 'personal_access_tokens'])) {
+                                $tablesToSync[] = $tableName;
+                            }
                         }
+                    } catch (\Exception $e) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'فشل جلب جداول MySQL: ' . $e->getMessage(),
+                        ], 500);
                     }
                 } else {
                     // من SQLite إلى MySQL - جلب جميع جداول SQLite
@@ -461,6 +469,10 @@ class SyncMonitorController extends Controller
                         }
                     } catch (\Exception $e) {
                         // SQLite غير متاح
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'SQLite غير متاح: ' . $e->getMessage(),
+                        ], 500);
                     }
                 }
             }
@@ -1854,6 +1866,109 @@ class SyncMonitorController extends Controller
     }
 
     /**
+     * جلب معلومات المزامنة التلقائية
+     */
+    public function getAutoSyncStatus(Request $request)
+    {
+        try {
+            $status = [
+                'enabled' => false,
+                'is_local' => $this->isLocalEnvironment(),
+                'last_sync_at' => null,
+                'next_sync_in' => null,
+                'sync_interval' => 5, // بالدقائق
+                'is_running' => false,
+                'schedule_running' => false,
+            ];
+
+            // التحقق من البيئة المحلية
+            if (!$status['is_local']) {
+                return response()->json([
+                    'success' => true,
+                    'status' => $status,
+                    'message' => 'Auto-sync is only available in local environment'
+                ]);
+            }
+
+            // التحقق من تفعيل المزامنة التلقائية في .env
+            $autoSyncEnabled = filter_var(env('AUTO_SYNC_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
+            
+            // التحقق من وجود Laravel Scheduler يعمل
+            try {
+                $cacheFile = storage_path('framework/schedule-*');
+                $scheduleFiles = glob($cacheFile);
+                $status['schedule_running'] = !empty($scheduleFiles);
+            } catch (\Exception $e) {
+                // Ignore
+            }
+
+            // التحقق من جدول sync_metadata
+            $lastSync = null;
+            try {
+                $lastSync = DB::connection('sync_sqlite')
+                    ->table('sync_metadata')
+                    ->where('table_name', 'auto_sync')
+                    ->orderBy('synced_at', 'desc')
+                    ->first();
+
+                if ($lastSync) {
+                    $status['last_sync_at'] = $lastSync->synced_at;
+                    
+                    // حساب الوقت المتبقي للمزامنة القادمة
+                    $lastSyncTime = \Carbon\Carbon::parse($lastSync->synced_at);
+                    $nextSyncTime = $lastSyncTime->addMinutes(5);
+                    $now = \Carbon\Carbon::now();
+                    
+                    if ($nextSyncTime->isFuture()) {
+                        $status['next_sync_in'] = $now->diffInSeconds($nextSyncTime);
+                    } else {
+                        // المزامنة متأخرة
+                        $status['next_sync_in'] = 0;
+                    }
+                }
+            } catch (\Exception $e) {
+                Log::warning('Could not get auto-sync status: ' . $e->getMessage());
+            }
+
+            // إذا لم يكن هناك سجل مزامنة سابق، لكن المزامنة مفعّلة
+            // نفترض أن المزامنة القادمة بعد 5 دقائق من الآن
+            if (!$lastSync && $autoSyncEnabled) {
+                $status['next_sync_in'] = 5 * 60; // 5 دقائق
+                $status['last_sync_at'] = null;
+            }
+
+            // تحديد حالة enabled بناءً على:
+            // 1. إعدادات .env
+            // 2. وجود سجل مزامنة أو تفعيل في .env
+            $status['enabled'] = $autoSyncEnabled && ($lastSync !== null || $autoSyncEnabled);
+
+            // التحقق من وجود عملية مزامنة جارية
+            try {
+                $runningSync = DB::connection('sync_sqlite')
+                    ->table('sync_queue')
+                    ->where('status', 'syncing')
+                    ->exists();
+                
+                $status['is_running'] = $runningSync;
+            } catch (\Exception $e) {
+                // Ignore
+            }
+
+            return response()->json([
+                'success' => true,
+                'status' => $status,
+            ]);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Error checking auto-sync status',
+                'error' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * فحص شامل لحالة المزامنة وتشخيص المشاكل
      */
     public function checkSyncHealth(Request $request)
@@ -3100,6 +3215,419 @@ class SyncMonitorController extends Controller
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+    
+    /**
+     * فحص حالة النظام - Offline First (لا يتطلب اتصال بالإنترنت)
+     */
+    public function checkSystemStatus(Request $request)
+    {
+        try {
+            $autoSync = new \App\Services\AutoSyncService();
+            $health = $autoSync->checkSystemHealth();
+            
+            return response()->json([
+                'success' => true,
+                'system_status' => [
+                    'mode' => 'offline-first',
+                    'local_database_available' => $health['local_database'],
+                    'internet_available' => $health['internet'],
+                    'remote_server_available' => $health['remote_server'],
+                    'auto_sync_enabled' => $health['auto_sync_enabled'],
+                    'last_sync' => $health['last_sync'],
+                    'next_sync' => $health['next_sync'],
+                ],
+                'message' => $health['local_database'] 
+                    ? 'النظام يعمل (Offline Mode)' 
+                    : 'قاعدة البيانات المحلية غير متاحة',
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to check system status', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في فحص حالة النظام: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    /**
+     * تنفيذ المزامنة التلقائية
+     */
+    public function performAutoSync(Request $request)
+    {
+        try {
+            $autoSync = new \App\Services\AutoSyncService();
+            $result = $autoSync->performAutoSync();
+            
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Auto sync failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في المزامنة التلقائية: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    /**
+     * فرض المزامنة الآن (تجاوز المؤقت)
+     */
+    public function forceSyncNow(Request $request)
+    {
+        try {
+            $autoSync = new \App\Services\AutoSyncService();
+            $result = $autoSync->forceSyncNow();
+            
+            return response()->json($result);
+        } catch (\Exception $e) {
+            Log::error('Force sync failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'message' => 'خطأ في فرض المزامنة: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+    
+    /**
+     * الحصول على قائمة Migrations
+     */
+    public function getMigrations(Request $request)
+    {
+        try {
+            $showExecuted = filter_var($request->get('show_executed', false), FILTER_VALIDATE_BOOLEAN);
+            
+            $migrationsPath = database_path('migrations');
+            $files = File::files($migrationsPath);
+            
+            // جلب قائمة المايجريشنز المنفذة من قاعدة البيانات
+            $executedMigrations = [];
+            try {
+                if (Schema::hasTable('migrations')) {
+                    $executed = DB::table('migrations')->pluck('migration')->toArray();
+                    $executedMigrations = array_map(function($migration) {
+                        // إزالة التاريخ من اسم المايجريشن للحصول على الاسم فقط
+                        if (preg_match('/^\d{4}_\d{2}_\d{2}_\d{6}_(.+)$/', $migration, $matches)) {
+                            return $matches[1];
+                        }
+                        return $migration;
+                    }, $executed);
+                }
+            } catch (\Exception $e) {
+                Log::warning('Failed to get executed migrations', [
+                    'error' => $e->getMessage()
+                ]);
+            }
+            
+            $migrations = [];
+            foreach ($files as $file) {
+                $fileName = $file->getFilename();
+                // استخراج اسم المايجريشن من اسم الملف (بعد التاريخ)
+                if (preg_match('/^\d{4}_\d{2}_\d{2}_\d{6}_(.+?)\.php$/', $fileName, $matches)) {
+                    $migrationName = $matches[1];
+                    $isExecuted = in_array($migrationName, $executedMigrations);
+                    
+                    // إخفاء المايجريشنز المنفذة إذا لم يكن show_executed = true
+                    if ($isExecuted && !$showExecuted) {
+                        continue;
+                    }
+                    
+                    $migrations[] = [
+                        'file' => $fileName,
+                        'name' => $migrationName,
+                        'path' => $file->getPathname(),
+                        'date' => date('Y-m-d H:i:s', $file->getMTime()),
+                        'executed' => $isExecuted
+                    ];
+                }
+            }
+            
+            // ترتيب حسب التاريخ (الأحدث أولاً)
+            usort($migrations, function($a, $b) {
+                return strcmp($b['file'], $a['file']);
+            });
+            
+            return response()->json([
+                'migrations' => $migrations,
+                'total_executed' => count($executedMigrations),
+                'total_pending' => count($migrations)
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to get migrations', [
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'error' => $e->getMessage(),
+                'migrations' => []
+            ], 500);
+        }
+    }
+
+    /**
+     * فحص المايجريشن للتحقق من وجود بيانات قبل التنفيذ
+     */
+    public function checkMigration(Request $request)
+    {
+        try {
+            $migrationName = $request->get('migration_name');
+            
+            if (!$migrationName) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'اسم المايجريشن مطلوب'
+                ], 422);
+            }
+            
+            // البحث عن ملف المايجريشن
+            $migrationsPath = database_path('migrations');
+            $files = File::files($migrationsPath);
+            
+            $migrationFile = null;
+            $migrationPath = null;
+            foreach ($files as $file) {
+                $fileName = $file->getFilename();
+                if (str_contains($fileName, $migrationName)) {
+                    $migrationFile = $fileName;
+                    $migrationPath = $file->getPathname();
+                    break;
+                }
+            }
+            
+            if (!$migrationFile || !$migrationPath) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'المايجريشن غير موجود: ' . $migrationName
+                ], 404);
+            }
+            
+            // قراءة محتوى المايجريشن للتحقق من الجداول المتأثرة
+            $migrationContent = File::get($migrationPath);
+            
+            // استخراج أسماء الجداول من المايجريشن
+            $tables = [];
+            
+            // البحث عن dropIfExists أو drop
+            if (preg_match_all('/dropIfExists\([\'"]([^\'"]+)[\'"]\)|drop\([\'"]([^\'"]+)[\'"]\)/i', $migrationContent, $matches)) {
+                $tables = array_merge($tables, array_filter(array_merge($matches[1], $matches[2])));
+            }
+            
+            // البحث عن Schema::drop
+            if (preg_match_all('/Schema::drop\([\'"]([^\'"]+)[\'"]\)/i', $migrationContent, $matches)) {
+                $tables = array_merge($tables, $matches[1]);
+            }
+            
+            // البحث عن table() في down method
+            if (preg_match('/function\s+down\([^)]*\)\s*\{([^}]+)\}/is', $migrationContent, $downMatch)) {
+                if (preg_match_all('/table\([\'"]([^\'"]+)[\'"]\)/i', $downMatch[1], $tableMatches)) {
+                    $tables = array_merge($tables, $tableMatches[1]);
+                }
+            }
+            
+            $tables = array_unique(array_filter($tables));
+            
+            // التحقق من وجود بيانات في الجداول
+            $tablesWithData = [];
+            $totalRecords = 0;
+            
+            foreach ($tables as $table) {
+                try {
+                    $count = DB::table($table)->count();
+                    if ($count > 0) {
+                        $tablesWithData[] = [
+                            'name' => $table,
+                            'count' => $count
+                        ];
+                        $totalRecords += $count;
+                    }
+                } catch (\Exception $e) {
+                    // الجدول غير موجود - لا مشكلة
+                }
+            }
+            
+            return response()->json([
+                'success' => true,
+                'has_data' => count($tablesWithData) > 0,
+                'tables_with_data' => $tablesWithData,
+                'total_records' => $totalRecords,
+                'affected_tables' => $tables,
+                'migration_file' => $migrationFile
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Failed to check migration', [
+                'migration_name' => $request->get('migration_name'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+
+    /**
+     * تنفيذ migration محدد حسب الاسم (بدون حذف البيانات)
+     */
+    public function runMigration(Request $request)
+    {
+        try {
+            $migrationName = $request->get('migration_name');
+            $force = filter_var($request->get('force', false), FILTER_VALIDATE_BOOLEAN);
+            
+            if (!$migrationName) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'اسم المايجريشن مطلوب'
+                ], 422);
+            }
+            
+            // البحث عن ملف المايجريشن
+            $migrationsPath = database_path('migrations');
+            $files = File::files($migrationsPath);
+            
+            $migrationFile = null;
+            $migrationPath = null;
+            foreach ($files as $file) {
+                $fileName = $file->getFilename();
+                if (str_contains($fileName, $migrationName)) {
+                    $migrationFile = $fileName;
+                    $migrationPath = $file->getPathname();
+                    break;
+                }
+            }
+            
+            if (!$migrationFile || !$migrationPath) {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'المايجريشن غير موجود: ' . $migrationName
+                ], 404);
+            }
+            
+            // فحص وجود بيانات إذا لم يكن force
+            if (!$force) {
+                $migrationContent = File::get($migrationPath);
+                $tables = [];
+                
+                // البحث عن dropIfExists أو drop
+                if (preg_match_all('/dropIfExists\([\'"]([^\'"]+)[\'"]\)|drop\([\'"]([^\'"]+)[\'"]\)/i', $migrationContent, $matches)) {
+                    $tables = array_merge($tables, array_filter(array_merge($matches[1], $matches[2])));
+                }
+                
+                // البحث عن Schema::drop
+                if (preg_match_all('/Schema::drop\([\'"]([^\'"]+)[\'"]\)/i', $migrationContent, $matches)) {
+                    $tables = array_merge($tables, $matches[1]);
+                }
+                
+                // البحث عن table() في down method
+                if (preg_match('/function\s+down\([^)]*\)\s*\{([^}]+)\}/is', $migrationContent, $downMatch)) {
+                    if (preg_match_all('/table\([\'"]([^\'"]+)[\'"]\)/i', $downMatch[1], $tableMatches)) {
+                        $tables = array_merge($tables, $tableMatches[1]);
+                    }
+                }
+                
+                $tables = array_unique(array_filter($tables));
+                
+                // التحقق من وجود بيانات
+                foreach ($tables as $table) {
+                    try {
+                        $count = DB::table($table)->count();
+                        if ($count > 0) {
+                            return response()->json([
+                                'success' => false,
+                                'error' => 'يوجد بيانات في الجداول المتأثرة. لا يمكن تنفيذ المايجريشن حفاظاً على البيانات.',
+                                'warning' => true,
+                                'table' => $table,
+                                'record_count' => $count,
+                                'message' => "يوجد {$count} سجل في جدول '{$table}'. استخدم force=true إذا كنت متأكداً من الحذف."
+                            ], 400);
+                        }
+                    } catch (\Exception $e) {
+                        // الجدول غير موجود - لا مشكلة
+                    }
+                }
+            }
+            
+            // تنفيذ المايجريشن
+            $exitCode = Artisan::call('migrate', [
+                '--path' => 'database/migrations/' . $migrationFile,
+                '--force' => true
+            ]);
+            
+            $output = Artisan::output();
+            
+            if ($exitCode === 0) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تم تنفيذ المايجريشن بنجاح',
+                    'output' => $output,
+                    'migration' => $migrationFile
+                ]);
+            } else {
+                return response()->json([
+                    'success' => false,
+                    'error' => 'فشل تنفيذ المايجريشن',
+                    'output' => $output
+                ], 500);
+            }
+        } catch (\Exception $e) {
+            Log::error('Failed to run migration', [
+                'migration_name' => $request->get('migration_name'),
+                'error' => $e->getMessage()
+            ]);
+            
+            return response()->json([
+                'success' => false,
+                'error' => $e->getMessage()
+            ], 500);
+        }
+    }
+    
+    /**
+     * التحقق من البيئة المحلية
+     */
+    protected function isLocalEnvironment(): bool
+    {
+        // فحص APP_URL
+        $appUrl = config('app.url', '');
+        if (str_contains($appUrl, '127.0.0.1') || str_contains($appUrl, 'localhost')) {
+            return true;
+        }
+        
+        // فحص الـ Host الحالي
+        $host = request()->getHost();
+        $localHosts = ['localhost', '127.0.0.1', '::1', 'app.production.local'];
+        
+        if (in_array($host, $localHosts)) {
+            return true;
+        }
+        
+        // فحص APP_ENV
+        if (app()->environment('local')) {
+            return true;
+        }
+        
+        // فحص وجود SQLite (علامة على البيئة المحلية)
+        $sqlitePath = config('database.connections.sync_sqlite.database');
+        if ($sqlitePath && file_exists($sqlitePath)) {
+            // إذا كان SQLite موجود وهو الاتصال الافتراضي
+            if (config('database.default') === 'sync_sqlite') {
+                return true;
+            }
+        }
+        
+        return false;
     }
 }
 

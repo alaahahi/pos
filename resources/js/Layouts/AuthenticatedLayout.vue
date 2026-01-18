@@ -24,7 +24,7 @@
 
         <nav class="header-nav ms-auto text-gray-600 dark:text-gray-400">
             <ul class="d-flex align-items-center text-gray-600 dark:text-gray-400">
-                
+
                 <!-- Language Selector -->
                 <li class="nav-item dropdown text-gray-600 dark:text-gray-400 me-2">
                     <select class="form-control changeLang" @change="changeLanguage" style="min-width: 120px;">
@@ -51,16 +51,22 @@
                 <li class="nav-item dropdown text-gray-600 dark:text-gray-400 me-2">
                     <Link
                         class="nav-link nav-icon position-relative" 
-                        :href="route('notification.index')"
-                    >
+            :href="route('notification.index')"
+          >
                         <i class="bi bi-bell"></i>
                         <span v-if="notificationCount > 0" class="badge bg-primary badge-number position-absolute top-0 start-100 translate-middle">
                             {{ notificationCount }}
                         </span>
-                    </Link>
+                 </Link>
                     <!-- End Notification Icon -->
                 </li>
                 <!-- End Notification Nav -->
+
+                <!-- Sync/WiFi Icon -->
+                <li class="nav-item dropdown text-gray-600 dark:text-gray-400 me-2">
+                    <WiFiIconHeader :pendingCount="syncPendingCount" />
+                </li>
+                <!-- End Sync Icon -->
 <!-- 
                 <li class="nav-item dropdown">
 
@@ -207,12 +213,6 @@
         </main>
     </main>
 
-    <!-- Sync Status Bar -->
-    <SyncStatusBar />
-
-    <!-- WiFi Icon -->
-    <WiFiIcon />
-
 </template>
 
 
@@ -283,7 +283,7 @@ const changeLanguage = (event) => {
 <script>
 import Sidebar from '@/Components/SideBar.vue';
 import SyncStatusBar from '@/Components/SyncStatusBar.vue';
-import WiFiIcon from '@/Components/WiFiIcon.vue';
+import WiFiIconHeader from '@/Components/WiFiIconHeader.vue';
 import ActiveUsers from '@/Components/ActiveUsers.vue';
 import { Link, usePage } from '@inertiajs/vue3'
 import { computed } from 'vue'
@@ -301,12 +301,16 @@ const user = computed(
 const notificationCount = computed(
   () => Math.min(page.props.auth.notificationCount, 9),
 )
+
+const syncPendingCount = computed(
+  () => page.props.syncPendingCount || 0,
+)
     
 export default {
     components: {
         Sidebar,
         SyncStatusBar,
-        WiFiIcon,
+        WiFiIconHeader,
         ActiveUsers,
     },
   data() {

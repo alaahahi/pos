@@ -67,7 +67,16 @@ class DashboardController extends Controller
     private function getRolesChartData()
     {
         return Cache::remember('roles_chart_data', 60, function () {
-            $roles = Role::withCount('users')->get();
+            // استخدام استعلام مخصص لتجنب مشكلة SQLite مع morph relationships
+            $roles = Role::select('roles.*')
+                ->selectSub(function ($query) {
+                    $query->from('model_has_roles')
+                        ->whereColumn('model_has_roles.role_id', 'roles.id')
+                        ->where('model_has_roles.model_type', \App\Models\User::class)
+                        ->selectRaw('COUNT(*)');
+                }, 'users_count')
+                ->get();
+                
             return [
                 'labels' => $roles->pluck('name'),
                 'datasets' => [

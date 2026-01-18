@@ -64,7 +64,7 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
 
   Route::resource('customers', CustomersController::class);
   Route::post('customers/{customer}/activate', [CustomersController::class, 'activate'])->name('customers.activate');
-  Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update');
+  Route::post('customers/{customer}', [CustomersController::class, 'update'])->name('customers.update'); 
   Route::post('customers/{customer}/orders/{order}/pay', [CustomersController::class, 'payInvoice'])->name('customers.orders.pay');
   Route::get('customers/{customer}/verify-balance', [CustomersController::class, 'verifyBalance'])->name('customers.verify-balance'); 
 
@@ -78,6 +78,7 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
     Route::resource('decorations', DecorationController::class);
     Route::post('decorations/{decoration}/update-post', [DecorationController::class, 'updatePost'])->name('decorations.update.post');
     Route::get('/decorations-orders', [DecorationController::class, 'orders'])->name('decorations.orders');
+    Route::get('/decorations-orders-simple', [DecorationController::class, 'simpleOrders'])->name('decorations.orders.simple');
     Route::post('/decoration-orders', [DecorationController::class, 'createOrder'])->name('decoration.orders.store');
     Route::patch('/decoration-orders/{order}/status', [DecorationController::class, 'updateOrderStatus'])->name('decoration.orders.status');
     Route::patch('/decoration-orders/{order}/pricing', [DecorationController::class, 'updateOrderPricing'])->name('decoration.orders.pricing');

@@ -68,9 +68,15 @@
                   <span class="font-bold text-blue-950 dark:text-blue-50">{{ syncStatus.pendingCount }}</span>
                 </div>
                 <div class="flex justify-between">
-                  <span>الحالة:</span>
+                  <span>الإنترنت:</span>
                   <span :class="connectionStatus.online ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
-                    {{ connectionStatus.online ? 'متصل' : 'غير متصل' }}
+                    {{ connectionStatus.online ? '✅ متصل' : '❌ منقطع' }}
+                  </span>
+                </div>
+                <div class="flex justify-between">
+                  <span>السيرفر:</span>
+                  <span :class="connectionStatus.serverAvailable ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400'">
+                    {{ connectionStatus.serverAvailable ? '✅ متاح' : connectionStatus.serverChecked ? '❌ غير متاح' : '⏳ لم يفحص' }}
                   </span>
                 </div>
               </div>
@@ -79,11 +85,29 @@
               <h4 class="text-md font-semibold mb-3 dark:text-purple-100">⚡ إجراءات سريعة</h4>
               <div class="space-y-2">
                 <button
-                  @click="syncAll"
-                  :disabled="!connectionStatus.online || isSyncing"
-                  class="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                  @click="checkRemoteConnection"
+                  :disabled="isCheckingConnection"
+                  class="w-full px-3 py-2 bg-blue-600 text-white text-xs rounded hover:bg-blue-700 disabled:opacity-50"
                 >
-                  🔄 مزامنة الكل
+                  <span v-if="!isCheckingConnection">🌐 فحص الاتصال</span>
+                  <span v-else>⏳ جاري الفحص...</span>
+                </button>
+                <button
+                  @click="syncAllTablesFromServer"
+                  :disabled="!connectionStatus.online || !connectionStatus.serverAvailable || isSyncing"
+                  class="w-full px-3 py-2 bg-purple-600 text-white text-xs rounded hover:bg-purple-700 disabled:opacity-50"
+                  :title="!connectionStatus.serverAvailable ? 'السيرفر غير متاح' : 'مزامنة كل الجداول من السيرفر'"
+                >
+                  <span v-if="!isSyncing">📥 مزامنة من السيرفر</span>
+                  <span v-else>⏳ جاري المزامنة...</span>
+                </button>
+                <button
+                  @click="syncAll"
+                  :disabled="!connectionStatus.online || !connectionStatus.serverAvailable || isSyncing || syncStatus.pendingCount === 0"
+                  class="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
+                  :title="syncStatus.pendingCount === 0 ? 'لا توجد سجلات في الانتظار' : !connectionStatus.serverAvailable ? 'السيرفر غير متاح' : ''"
+                >
+                  🔄 مزامنة الطابور ({{ syncStatus.pendingCount }})
                 </button>
               </div>
             </div>
@@ -129,6 +153,12 @@
               >
                 💾 النسخ الاحتياطية
               </button>
+              <button
+                @click="activeTab = 'migrations'"
+                :class="['px-6 py-3 text-sm font-medium border-b-2 transition-colors', activeTab === 'migrations' ? 'border-orange-500 text-orange-600 dark:text-orange-400' : 'border-transparent text-gray-500 dark:text-gray-400']"
+              >
+                📦 Migrations
+              </button>
             </div>
           </div>
 
@@ -143,9 +173,13 @@
                   class="px-3 py-2 border rounded dark:bg-gray-700 dark:text-gray-200 text-sm"
                 >
                   <option value="auto">🔄 تلقائي</option>
-                  <option value="mysql">☁️ MySQL</option>
-                  <option value="sync_sqlite">🖥️ SQLite</option>
+                  <option value="mysql">☁️ MySQL (سيرفر)</option>
+                  <option value="sync_sqlite">🖥️ SQLite (محلي)</option>
                 </select>
+                <button @click="loadServerTables" class="px-4 py-2 bg-purple-500 text-white rounded hover:bg-purple-600 text-sm" :disabled="isRefreshing" title="عرض جداول السيرفر">
+                  <span v-if="!isRefreshing">☁️ جداول السيرفر</span>
+                  <span v-else>⏳ جاري...</span>
+                </button>
                 <button @click="loadAllData" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm" :disabled="isRefreshing">
                   <span v-if="!isRefreshing">🔄 تحديث</span>
                   <span v-else>⏳ جاري...</span>
@@ -900,6 +934,181 @@
       </div>
     </div>
 
+    <!-- تبويب Migrations -->
+    <div v-if="activeTab === 'migrations'" class="p-6">
+      <div class="flex justify-between items-center mb-6">
+        <div>
+          <h3 class="text-xl font-semibold dark:text-gray-200 mb-2">
+            📦 إدارة Migrations
+          </h3>
+          <p class="text-sm text-gray-600 dark:text-gray-400">
+            تنفيذ migration محدد بأمان بدون حذف البيانات
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <button
+            @click="loadMigrations"
+            :disabled="loadingMigrations"
+            class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <span v-if="!loadingMigrations">🔄 تحديث</span>
+            <span v-else>⏳ جاري...</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- إحصائيات -->
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+        <div class="bg-orange-50 dark:bg-orange-900 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-orange-600">{{ dbMigrationStats.total_pending || 0 }}</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">قيد الانتظار</div>
+        </div>
+        <div class="bg-gray-50 dark:bg-gray-700 p-4 rounded-lg">
+          <div class="text-2xl font-bold text-gray-600">{{ dbMigrationStats.total_executed || 0 }}</div>
+          <div class="text-sm text-gray-600 dark:text-gray-400">منفذة</div>
+        </div>
+      </div>
+
+      <!-- فلتر عرض المنفذة -->
+      <div class="mb-4 flex items-center">
+        <input
+          type="checkbox"
+          v-model="showExecutedMigrations"
+          @change="loadMigrations"
+          id="showExecuted"
+          class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded"
+        >
+        <label for="showExecuted" class="mr-2 text-sm text-gray-700 dark:text-gray-300">
+          عرض المنفذة
+        </label>
+      </div>
+
+      <div v-if="loadingMigrations" class="text-center py-12">
+        <div class="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-orange-600 mx-auto"></div>
+        <p class="mt-4 text-gray-600 dark:text-gray-400">جاري التحميل...</p>
+      </div>
+
+      <div v-else class="bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden">
+        <div class="overflow-x-auto">
+          <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+            <thead class="bg-gray-50 dark:bg-gray-700">
+              <tr>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">اسم Migration</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">اسم الملف</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">التاريخ</th>
+                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-300 uppercase">الإجراءات</th>
+              </tr>
+            </thead>
+            <tbody class="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+              <tr
+                v-for="migration in migrations"
+                :key="migration.file"
+                class="hover:bg-gray-50 dark:hover:bg-gray-700"
+                :class="{'opacity-60': migration.executed}"
+              >
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900 dark:text-gray-200">
+                  <div class="flex items-center">
+                    {{ migration.name }}
+                    <span v-if="migration.executed" class="mr-2 px-2 py-1 text-xs bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 rounded-full">
+                      ✓ منفذ
+                    </span>
+                  </div>
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400 font-mono text-xs">
+                  {{ migration.file }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">
+                  {{ migration.date }}
+                </td>
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                  <button
+                    v-if="!migration.executed"
+                    @click="runSpecificMigration(migration.name)"
+                    :disabled="runningMigration === migration.name"
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    <span v-if="runningMigration !== migration.name">▶️ تنفيذ</span>
+                    <span v-else>⏳ جاري...</span>
+                  </button>
+                  <span v-else class="text-gray-400 dark:text-gray-500 text-sm">
+                    تم التنفيذ
+                  </span>
+                </td>
+              </tr>
+              <tr v-if="migrations.length === 0">
+                <td colspan="4" class="px-6 py-8 text-center text-gray-500 dark:text-gray-400">
+                  <div class="text-5xl mb-2">📭</div>
+                  <p class="text-lg">لا توجد migrations</p>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- تحذير وجود بيانات -->
+      <div v-if="migrationWarning" class="mt-6 bg-yellow-50 dark:bg-yellow-900 border-l-4 border-yellow-500 p-4 rounded-lg">
+        <div class="flex items-start">
+          <div class="flex-shrink-0">
+            <span class="text-2xl">⚠️</span>
+          </div>
+          <div class="mr-3 flex-1">
+            <h4 class="text-lg font-semibold text-yellow-800 dark:text-yellow-200 mb-2">
+              تحذير: يوجد بيانات في الجداول!
+            </h4>
+            <p class="text-sm text-yellow-700 dark:text-yellow-300 mb-3">
+              تنفيذ هذا Migration قد يحذف البيانات الموجودة!
+            </p>
+            <div v-if="migrationWarning.tables" class="mb-3">
+              <p class="text-sm font-medium text-yellow-800 dark:text-yellow-200 mb-2">
+                الجداول المتأثرة ({{ migrationWarning.total_records }} سجل):
+              </p>
+              <ul class="list-disc list-inside text-sm text-yellow-700 dark:text-yellow-300 space-y-1">
+                <li v-for="table in migrationWarning.tables" :key="table.name">
+                  {{ table.name }}: {{ table.count }} سجل
+                </li>
+              </ul>
+            </div>
+            <div v-else-if="migrationWarning.table" class="mb-3">
+              <p class="text-sm text-yellow-700 dark:text-yellow-300">
+                جدول <strong>{{ migrationWarning.table }}</strong>: {{ migrationWarning.record_count }} سجل
+              </p>
+            </div>
+            <div class="flex gap-2 mt-4">
+              <button
+                @click="forceRunMigration(migrationWarning.migration)"
+                class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 text-sm font-medium"
+              >
+                ⚠️ تنفيذ رغم التحذير (حذف البيانات)
+              </button>
+              <button
+                @click="migrationWarning = null"
+                class="px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+              >
+                إلغاء
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- عرض نتيجة التنفيذ -->
+      <div v-if="migrationOutput" class="mt-6 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg">
+        <div class="p-4 border-b border-gray-200 dark:border-gray-600">
+          <h4 class="text-lg font-semibold dark:text-gray-200">📋 نتيجة التنفيذ:</h4>
+        </div>
+        <div class="p-4">
+          <pre class="text-xs font-mono bg-gray-900 text-green-400 p-4 rounded overflow-x-auto max-h-64 overflow-y-auto">{{ migrationOutput }}</pre>
+          <button
+            @click="migrationOutput = ''"
+            class="mt-4 px-4 py-2 bg-gray-600 text-white rounded hover:bg-gray-700 text-sm"
+          >
+            إغلاق
+          </button>
+        </div>
+      </div>
+    </div>
+
     <!-- Modal تفاصيل الجدول -->
     <Modal :show="tableDetailsModal.show" @close="tableDetailsModal.show = false">
       <div class="p-6 dark:bg-gray-800">
@@ -1120,7 +1329,7 @@
 <script setup>
 import { Head, router } from '@inertiajs/vue3';
 import Modal from '@/Components/Modal.vue';
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
 import axios from 'axios';
 import { useToast } from 'vue-toastification';
 
@@ -1130,9 +1339,24 @@ const props = defineProps({ translations: Object });
 // البيانات الأساسية
 const isRefreshing = ref(false);
 const isSyncing = ref(false);
-const connectionStatus = ref({ online: navigator.onLine, syncing: false });
+const isCheckingConnection = ref(false);
+const connectionStatus = ref({ 
+  online: navigator.onLine, 
+  syncing: false,
+  serverAvailable: false,
+  serverChecked: false,
+  lastServerCheck: null
+});
 const syncStatus = ref({ pendingCount: 0, lastSync: null });
 const activeTab = ref('tables');
+
+// Lazy Loading - تتبع ما تم تحميله
+const loadedTabs = ref({
+  tables: false,
+  sync: false,
+  health: false,
+  backups: false
+});
 
 // الجداول
 const syncedTables = ref([]);
@@ -1153,6 +1377,18 @@ const restoreModal = ref({
   backup: null,
   selectedTables: [],
   restoreType: 'full' // 'full' or 'selected'
+});
+
+// Database Migrations
+const migrations = ref([]);
+const loadingMigrations = ref(false);
+const runningMigration = ref(null);
+const migrationOutput = ref('');
+const migrationWarning = ref(null);
+const showExecutedMigrations = ref(false);
+const dbMigrationStats = ref({
+  total_pending: 0,
+  total_executed: 0
 });
 
 // Modal
@@ -1253,6 +1489,184 @@ const comparingTables = ref(false);
 const compareResult = ref(null);
 
 // الوظائف الأساسية - جلب جميع البيانات في request واحد
+const checkRemoteConnection = async () => {
+  isCheckingConnection.value = true;
+  try {
+    // فحص الإنترنت أولاً
+    connectionStatus.value.online = navigator.onLine;
+    
+    toast.info('🔄 جاري فحص الاتصال...', { timeout: 2000 });
+    
+    // استخدام الـ endpoint الجديد الأسرع - Offline First
+    const response = await axios.get('/api/sync-monitor/check-health', {
+      timeout: 5000, // 5 ثواني فقط (أسرع)
+      withCredentials: true
+    });
+
+    if (response.data.success) {
+      const status = response.data.system_status;
+      
+      // تحديث حالة الاتصال
+      connectionStatus.value.online = status.internet_available;
+      connectionStatus.value.serverAvailable = status.remote_server_available;
+      connectionStatus.value.serverChecked = true;
+      connectionStatus.value.lastServerCheck = new Date().toISOString();
+      
+      // رسائل حسب الحالة
+      if (status.local_database_available) {
+        if (status.remote_server_available) {
+          toast.success('✅ النظام يعمل - السيرفر متاح للمزامنة', { timeout: 3000 });
+        } else if (status.internet_available) {
+          toast.warning('⚠️ النظام يعمل Offline - السيرفر غير متاح', { timeout: 3000 });
+        } else {
+          toast.info('📴 النظام يعمل Offline - لا يوجد إنترنت', { timeout: 3000 });
+        }
+      } else {
+        toast.error('❌ قاعدة البيانات المحلية غير متاحة', { timeout: 5000 });
+      }
+      
+      // تحديث معلومات المزامنة التلقائية
+      if (status.auto_sync_enabled) {
+        console.log('Auto sync enabled:', {
+          last_sync: status.last_sync,
+          next_sync: status.next_sync
+        });
+      }
+      
+      return status.remote_server_available;
+    } else {
+      connectionStatus.value.serverAvailable = false;
+      connectionStatus.value.serverChecked = true;
+      toast.error('❌ فشل فحص الحالة: ' + (response.data.message || 'خطأ غير معروف'), { timeout: 3000 });
+      return false;
+    }
+  } catch (error) {
+    console.error('Connection check failed:', error);
+    connectionStatus.value.serverAvailable = false;
+    connectionStatus.value.serverChecked = true;
+    
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      toast.error('❌ انتهت مهلة الاتصال - يرجى المحاولة لاحقاً', { timeout: 5000 });
+    } else if (error.response?.status === 404) {
+      toast.error('❌ API غير موجود - تحقق من التكوين', { timeout: 5000 });
+    } else {
+      // في حالة الخطأ - نفترض offline mode
+      connectionStatus.value.online = navigator.onLine;
+      toast.warning('⚠️ النظام يعمل Offline Mode', { timeout: 3000 });
+    }
+    return false;
+  } finally {
+    isCheckingConnection.value = false;
+  }
+};
+
+// جلب البيانات الأساسية فقط (للتحميل الأولي)
+const loadEssentialData = async () => {
+  isRefreshing.value = true;
+  try {
+    connectionStatus.value.online = navigator.onLine;
+    
+    // فحص سريع للاتصال (lightweight)
+    const healthResponse = await axios.get('/api/sync-monitor/check-health', {
+      timeout: 3000,
+      withCredentials: true
+    });
+    
+    if (healthResponse.data.success) {
+      const status = healthResponse.data.system_status;
+      connectionStatus.value.online = status.internet_available;
+      connectionStatus.value.serverAvailable = status.remote_server_available;
+      connectionStatus.value.serverChecked = true;
+      
+      // جلب stats فقط (بدون جداول أو metadata)
+      const statsResponse = await axios.get('/api/sync-monitor/sync-queue-details', {
+        withCredentials: true
+      });
+      
+      if (statsResponse.data.success) {
+        syncMetadata.value.stats = statsResponse.data.queue_stats || null;
+        syncStatus.value.pendingCount = statsResponse.data.queue_stats?.pending || 0;
+      }
+    }
+  } catch (error) {
+    console.error('Error loading essential data:', error);
+    // لا نعرض toast هنا - فقط نسجل الخطأ
+  } finally {
+    isRefreshing.value = false;
+  }
+};
+
+// جلب بيانات كل tab حسب الحاجة (Lazy Loading)
+const loadTabData = async (tab) => {
+  if (loadedTabs.value[tab]) {
+    return; // تم تحميله مسبقاً
+  }
+  
+  isRefreshing.value = true;
+  try {
+    switch (tab) {
+      case 'tables':
+        const tablesResponse = await axios.get('/api/sync-monitor/tables', { 
+          params: { force_connection: selectedDatabase.value !== 'auto' ? selectedDatabase.value : 'auto' },
+          withCredentials: true 
+        });
+        if (tablesResponse.data.success) {
+          syncedTables.value = tablesResponse.data.tables || [];
+          databaseInfo.value = tablesResponse.data.database_info || {
+            type: 'MySQL',
+            total_tables: syncedTables.value.length,
+          };
+          loadedTabs.value.tables = true;
+        }
+        break;
+        
+      case 'sync':
+        // تحميل metadata + jobs
+        const metadataResponse = await axios.get('/api/sync-monitor/metadata', { 
+          withCredentials: true 
+        });
+        if (metadataResponse.data.success) {
+          syncMetadata.value.data = metadataResponse.data.metadata || [];
+          syncMetadata.value.stats = metadataResponse.data.queue_stats || null;
+          syncStatus.value.pendingCount = metadataResponse.data.queue_stats?.pending || 0;
+        }
+        
+        // جلب jobs
+        await loadSyncFromServerJobs();
+        
+        loadedTabs.value.sync = true;
+        break;
+        
+      case 'health':
+        // فحص صحة المزامنة (diagnostic)
+        await checkSyncHealth();
+        loadedTabs.value.health = true;
+        break;
+        
+      case 'backups':
+        const backupsResponse = await axios.get('/api/sync-monitor/backups', { 
+          withCredentials: true 
+        });
+        if (backupsResponse.data.success) {
+          backups.value = backupsResponse.data.backups || [];
+          loadedTabs.value.backups = true;
+        }
+        break;
+        
+      case 'migrations':
+        await loadMigrations();
+        loadedTabs.value.migrations = true;
+        break;
+    }
+  } catch (error) {
+    console.error(`Error loading ${tab} data:`, error);
+    // لا نعرض toast - فقط نسجل الخطأ
+  } finally {
+    isRefreshing.value = false;
+  }
+};
+
+// جلب كل البيانات (للتحديث الكامل)
 const loadAllData = async () => {
   isRefreshing.value = true;
   try {
@@ -1282,6 +1696,11 @@ const loadAllData = async () => {
       
       // تحديث حالة المزامنة
       syncStatus.value.pendingCount = response.data.queue_stats?.pending || 0;
+      
+      // تحديث حالة التحميل
+      loadedTabs.value.tables = true;
+      loadedTabs.value.sync = true;
+      loadedTabs.value.backups = true;
     } else {
       toast.error(response.data.message || 'فشل تحميل البيانات');
     }
@@ -1298,10 +1717,119 @@ const refreshData = async () => {
   toast.success('تم تحديث البيانات', { timeout: 2000 });
 };
 
+const loadServerTables = async () => {
+  isRefreshing.value = true;
+  try {
+    toast.info('🔄 جاري تحميل جداول السيرفر...', { timeout: 2000 });
+    
+    const response = await axios.get('/api/sync-monitor/all-data', { 
+      params: { force_connection: 'mysql' },
+      withCredentials: true,
+      timeout: 15000
+    });
+    
+    if (response.data.success) {
+      syncedTables.value = response.data.tables || [];
+      
+      const mysqlTables = syncedTables.value.filter(t => t.connection === 'mysql');
+      toast.success(`✅ تم تحميل ${mysqlTables.length} جدول من السيرفر`, { timeout: 3000 });
+      
+      // تحديث معلومات قاعدة البيانات
+      databaseInfo.value = response.data.database_info || {
+        type: 'MySQL',
+        total_tables: mysqlTables.length,
+      };
+    } else {
+      toast.error(response.data.message || 'فشل تحميل جداول السيرفر');
+    }
+  } catch (error) {
+    console.error('Error loading server tables:', error);
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      toast.error('❌ انتهت مهلة الاتصال بالسيرفر', { timeout: 5000 });
+    } else {
+      toast.error('فشل تحميل جداول السيرفر: ' + (error.response?.data?.message || error.message));
+    }
+  } finally {
+    isRefreshing.value = false;
+  }
+};
+
+const syncAllTablesFromServer = async () => {
+  if (!connectionStatus.value.online) {
+    toast.error('❌ لا يوجد اتصال بالإنترنت');
+    return;
+  }
+
+  // فحص الاتصال بالسيرفر أولاً
+  if (!connectionStatus.value.serverChecked || !connectionStatus.value.serverAvailable) {
+    toast.info('🔄 جاري فحص الاتصال بالسيرفر...', { timeout: 2000 });
+    const serverAvailable = await checkRemoteConnection();
+    if (!serverAvailable) {
+      return;
+    }
+  }
+
+  const confirmed = confirm('هل تريد مزامنة كل الجداول من السيرفر إلى المحلي؟\n\nسيتم جلب البيانات من MySQL وحفظها في SQLite المحلي.');
+  if (!confirmed) return;
+
+  isSyncing.value = true;
+  try {
+    toast.info('🔄 جاري مزامنة الجداول من السيرفر... قد يستغرق بعض الوقت', { timeout: 5000 });
+    
+    const response = await axios.post('/api/sync-monitor/sync', {
+      direction: 'down', // من MySQL إلى SQLite
+      tables: null, // كل الجداول
+      safe_mode: false,
+      create_backup: false
+    }, { 
+      withCredentials: true,
+      timeout: 120000 // 2 دقيقة
+    });
+    
+    if (response.data.success) {
+      const results = response.data.results;
+      const totalSynced = results?.total_synced || 0;
+      const successCount = Object.keys(results?.success || {}).length;
+      const failedCount = Object.keys(results?.failed || {}).length;
+      
+      let message = `✅ تمت المزامنة بنجاح!\n`;
+      message += `📊 ${totalSynced} سجل من ${successCount} جدول\n`;
+      if (failedCount > 0) {
+        message += `⚠️ فشل ${failedCount} جدول`;
+      }
+      
+      toast.success(message, { timeout: 5000 });
+      
+      // تحديث البيانات
+      await loadAllData();
+    } else {
+      toast.error('فشلت المزامنة: ' + (response.data.message || 'خطأ غير معروف'));
+    }
+  } catch (error) {
+    console.error('Error syncing from server:', error);
+    if (error.code === 'ECONNABORTED' || error.message.includes('timeout')) {
+      toast.error('❌ انتهت مهلة المزامنة - الرجاء المحاولة مرة أخرى', { timeout: 5000 });
+    } else {
+      toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message), { timeout: 5000 });
+    }
+  } finally {
+    isSyncing.value = false;
+  }
+};
+
 const syncAll = async () => {
   if (!connectionStatus.value.online) {
     toast.warning('غير متصل بالإنترنت');
     return;
+  }
+
+  // فحص الاتصال بالسيرفر أولاً
+  if (!connectionStatus.value.serverChecked || !connectionStatus.value.serverAvailable) {
+    toast.info('🔄 جاري فحص الاتصال بالسيرفر...', { timeout: 2000 });
+    const serverAvailable = await checkRemoteConnection();
+    if (!serverAvailable) {
+      return;
+    }
   }
   
   if (syncStatus.value.pendingCount === 0) {
@@ -1480,17 +2008,32 @@ const syncDirection = async (direction) => {
       }
     } else {
       // الاتجاه "up" (من SQLite إلى MySQL) - استخدم endpoint العادي
-      const response = await axios.post('/api/sync-monitor/sync', {
-        direction,
-        tables: null,
-        safe_mode: direction === 'up',
-        create_backup: direction === 'up'
-      }, { withCredentials: true });
-      if (response.data.success) {
-        toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
-        await loadAllData();
-      } else {
-        toast.error('فشلت المزامنة');
+      try {
+        const response = await axios.post('/api/sync-monitor/sync', {
+          direction,
+          tables: null,
+          safe_mode: direction === 'up',
+          create_backup: direction === 'up'
+        }, { withCredentials: true });
+        
+        if (response.data.success) {
+          toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
+          await loadAllData();
+        } else {
+          // التحقق من حالة MySQL
+          if (response.data.mysql_available === false) {
+            toast.warning('⚠️ قاعدة MySQL البعيدة غير متاحة حالياً. يمكنك الاستمرار بالعمل على SQLite محلياً.');
+          } else {
+            toast.error(response.data.message || 'فشلت المزامنة');
+          }
+        }
+      } catch (error) {
+        // التحقق من حالة الخطأ
+        if (error.response?.status === 503) {
+          toast.warning('⚠️ قاعدة MySQL البعيدة غير متاحة حالياً. يمكنك الاستمرار بالعمل على SQLite محلياً.');
+        } else {
+          toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message));
+        }
       }
     }
   } catch (error) {
@@ -1577,6 +2120,14 @@ const startSmartSync = async () => {
   if (!connectionStatus.value.online) {
     toast.error('❌ لا يمكن المزامنة - أنت في وضع Offline');
     return;
+  }
+
+  // فحص الاتصال بالسيرفر أولاً
+  if (!connectionStatus.value.serverChecked || !connectionStatus.value.serverAvailable) {
+    const serverAvailable = await checkRemoteConnection();
+    if (!serverAvailable) {
+      return;
+    }
   }
 
   if (!confirm('هل تريد بدء المزامنة الذكية؟\n\nسيتم مزامنة التغييرات المعلقة في sync_queue.')) {
@@ -1924,9 +2475,12 @@ const syncCompareTable = async () => {
 };
 
 // Event Listeners
-const handleOnline = () => {
+const handleOnline = async () => {
   connectionStatus.value.online = true;
   toast.success('🌐 عاد الاتصال!');
+  
+  // فحص الاتصال بالسيرفر عند عودة الإنترنت
+  await checkRemoteConnection();
   loadAllData();
 };
 
@@ -1935,13 +2489,22 @@ const handleOffline = () => {
   toast.warning('📴 فقدان الاتصال');
 };
 
-onMounted(() => {
-  // جلب جميع البيانات في request واحد فقط
-  loadAllData();
-  // تحديث الإحصائيات تلقائياً
-  checkSyncMetadata();
-  // جلب Jobs للمزامنة من السيرفر
-  loadSyncFromServerJobs();
+// Watcher لجلب بيانات التاب عند تغييره
+watch(activeTab, async (newTab) => {
+  await loadTabData(newTab);
+});
+
+onMounted(async () => {
+  // جلب البيانات الأساسية فقط (lightweight)
+  await loadEssentialData();
+  
+  // جلب بيانات التاب النشط (tables بشكل افتراضي)
+  await loadTabData(activeTab.value);
+  
+  // جلب Migrations
+  await loadMigrations();
+  
+  // Event listeners
   window.addEventListener('online', handleOnline);
   window.addEventListener('offline', handleOffline);
 });
@@ -1950,6 +2513,114 @@ onUnmounted(() => {
   window.removeEventListener('online', handleOnline);
   window.removeEventListener('offline', handleOffline);
 });
+
+// ============================================
+// Database Migrations Functions
+// ============================================
+async function loadMigrations() {
+  loadingMigrations.value = true;
+  try {
+    const response = await axios.get('/api/sync-monitor/migrations', {
+      params: {
+        show_executed: showExecutedMigrations.value
+      }
+    });
+    migrations.value = response.data.migrations || [];
+    dbMigrationStats.value = {
+      total_pending: response.data.total_pending || 0,
+      total_executed: response.data.total_executed || 0
+    };
+  } catch (error) {
+    console.error('Error loading migrations:', error);
+    toast.error('فشل تحميل Migrations');
+  } finally {
+    loadingMigrations.value = false;
+  }
+}
+
+async function checkMigrationSafety(migrationName) {
+  try {
+    const response = await axios.post('/api/sync-monitor/check-migration', {
+      migration_name: migrationName
+    });
+    
+    if (response.data.success && response.data.has_data) {
+      return {
+        hasData: true,
+        tables: response.data.tables_with_data,
+        totalRecords: response.data.total_records
+      };
+    }
+    return { hasData: false };
+  } catch (error) {
+    console.error('Error checking migration safety:', error);
+    return { hasData: false };
+  }
+}
+
+async function runSpecificMigration(migrationName, force = false) {
+  // Check for data before running
+  if (!force) {
+    const safetyCheck = await checkMigrationSafety(migrationName);
+    
+    if (safetyCheck.hasData) {
+      migrationWarning.value = {
+        migration: migrationName,
+        tables: safetyCheck.tables,
+        total_records: safetyCheck.totalRecords
+      };
+      return;
+    }
+  }
+
+  runningMigration.value = migrationName;
+  migrationOutput.value = '';
+  migrationWarning.value = null;
+
+  try {
+    const response = await axios.post('/api/sync-monitor/run-migration', {
+      migration_name: migrationName,
+      force: force
+    });
+
+    if (response.data.success) {
+      toast.success('تم تنفيذ Migration بنجاح');
+      migrationOutput.value = response.data.output || '';
+      await loadMigrations();
+    } else {
+      // Check if it's a warning about data
+      if (response.data.warning && response.data.table) {
+        migrationWarning.value = {
+          migration: migrationName,
+          table: response.data.table,
+          record_count: response.data.record_count
+        };
+      } else {
+        toast.error(response.data.error || 'فشل تنفيذ Migration');
+        migrationOutput.value = response.data.output || response.data.error || '';
+      }
+    }
+  } catch (error) {
+    console.error('Error running migration:', error);
+    
+    if (error.response?.data?.warning) {
+      migrationWarning.value = {
+        migration: migrationName,
+        table: error.response.data.table,
+        record_count: error.response.data.record_count
+      };
+    } else {
+      toast.error(error.response?.data?.error || error.message || 'فشل تنفيذ Migration');
+      migrationOutput.value = error.response?.data?.output || error.message || '';
+    }
+  } finally {
+    runningMigration.value = null;
+  }
+}
+
+function forceRunMigration(migrationName) {
+  runSpecificMigration(migrationName, true);
+}
 </script>
 
 <style scoped>

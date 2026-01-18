@@ -17,6 +17,14 @@ class Kernel extends ConsoleKernel
         // Clean old logs every month
         $schedule->command('logs:clean --days=30')->monthly();
         
+        // المزامنة التلقائية الجديدة - Offline First
+        // تعمل كل 5 دقائق وتزامن تلقائياً إذا كان الإنترنت متاح
+        $schedule->command('sync:auto')
+            ->everyFiveMinutes()
+            ->name('auto-sync-offline-first')
+            ->withoutOverlapping(10)
+            ->runInBackground();
+        
         // مزامنة تلقائية كل 5 دقائق (من المحلي إلى السيرفر)
         // يعمل فقط إذا كان API Sync مفعّل وكان هناك إنترنت
         // يستخدم SyncPendingChangesJob الموجود للمزامنة

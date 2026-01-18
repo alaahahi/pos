@@ -1,0 +1,215 @@
+===============================================================
+   How to Start Auto-Sync (Laravel Scheduler)
+===============================================================
+
+Problem:
+  - "Auto-Sync: Stopped" shows in WiFi menu
+  - Auto-sync is not working
+
+Solution:
+  - Run Laravel Scheduler using start-scheduler.bat
+
+
+===============================================================
+STEP 1: Start the Scheduler
+===============================================================
+
+Method 1: Using the BAT file (Easiest)
+---------------------------------------
+  1. Find file: start-scheduler.bat
+  2. Double-click it
+  3. A Command Prompt window will open
+  4. Keep the window OPEN (do NOT close it!)
+  5. Open browser and check WiFi menu
+
+
+Method 2: Using Terminal Manually
+----------------------------------
+  1. Open a new Terminal/CMD
+  2. Go to project folder:
+     cd C:\xampp\htdocs\pos
+  3. Run command:
+     php artisan schedule:work
+  4. Keep Terminal OPEN
+
+
+===============================================================
+STEP 2: Verify Auto-Sync is Working
+===============================================================
+
+1. From Frontend (Easiest):
+   ------------------------
+   - Open: http://127.0.0.1:8000
+     OR: http://app.production.local
+   - Click on WiFi icon in Header
+   - You should see:
+     ✓ Auto-Sync Status: ACTIVE (green)
+     ✓ Next Sync In: 04:32 (countdown)
+
+
+2. From Terminal:
+   --------------
+   You will see messages like:
+   
+   [2026-01-19 16:00:00] Running: php artisan app:auto-sync-command
+   [2026-01-19 16:00:03] Synced 3 records
+   [2026-01-19 16:05:00] Running: php artisan app:auto-sync-command
+
+
+3. From API:
+   ---------
+   Open in browser:
+   http://127.0.0.1:8000/api/sync-monitor/auto-sync-status
+   
+   You should see:
+   {
+     "success": true,
+     "status": {
+       "enabled": true,
+       "is_local": true,
+       "next_sync_in": 245,
+       "schedule_running": true
+     }
+   }
+
+
+===============================================================
+What Was Fixed
+===============================================================
+
+1. Added isLocalEnvironment() method:
+   -----------------------------------
+   Now recognizes local environment from:
+   - 127.0.0.1
+   - localhost
+   - app.production.local (NEW!)
+   - SQLite as default connection
+
+
+2. Fixed getAutoSyncStatus():
+   ---------------------------
+   Now works even without previous sync:
+   - enabled: true (based on .env)
+   - next_sync_in: 300 (5 minutes default)
+   - last_sync_at: null
+
+
+3. Added schedule_running indicator:
+   ---------------------------------
+   - Checks if Laravel Scheduler is running
+   - Checks storage/framework/schedule-* files
+   - Shows clear indicator in status
+
+
+===============================================================
+Important Notes
+===============================================================
+
+1. Do NOT close the Scheduler window:
+   -----------------------------------
+   X If you close it -> Auto-sync STOPS
+   √ Keep it running in background
+
+
+2. Auto-Sync Settings:
+   -------------------
+   - Runs every 5 minutes
+   - Uploads data: SQLite -> MySQL
+   - Logs in sync_metadata table
+   - Only works in LOCAL environment
+
+
+3. If "Stopped" appears:
+   ---------------------
+   - Check Terminal (is it closed?)
+   - Check AUTO_SYNC_ENABLED in .env
+   - Try: php artisan cache:clear
+   - Restart start-scheduler.bat
+
+
+4. For Production Environment:
+   ---------------------------
+   - Use Windows Task Scheduler
+   - Or use a process manager
+   - Do NOT rely on open Terminal
+
+
+===============================================================
+Different Status Cases
+===============================================================
+
+Case 1: Scheduler Running + First Run
+--------------------------------------
+  Auto-Sync Status: ACTIVE (green)
+  Next Sync In: 05:00 (countdown)
+  schedule_running: true
+  last_sync_at: null
+
+
+Case 2: Scheduler Running + After Sync
+---------------------------------------
+  Auto-Sync Status: ACTIVE (green)
+  Next Sync In: 04:32 (countdown)
+  schedule_running: true
+  last_sync_at: 2026-01-19 16:00:00
+
+
+Case 3: Scheduler NOT Running
+------------------------------
+  Auto-Sync Status: ACTIVE (green)
+  Next Sync In: 05:00 (countdown)
+  schedule_running: false  <- PROBLEM!
+  
+  Solution: Run start-scheduler.bat
+
+
+Case 4: AUTO_SYNC_ENABLED=false
+--------------------------------
+  Auto-Sync Status: STOPPED (gray)
+  schedule_running: false
+  
+  Solution: Set AUTO_SYNC_ENABLED=true in .env
+
+
+===============================================================
+Files Modified
+===============================================================
+
+Backend:
+  √ app/Http/Controllers/SyncMonitorController.php
+    - Added isLocalEnvironment()
+    - Fixed getAutoSyncStatus()
+    - Added schedule_running check
+
+Scripts:
+  √ start-scheduler.bat
+    - New file to start Scheduler easily
+    - English only (no Arabic)
+  
+  √ test_auto_sync_status.php
+    - Complete status check script
+
+
+===============================================================
+Summary
+===============================================================
+
+Problem:
+  X Laravel Scheduler was not running
+
+Solution:
+  √ Run start-scheduler.bat
+  √ Keep window open
+  √ Auto-sync will run every 5 minutes
+
+Result:
+  √ Status shows "ACTIVE" in WiFi menu
+  √ Live countdown timer (05:00 -> 04:59 -> ...)
+  √ Auto-sync every 5 minutes
+  √ No manual sync needed anymore!
+
+===============================================================
+
+Now run start-scheduler.bat and try it! 🚀
+
+===============================================================
