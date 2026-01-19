@@ -307,6 +307,10 @@
         </div>
         <div class="modal-body-custom">
           <div class="row g-3">
+            <div class="col-md-12">
+              <label class="form-label">📦 اسم الديكور <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" v-model="createForm.decoration_name" placeholder="أدخل اسم الديكور">
+            </div>
             <div class="col-md-6">
               <label class="form-label">👤 اسم الزبون <span class="text-danger">*</span></label>
               <input type="text" class="form-control" v-model="createForm.customer_name" placeholder="اسم الزبون">
@@ -360,8 +364,10 @@ import { router, usePage } from '@inertiajs/vue3'
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue'
 import Pagination from '@/Components/Pagination.vue'
 import { Link } from '@inertiajs/vue3'
+import { useToast } from 'vue-toastification'
 
 const page = usePage()
+const toast = useToast()
 
 const props = defineProps({
   orders: Object,
@@ -411,6 +417,7 @@ const editForm = reactive({
 
 // Create form
 const createForm = reactive({
+  decoration_name: '',
   customer_name: '',
   customer_phone: '',
   event_date: '',
@@ -475,15 +482,18 @@ const saveQuickEdit = () => {
     onSuccess: () => {
       processing.value = false
       showEditModal.value = false
+      toast.success('✅ تم التعديل بنجاح')
     },
     onError: () => {
       processing.value = false
+      toast.error('❌ حدث خطأ أثناء التعديل')
     }
   })
 }
 
 const openCreateModal = () => {
   // Reset form
+  createForm.decoration_name = ''
   createForm.customer_name = ''
   createForm.customer_phone = ''
   createForm.event_date = ''
@@ -496,8 +506,8 @@ const openCreateModal = () => {
 }
 
 const saveNewOrder = () => {
-  if (!createForm.customer_name || !createForm.customer_phone || !createForm.event_date || !createForm.total_price) {
-    alert('الرجاء ملء جميع الحقول المطلوبة (*)')
+  if (!createForm.decoration_name || !createForm.customer_name || !createForm.customer_phone || !createForm.event_date || !createForm.total_price) {
+    toast.warning('⚠️ الرجاء ملء جميع الحقول المطلوبة (*)')
     return
   }
   
@@ -505,6 +515,7 @@ const saveNewOrder = () => {
   
   const formData = {
     decoration_id: null,
+    decoration_name: createForm.decoration_name,
     customer_name: createForm.customer_name,
     customer_phone: createForm.customer_phone,
     event_date: createForm.event_date,
@@ -522,12 +533,13 @@ const saveNewOrder = () => {
     onSuccess: () => {
       processing.value = false
       showCreateModal.value = false
+      toast.success('✅ تم إضافة الطلب بنجاح')
       router.reload({ only: ['orders'] })
     },
     onError: (errors) => {
       processing.value = false
       console.error('Errors:', errors)
-      alert('حدث خطأ أثناء حفظ الطلب')
+      toast.error('❌ حدث خطأ أثناء حفظ الطلب')
     }
   })
 }

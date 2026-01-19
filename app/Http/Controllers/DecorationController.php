@@ -816,6 +816,7 @@ class DecorationController extends Controller
         try {
             $request->validate([
                 'decoration_id' => 'nullable|exists:decorations,id',
+                'decoration_name' => 'nullable|string|max:255',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
                 'customer_phone' => 'required|string|max:20',
@@ -830,14 +831,29 @@ class DecorationController extends Controller
                 'discount' => 'nullable|numeric|min:0'
             ]);
 
-            // إذا لم يتم تحديد decoration_id، استخدم أول decoration متاح أو null
+            // إذا تم إرسال اسم الديكور، إنشاء أو إيجاد الديكور
             $decorationId = $request->decoration_id;
-            if (!$decorationId) {
+            
+            if (!$decorationId && $request->decoration_name) {
+                // البحث عن ديكور بنفس الاسم أو إنشاء واحد جديد
+                $decoration = Decoration::firstOrCreate(
+                    ['name' => $request->decoration_name],
+                    [
+                        'type_name' => 'عادي',
+                        'base_price_dinar' => 0,
+                        'base_price_dollar' => $request->total_price ?? 0,
+                        'currency' => 'dollar',
+                        'status' => 'active'
+                    ]
+                );
+                $decorationId = $decoration->id;
+            } elseif (!$decorationId) {
                 $firstDecoration = Decoration::first();
                 $decorationId = $firstDecoration ? $firstDecoration->id : null;
+                $decoration = $decorationId ? Decoration::find($decorationId) : null;
+            } else {
+                $decoration = Decoration::find($decorationId);
             }
-            
-            $decoration = $decorationId ? Decoration::find($decorationId) : null;
             
             // حساب السعر
             if ($decoration) {
