@@ -1,13 +1,12 @@
 <template>
   <AuthenticatedLayout>
-    <template #header>
-      <div class="d-flex justify-content-between align-items-center">
+       <div class="d-flex justify-content-between align-items-center">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
         <div class="d-flex gap-2">
           <Link 
-          
+            v-if="hasPermission('create decoration')" 
             class="btn btn-success" 
             :href="route('decoration.orders.create')"
           >
@@ -18,8 +17,7 @@
           </Link>
         </div>
       </div>
-    </template>
-
+ 
     <div class="py-4">
       <div class="container-fluid">
         <!-- Statistics Cards -->
