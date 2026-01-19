@@ -7,7 +7,7 @@
         </h2>
         <div class="d-flex gap-2">
           <Link 
-            v-if="hasPermission('create decoration')" 
+          
             class="btn btn-success" 
             :href="route('decoration.orders.create')"
           >
@@ -399,7 +399,7 @@ const formatNumber = (num) => {
 }
 
 const formatCurrency = (num) => {
-  return new Intl.NumberFormat('ar-EG').format(num || 0) + ' د.ع'
+  return '$' + new Intl.NumberFormat('en-US').format(num || 0)
 }
 
 const formatDate = (date) => {
@@ -411,7 +411,7 @@ const formatDate = (date) => {
 }
 
 const getCurrencySymbol = (currency) => {
-  return currency === 'dollar' ? 'دولار' : 'دينار'
+  return currency === 'dollar' ? '$' : 'IQD'
 }
 
 const getRemainingClass = (order) => {
