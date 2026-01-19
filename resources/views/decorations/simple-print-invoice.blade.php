@@ -31,11 +31,12 @@
         }
         
         .invoice-header {
-            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
-            border-radius: 12px;
+            background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+            border-radius: 8px;
             padding: 20px;
-            margin-bottom: 20px;
+            margin-bottom: 25px;
             color: white;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .header-top {
@@ -95,16 +96,18 @@
         
         .info-section {
             background: #f8f9fa;
-            border-radius: 8px;
+            border-radius: 6px;
             padding: 15px;
-            border-left: 4px solid #10b981;
+            border-left: 4px solid #1e40af;
         }
         
         .info-section h3 {
-            color: #10b981;
-            margin-bottom: 10px;
-            font-size: 14px;
+            color: #1e40af;
+            margin-bottom: 12px;
+            font-size: 13px;
             font-weight: bold;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .info-item {
@@ -123,40 +126,23 @@
             color: #333;
         }
         
-        .decoration-card {
-            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
-            color: white;
-            padding: 20px;
-            border-radius: 12px;
-            margin-bottom: 20px;
-            text-align: center;
-        }
-        
-        .decoration-name {
-            font-size: 20px;
-            font-weight: bold;
-            margin-bottom: 5px;
-        }
-        
-        .decoration-icon {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
-        
         .pricing-section {
             background: white;
-            border: 2px solid #10b981;
-            border-radius: 10px;
+            border: 2px solid #1e40af;
+            border-radius: 8px;
             padding: 20px;
             margin-bottom: 20px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
         }
         
         .pricing-title {
-            font-size: 18px;
+            font-size: 16px;
             font-weight: bold;
-            color: #10b981;
+            color: #1e40af;
             margin-bottom: 15px;
             text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .pricing-table {
@@ -165,8 +151,9 @@
         }
         
         .pricing-table td {
-            padding: 10px;
-            border-bottom: 1px solid #e9ecef;
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
         }
         
         .pricing-table tr:last-child td {
@@ -174,19 +161,19 @@
         }
         
         .pricing-table .total-row {
-            background: #e8f5e9;
+            background: #dbeafe;
             font-weight: bold;
-            font-size: 14px;
+            font-size: 13px;
         }
         
         .pricing-table .total-row td {
-            border-top: 2px solid #10b981;
+            border-top: 2px solid #1e40af;
             padding-top: 12px;
         }
         
         .currency-symbol {
             font-weight: bold;
-            color: #10b981;
+            color: #1e40af;
         }
         
         .status-badge {
@@ -206,33 +193,38 @@
         .status-cancelled { background: #dc3545; color: white; }
         
         .notes-section {
-            background: #fff8dc;
+            background: #f8fafc;
             padding: 15px;
-            border-radius: 8px;
+            border-radius: 6px;
             margin-bottom: 20px;
-            border-left: 4px solid #ffc107;
+            border-left: 4px solid #64748b;
+            border: 1px solid #e2e8f0;
         }
         
         .notes-title {
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
-            color: #f59e0b;
-            margin-bottom: 8px;
+            color: #475569;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .notes-content {
             background: white;
-            padding: 10px;
-            border-radius: 6px;
+            padding: 12px;
+            border-radius: 4px;
             min-height: 40px;
             white-space: pre-wrap;
+            color: #334155;
+            line-height: 1.6;
         }
         
         .footer {
             text-align: center;
             margin-top: 30px;
             padding: 15px;
-            border-top: 2px solid #10b981;
+            border-top: 2px solid #1e40af;
             color: #666;
             font-size: 11px;
         }
@@ -241,20 +233,22 @@
             position: fixed;
             top: 20px;
             right: 20px;
-            background: #10b981;
+            background: #1e40af;
             color: white;
             border: none;
             padding: 12px 24px;
-            border-radius: 8px;
+            border-radius: 6px;
             cursor: pointer;
-            font-size: 14px;
+            font-size: 13px;
             font-weight: bold;
             z-index: 1000;
-            box-shadow: 0 4px 12px rgba(16, 185, 129, 0.4);
+            box-shadow: 0 2px 8px rgba(30, 64, 175, 0.3);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
         }
         
         .print-button:hover {
-            background: #059669;
+            background: #1e3a8a;
         }
         
         @media print {
@@ -277,14 +271,14 @@
     </style>
 </head>
 <body>
-    <button class="print-button" onclick="window.print()">🖨️ طباعة الفاتورة</button>
+    <button class="print-button" onclick="window.print()">طباعة الفاتورة</button>
     
     <div class="invoice-container">
         <!-- Header -->
         <div class="invoice-header">
             <div class="header-top">
                 <div class="invoice-number">رقم الطلب: #{{ $order->id }}</div>
-                <div class="invoice-title">🎨 فاتورة طلب ديكور</div>
+                <div class="invoice-title">فاتورة طلب ديكور</div>
                 <div class="invoice-number">{{ $order->created_at->format('Y-m-d') }}</div>
             </div>
             
@@ -304,37 +298,35 @@
             </div>
         </div>
         
-        <!-- Decoration Card -->
-        <div class="decoration-card">
-            <div class="decoration-icon">🎊</div>
-            <div class="decoration-name">{{ $order->decoration_name }}</div>
-        </div>
-        
         <!-- Invoice Info -->
         <div class="invoice-info">
             <!-- Customer Info -->
             <div class="info-section">
-                <h3>👤 معلومات العميل</h3>
+                <h3>معلومات العميل</h3>
                 <div class="info-item">
-                    <span class="info-label">الاسم:</span>
+                    <span class="info-label">اسم العميل:</span>
                     <span class="info-value">{{ $order->customer_name }}</span>
                 </div>
                 <div class="info-item">
-                    <span class="info-label">الهاتف:</span>
+                    <span class="info-label">رقم الهاتف:</span>
                     <span class="info-value">{{ $order->customer_phone }}</span>
                 </div>
             </div>
             
             <!-- Event Info -->
             <div class="info-section">
-                <h3>📅 معلومات المناسبة</h3>
+                <h3>تفاصيل الطلب</h3>
                 <div class="info-item">
-                    <span class="info-label">التاريخ:</span>
+                    <span class="info-label">نوع الديكور:</span>
+                    <span class="info-value">{{ $order->decoration_name }}</span>
+                </div>
+                <div class="info-item">
+                    <span class="info-label">تاريخ المناسبة:</span>
                     <span class="info-value">{{ \Carbon\Carbon::parse($order->event_date)->format('Y-m-d') }}</span>
                 </div>
                 @if($order->event_time)
                 <div class="info-item">
-                    <span class="info-label">الساعة:</span>
+                    <span class="info-label">ساعة المناسبة:</span>
                     <span class="info-value">{{ $order->event_time }}</span>
                 </div>
                 @endif
@@ -348,7 +340,7 @@
         <!-- Assigned Employee -->
         @if($order->assignedEmployee)
         <div class="info-section" style="margin-bottom: 20px;">
-            <h3>🔧 الموظف المسؤول</h3>
+            <h3>الموظف المسؤول</h3>
             <div class="info-item">
                 <span class="info-label">الاسم:</span>
                 <span class="info-value">{{ $order->assignedEmployee->name }}</span>
@@ -358,20 +350,20 @@
         
         <!-- Pricing Section -->
         <div class="pricing-section">
-            <div class="pricing-title">💰 تفاصيل الدفع</div>
+            <div class="pricing-title">تفاصيل الدفع</div>
             <table class="pricing-table">
                 <tbody>
                     <tr class="total-row">
-                        <td><strong>💵 المبلغ الإجمالي</strong></td>
+                        <td><strong>المبلغ الإجمالي</strong></td>
                         <td style="text-align: left;"><strong>{{ number_format($order->total_price, 2) }} $</strong></td>
                     </tr>
                     <tr>
-                        <td>✅ المبلغ المدفوع</td>
-                        <td style="text-align: left; color: #10b981;">{{ number_format($order->paid_amount ?? 0, 2) }} $</td>
+                        <td>المبلغ المدفوع</td>
+                        <td style="text-align: left; color: #059669;">{{ number_format($order->paid_amount ?? 0, 2) }} $</td>
                     </tr>
-                    <tr style="background: #fff3cd;">
-                        <td><strong>⏳ المبلغ المتبقي</strong></td>
-                        <td style="text-align: left; color: #f59e0b;"><strong>{{ number_format($order->total_price - ($order->paid_amount ?? 0), 2) }} $</strong></td>
+                    <tr style="background: #fef3c7;">
+                        <td><strong>المبلغ المتبقي</strong></td>
+                        <td style="text-align: left; color: #d97706;"><strong>{{ number_format($order->total_price - ($order->paid_amount ?? 0), 2) }} $</strong></td>
                     </tr>
                 </tbody>
             </table>
@@ -380,15 +372,15 @@
         <!-- Special Requests -->
         @if($order->special_requests)
         <div class="notes-section">
-            <div class="notes-title">📝 ملاحظات خاصة</div>
+            <div class="notes-title">ملاحظات خاصة</div>
             <div class="notes-content">{{ $order->special_requests }}</div>
         </div>
         @endif
         
         <!-- Footer -->
         <div class="footer">
-            <p><strong>شكراً لاختياركم خدماتنا</strong></p>
-            <p style="margin-top: 5px; font-size: 10px;">تمت الطباعة في: {{ now()->format('Y-m-d H:i') }}</p>
+            <p style="font-weight: 600; color: #1e40af; margin-bottom: 8px;">شكراً لثقتكم بخدماتنا</p>
+            <p style="font-size: 10px; color: #64748b;">تاريخ الطباعة: {{ now()->format('Y-m-d | H:i') }}</p>
         </div>
     </div>
 </body>
