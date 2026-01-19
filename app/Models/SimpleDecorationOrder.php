@@ -14,6 +14,7 @@ class SimpleDecorationOrder extends Model
         'customer_name',
         'customer_phone',
         'event_date',
+        'event_time',
         'total_price',
         'paid_amount',
         'assigned_employee_id',

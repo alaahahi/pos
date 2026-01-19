@@ -817,6 +817,7 @@ class DecorationController extends Controller
                 'customer_name' => 'required|string|max:255',
                 'customer_phone' => 'required|string|max:20',
                 'event_date' => 'required|date',
+                'event_time' => 'nullable',
                 'total_price' => 'required|numeric|min:0',
                 'paid_amount' => 'nullable|numeric|min:0',
                 'assigned_employee_id' => 'nullable|exists:users,id',
@@ -831,6 +832,7 @@ class DecorationController extends Controller
                 'customer_name' => $request->customer_name,
                 'customer_phone' => $request->customer_phone,
                 'event_date' => $request->event_date,
+                'event_time' => $request->event_time ?? '12:00',
                 'total_price' => $request->total_price,
                 'paid_amount' => $request->paid_amount ?? 0,
                 'assigned_employee_id' => $request->assigned_employee_id,
@@ -928,7 +930,8 @@ class DecorationController extends Controller
             'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
             'assigned_employee_id' => 'nullable|exists:users,id',
             'total_price' => 'nullable|numeric|min:0',
-            'paid_amount' => 'nullable|numeric|min:0'
+            'paid_amount' => 'nullable|numeric|min:0',
+            'event_time' => 'nullable'
         ]);
         
         // Only include fields that are provided in the request
@@ -944,6 +947,9 @@ class DecorationController extends Controller
         }
         if ($request->has('paid_amount')) {
             $data['paid_amount'] = $request->paid_amount;
+        }
+        if ($request->has('event_time')) {
+            $data['event_time'] = $request->event_time;
         }
         if ($request->has('special_requests')) {
             $data['special_requests'] = $request->special_requests;
@@ -1158,11 +1164,21 @@ class DecorationController extends Controller
     /**
      * Print decoration order invoice
      */
-    public function printOrder(DecorationOrder $order)
+    /**
+     * Print simple decoration order invoice
+     */
+    public function printOrder($order)
     {
-        $order->load(['decoration', 'customer', 'assignedEmployee']);
+        // محاولة العثور على الطلب في الجدول الجديد
+        $simpleOrder = \App\Models\SimpleDecorationOrder::with('assignedEmployee')->find($order);
         
-        // Get company info from environment variables
+        if ($simpleOrder) {
+            return view('decorations.simple-print-invoice', ['order' => $simpleOrder]);
+        }
+        
+        // إذا لم يكن في الجدول الجديد، استخدم القديم
+        $oldOrder = DecorationOrder::with(['decoration', 'customer', 'assignedEmployee'])->findOrFail($order);
+        
         $companyInfo = [
             'name' => env('COMPANY_NAME', 'نظام إدارة الديكورات'),
             'phone' => env('COMPANY_PHONE', ''),
@@ -1171,10 +1187,9 @@ class DecorationController extends Controller
             'logo' => env('COMPANY_LOGO', 'dashboard-assets/img/logo.png')
         ];
         
-        // Generate QR code URL for verification
-        $qrCodeUrl = route('decoration.orders.verify', $order->id);
+        $qrCodeUrl = route('decoration.orders.verify', $oldOrder->id);
         
-        return view('decorations.print-invoice', compact('order', 'companyInfo', 'qrCodeUrl'));
+        return view('decorations.print-invoice', compact('oldOrder', 'companyInfo', 'qrCodeUrl'));
     }
 
     /**

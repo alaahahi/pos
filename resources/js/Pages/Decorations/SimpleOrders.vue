@@ -66,6 +66,32 @@
           </div>
         </div>
 
+        <!-- Second Row - Financial Stats -->
+        <div class="row g-3 mb-4">
+          <div class="col-md-6">
+            <div class="stat-card bg-success">
+              <div class="stat-icon">
+                <i class="bi bi-wallet2"></i>
+              </div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalPaid) }}</h3>
+                <p>💰 إجمالي المدفوع</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="stat-card bg-warning">
+              <div class="stat-icon">
+                <i class="bi bi-exclamation-circle"></i>
+              </div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalRemaining) }}</h3>
+                <p>📊 إجمالي المتبقي</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
         <!-- Filters and Search -->
         <div class="card mb-4 shadow-sm">
           <div class="card-body">
@@ -546,7 +572,7 @@ const createForm = reactive({
 
 // Computed statistics
 const pendingCount = computed(() => {
-  return props.orders.data.filter(o => ['created', 'received', 'executing'].includes(o.status)).length
+  return props.orders.data.filter(o => ['created', 'received', 'executing'].includes(o.status) && o.status !== 'cancelled').length
 })
 
 const completedCount = computed(() => {
@@ -555,8 +581,20 @@ const completedCount = computed(() => {
 
 const totalRevenue = computed(() => {
   return props.orders.data
-    .filter(o => ['full_payment', 'completed'].includes(o.status))
+    .filter(o => o.status !== 'cancelled') // استثناء الملغية
     .reduce((sum, o) => sum + (o.total_price || 0), 0)
+})
+
+const totalPaid = computed(() => {
+  return props.orders.data
+    .filter(o => o.status !== 'cancelled') // استثناء الملغية
+    .reduce((sum, o) => sum + (o.paid_amount || 0), 0)
+})
+
+const totalRemaining = computed(() => {
+  return props.orders.data
+    .filter(o => o.status !== 'cancelled') // استثناء الملغية
+    .reduce((sum, o) => sum + ((o.total_price || 0) - (o.paid_amount || 0)), 0)
 })
 
 // Functions
