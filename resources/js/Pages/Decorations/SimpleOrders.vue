@@ -5,9 +5,18 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
-        <Link class="btn btn-primary" :href="route('decorations.index')">
-          <i class="bi bi-arrow-left"></i> {{ translations.back || 'رجوع' }}
-        </Link>
+        <div class="d-flex gap-2">
+          <Link 
+            v-if="hasPermission('create decoration')" 
+            class="btn btn-success" 
+            :href="route('decoration.orders.create')"
+          >
+            <i class="bi bi-plus-circle"></i> إضافة طلب جديد
+          </Link>
+          <Link class="btn btn-primary" :href="route('decorations.index')">
+            <i class="bi bi-arrow-left"></i> {{ translations.back || 'رجوع' }}
+          </Link>
+        </div>
       </div>
     </template>
 

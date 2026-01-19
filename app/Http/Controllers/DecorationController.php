@@ -781,6 +781,21 @@ class DecorationController extends Controller
     }
 
     /**
+     * Show form for creating new decoration order
+     */
+    public function createOrderForm()
+    {
+        // التحقق من الصلاحيات
+        if (!auth()->user()->can('create decoration')) {
+            abort(403, 'ليس لديك صلاحية لإنشاء طلبات الديكورات');
+        }
+
+        // Redirect to decorations index page where user can create order
+        return redirect()->route('decorations.index')
+            ->with('openCreateModal', true);
+    }
+
+    /**
      * Create new decoration order
      */
     public function createOrder(Request $request)

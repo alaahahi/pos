@@ -39,6 +39,14 @@
 
     <!-- Decorations Section -->
     <li class="nav-item" v-if="hasPermission('read decoration')">
+        <Link class="nav-link" :href="route('decorations.orders.simple')" :class="{ 'collapsed': !$page.url.startsWith('/decorations-orders-simple') }">
+            <i class="bi bi-palette"></i>
+            <span>{{ translations.decorations || 'الديكور' }}</span>
+        </Link>
+    </li>
+
+    <!-- Old Decorations Section (Hidden) -->
+    <!-- <li class="nav-item" v-if="hasPermission('read decoration')">
         <a class="nav-link " data-bs-target="#decorations-nav" data-bs-toggle="collapse" href="#"  :class="{ 'collapsed':  !$page.url.startsWith('/decorations') && !$page.url.startsWith('/decoration-orders') && !$page.url.startsWith('/decoration-payments') && !$page.url.startsWith('/decoration-monthly-accounting') }" >
             <i class="bi bi-palette"></i><span>{{translations.decorations  }}</span><i class="bi bi-chevron-down ms-auto"></i>
         </a>
@@ -69,7 +77,7 @@
                </Link>
             </li>
         </ul>
-    </li>
+    </li> -->
 
     <li class="nav-item" v-if="hasPermission('read boxes')">
     <Link  class="nav-link "  :href="route('boxes.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/boxes') }" >
@@ -432,17 +440,17 @@ const prefetchOnHover = (url) => {
   }
 };
 
-// Auto-expand decoration submenu if on decoration pages
+// Auto-expand decoration submenu if on decoration pages (DISABLED - now using direct link)
 onMounted(() => {
   nextTick(() => {
-    const currentUrl = page.url.value
-    if (currentUrl.startsWith('/decorations') || currentUrl.startsWith('/decoration-orders') || currentUrl.startsWith('/decoration-payments') || currentUrl.startsWith('/decoration-monthly-accounting')) {
-      const decorationsNav = document.getElementById('decorations-nav')
-      if (decorationsNav) {
-        decorationsNav.classList.add('show')
-        decorationsNav.classList.remove('collapse')
-      }
-    }
+    // const currentUrl = page.url.value
+    // if (currentUrl.startsWith('/decorations') || currentUrl.startsWith('/decoration-orders') || currentUrl.startsWith('/decoration-payments') || currentUrl.startsWith('/decoration-monthly-accounting')) {
+    //   const decorationsNav = document.getElementById('decorations-nav')
+    //   if (decorationsNav) {
+    //     decorationsNav.classList.add('show')
+    //     decorationsNav.classList.remove('collapse')
+    //   }
+    // }
     
     // Add click listeners to all sidebar links to close sidebar on mobile
     const sidebarLinks = document.querySelectorAll('#sidebar .nav-link, #sidebar a[href]')

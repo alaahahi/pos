@@ -116,6 +116,19 @@ class Kernel extends ConsoleKernel
             })->everyTenMinutes()
               ->name('auto-sync-from-server')
               ->withoutOverlapping(15); // منع التداخل - انتظر 15 دقيقة إذا كان job آخر يعمل
+        
+        // نسخة احتياطية تلقائية كل 24 ساعة (للقاعدة المحلية فقط)
+        $schedule->job(new \App\Jobs\DatabaseBackupJob())
+            ->daily()
+            ->at('03:00') // الساعة 3 صباحاً
+            ->name('daily-database-backup')
+            ->withoutOverlapping();
+        
+        // إغلاق تلقائي للصناديق قبل نهاية اليوم
+        $schedule->job(new \App\Jobs\AutoCloseDailyBoxJob())
+            ->dailyAt('23:30') // الساعة 11:30 مساءً
+            ->name('auto-close-daily-boxes')
+            ->withoutOverlapping();
         }
     }
 
