@@ -6,16 +6,14 @@
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
         <div class="d-flex gap-2">
-          <Link 
+          <button 
             v-if="hasPermission('create decoration')" 
-            class="btn btn-success" 
-            :href="route('decoration.orders.create')"
+            @click="openCreateModal" 
+            class="btn btn-success"
           >
             <i class="bi bi-plus-circle"></i> إضافة طلب جديد
-          </Link>
-          <Link class="btn btn-primary" :href="route('decorations.index')">
-            <i class="bi bi-arrow-left"></i> {{ translations.back || 'رجوع' }}
-          </Link>
+          </button>
+          
         </div>
       </div>
     </template>
@@ -294,6 +292,72 @@
         </div>
       </div>
     </div>
+
+    <!-- Create Order Modal -->
+    <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
+      <div class="modal-content-custom" style="max-width: 800px;">
+        <div class="modal-header-custom" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
+          <h5>➕ إضافة طلب ديكور جديد</h5>
+          <button @click="showCreateModal = false" class="btn-close-custom">×</button>
+        </div>
+        <div class="modal-body-custom" style="max-height: 70vh; overflow-y: auto;">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">اسم العميل <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" v-model="createForm.customer_name" placeholder="أدخل اسم العميل">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" v-model="createForm.customer_phone" placeholder="07XX XXX XXXX">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">تاريخ المناسبة <span class="text-danger">*</span></label>
+              <input type="date" class="form-control" v-model="createForm.event_date">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">وقت المناسبة</label>
+              <input type="time" class="form-control" v-model="createForm.event_time">
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">عنوان المناسبة <span class="text-danger">*</span></label>
+              <textarea class="form-control" v-model="createForm.event_address" rows="2" placeholder="أدخل عنوان المناسبة..."></textarea>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">السعر الإجمالي ($) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" v-model="createForm.total_price" min="0" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">المبلغ المدفوع ($)</label>
+              <input type="number" class="form-control" v-model="createForm.paid_amount" min="0" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">عدد الضيوف</label>
+              <input type="number" class="form-control" v-model="createForm.guest_count" min="1">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">الموظف المسؤول</label>
+              <select class="form-select" v-model="createForm.assigned_employee_id">
+                <option value="">اختر موظف</option>
+                <option v-for="employee in employees" :key="employee.id" :value="employee.id">
+                  {{ employee.name }}
+                </option>
+              </select>
+            </div>
+            <div class="col-md-12">
+              <label class="form-label">ملاحظات خاصة</label>
+              <textarea class="form-control" v-model="createForm.special_requests" rows="3" placeholder="أي طلبات أو ملاحظات خاصة..."></textarea>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer-custom">
+          <button @click="showCreateModal = false" class="btn btn-secondary">إلغاء</button>
+          <button @click="saveNewOrder" class="btn btn-success">
+            <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
+            <i class="bi bi-check-circle me-1"></i> حفظ الطلب
+          </button>
+        </div>
+      </div>
+    </div>
   </AuthenticatedLayout>
 </template>
 
@@ -320,6 +384,7 @@ const hasPermission = (permission) => {
 
 // State
 const showEditModal = ref(false)
+const showCreateModal = ref(false)
 const selectedOrder = ref(null)
 const processing = ref(false)
 
@@ -334,6 +399,20 @@ const searchForm = reactive({
 const editForm = reactive({
   status: '',
   assigned_employee_id: ''
+})
+
+// Create form
+const createForm = reactive({
+  customer_name: '',
+  customer_phone: '',
+  event_date: '',
+  event_time: '',
+  event_address: '',
+  total_price: 0,
+  paid_amount: 0,
+  guest_count: 1,
+  assigned_employee_id: '',
+  special_requests: ''
 })
 
 // Computed statistics
@@ -390,6 +469,61 @@ const saveQuickEdit = () => {
     },
     onError: () => {
       processing.value = false
+    }
+  })
+}
+
+const openCreateModal = () => {
+  // Reset form
+  createForm.customer_name = ''
+  createForm.customer_phone = ''
+  createForm.event_date = ''
+  createForm.event_time = ''
+  createForm.event_address = ''
+  createForm.total_price = 0
+  createForm.paid_amount = 0
+  createForm.guest_count = 1
+  createForm.assigned_employee_id = ''
+  createForm.special_requests = ''
+  
+  showCreateModal.value = true
+}
+
+const saveNewOrder = () => {
+  if (!createForm.customer_name || !createForm.customer_phone || !createForm.event_date || !createForm.event_address || !createForm.total_price) {
+    alert('الرجاء ملء جميع الحقول المطلوبة (*)');
+    return
+  }
+  
+  processing.value = true
+  
+  // تحضير البيانات
+  const formData = {
+    decoration_id: 1, // يمكن تغييرها حسب الحاجة أو إضافة حقل اختيار الديكور
+    customer_name: createForm.customer_name,
+    customer_phone: createForm.customer_phone,
+    event_date: createForm.event_date,
+    event_time: createForm.event_time || '12:00',
+    event_address: createForm.event_address,
+    guest_count: createForm.guest_count || 1,
+    special_requests: createForm.special_requests,
+    total_price: createForm.total_price,
+    paid_amount: createForm.paid_amount || 0,
+    assigned_employee_id: createForm.assigned_employee_id || null,
+    currency: 'dollar'
+  }
+  
+  router.post(route('decoration.orders.store'), formData, {
+    onSuccess: () => {
+      processing.value = false
+      showCreateModal.value = false
+      // Reload page to show new order
+      router.reload({ only: ['orders'] })
+    },
+    onError: (errors) => {
+      processing.value = false
+      console.error('Errors:', errors)
+      alert('حدث خطأ أثناء حفظ الطلب. الرجاء المحاولة مرة أخرى.')
     }
   })
 }
