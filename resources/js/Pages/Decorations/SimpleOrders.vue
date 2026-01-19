@@ -103,6 +103,12 @@
                 </select>
               </div>
               <div class="col-md-2">
+                <input type="date" class="form-control" v-model="searchForm.date_from" @change="applyFilters" placeholder="من تاريخ">
+              </div>
+              <div class="col-md-2">
+                <input type="date" class="form-control" v-model="searchForm.date_to" @change="applyFilters" placeholder="إلى تاريخ">
+              </div>
+              <div class="col-md-2">
                 <button class="btn btn-outline-secondary w-100" @click="resetFilters">
                   <i class="bi bi-arrow-clockwise"></i> إعادة تعيين
                 </button>
@@ -251,15 +257,15 @@
 
     <!-- Quick Edit Modal -->
     <div v-if="showEditModal" class="modal-overlay" @click.self="showEditModal = false">
-      <div class="modal-content-custom">
-        <div class="modal-header-custom">
-          <h5>⚡ تعديل سريع - {{ selectedOrder?.decoration?.name }}</h5>
+      <div class="modal-content-custom" style="max-width: 600px;">
+        <div class="modal-header-custom" style="background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);">
+          <h5>⚡ تعديل سريع - {{ selectedOrder?.customer_name }}</h5>
           <button @click="showEditModal = false" class="btn-close-custom">×</button>
         </div>
         <div class="modal-body-custom">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">الحالة</label>
+              <label class="form-label">✨ الحالة</label>
               <select class="form-select" v-model="editForm.status">
                 <option value="created">📝 تم الإنشاء</option>
                 <option value="received">📥 تم الاستلام</option>
@@ -271,7 +277,7 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">الموظف المعين</label>
+              <label class="form-label">🔧 المنجز</label>
               <select class="form-select" v-model="editForm.assigned_employee_id">
                 <option value="">اختر موظف</option>
                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
@@ -279,13 +285,21 @@
                 </option>
               </select>
             </div>
+            <div class="col-md-6">
+              <label class="form-label">💵 السعر الكلي ($)</label>
+              <input type="number" class="form-control" v-model="editForm.total_price" min="0" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">💰 المدفوع ($)</label>
+              <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" step="0.01">
+            </div>
           </div>
         </div>
         <div class="modal-footer-custom">
           <button @click="showEditModal = false" class="btn btn-secondary">إلغاء</button>
           <button @click="saveQuickEdit" class="btn btn-primary">
             <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-            حفظ التعديلات
+            <i class="bi bi-check-circle me-1"></i> حفظ
           </button>
         </div>
       </div>
@@ -293,47 +307,27 @@
 
     <!-- Create Order Modal -->
     <div v-if="showCreateModal" class="modal-overlay" @click.self="showCreateModal = false">
-      <div class="modal-content-custom" style="max-width: 800px;">
+      <div class="modal-content-custom" style="max-width: 600px;">
         <div class="modal-header-custom" style="background: linear-gradient(135deg, #10b981 0%, #059669 100%);">
-          <h5>➕ إضافة طلب ديكور جديد</h5>
+          <h5>➕ إضافة طلب جديد</h5>
           <button @click="showCreateModal = false" class="btn-close-custom">×</button>
         </div>
-        <div class="modal-body-custom" style="max-height: 70vh; overflow-y: auto;">
+        <div class="modal-body-custom">
           <div class="row g-3">
             <div class="col-md-6">
-              <label class="form-label">اسم العميل <span class="text-danger">*</span></label>
-              <input type="text" class="form-control" v-model="createForm.customer_name" placeholder="أدخل اسم العميل">
+              <label class="form-label">👤 اسم الزبون <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" v-model="createForm.customer_name" placeholder="اسم الزبون">
             </div>
             <div class="col-md-6">
-              <label class="form-label">رقم الهاتف <span class="text-danger">*</span></label>
+              <label class="form-label">📞 رقم الهاتف <span class="text-danger">*</span></label>
               <input type="text" class="form-control" v-model="createForm.customer_phone" placeholder="07XX XXX XXXX">
             </div>
             <div class="col-md-6">
-              <label class="form-label">تاريخ المناسبة <span class="text-danger">*</span></label>
+              <label class="form-label">📅 تاريخ المناسبة <span class="text-danger">*</span></label>
               <input type="date" class="form-control" v-model="createForm.event_date">
             </div>
             <div class="col-md-6">
-              <label class="form-label">وقت المناسبة</label>
-              <input type="time" class="form-control" v-model="createForm.event_time">
-            </div>
-            <div class="col-md-12">
-              <label class="form-label">عنوان المناسبة <span class="text-danger">*</span></label>
-              <textarea class="form-control" v-model="createForm.event_address" rows="2" placeholder="أدخل عنوان المناسبة..."></textarea>
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">السعر الإجمالي ($) <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" v-model="createForm.total_price" min="0" step="0.01">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">المبلغ المدفوع ($)</label>
-              <input type="number" class="form-control" v-model="createForm.paid_amount" min="0" step="0.01">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">عدد الضيوف</label>
-              <input type="number" class="form-control" v-model="createForm.guest_count" min="1">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label">الموظف المسؤول</label>
+              <label class="form-label">🔧 المنجز</label>
               <select class="form-select" v-model="createForm.assigned_employee_id">
                 <option value="">اختر موظف</option>
                 <option v-for="employee in employees" :key="employee.id" :value="employee.id">
@@ -341,9 +335,17 @@
                 </option>
               </select>
             </div>
+            <div class="col-md-6">
+              <label class="form-label">💵 السعر الكلي ($) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" v-model="createForm.total_price" min="0" step="0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">💰 المدفوع ($)</label>
+              <input type="number" class="form-control" v-model="createForm.paid_amount" min="0" step="0.01">
+            </div>
             <div class="col-md-12">
-              <label class="form-label">ملاحظات خاصة</label>
-              <textarea class="form-control" v-model="createForm.special_requests" rows="3" placeholder="أي طلبات أو ملاحظات خاصة..."></textarea>
+              <label class="form-label">📝 ملاحظات</label>
+              <textarea class="form-control" v-model="createForm.special_requests" rows="2" placeholder="ملاحظات أو طلبات خاصة..."></textarea>
             </div>
           </div>
         </div>
@@ -351,7 +353,7 @@
           <button @click="showCreateModal = false" class="btn btn-secondary">إلغاء</button>
           <button @click="saveNewOrder" class="btn btn-success">
             <span v-if="processing" class="spinner-border spinner-border-sm me-2"></span>
-            <i class="bi bi-check-circle me-1"></i> حفظ الطلب
+            <i class="bi bi-check-circle me-1"></i> حفظ
           </button>
         </div>
       </div>
@@ -386,17 +388,32 @@ const showCreateModal = ref(false)
 const selectedOrder = ref(null)
 const processing = ref(false)
 
+// Get first and last day of current month
+const getFirstDayOfMonth = () => {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split('T')[0]
+}
+
+const getLastDayOfMonth = () => {
+  const now = new Date()
+  return new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split('T')[0]
+}
+
 // Search form
 const searchForm = reactive({
   search: props.filters?.search || '',
   status: props.filters?.status || '',
-  employee: props.filters?.employee || ''
+  employee: props.filters?.employee || '',
+  date_from: props.filters?.date_from || getFirstDayOfMonth(),
+  date_to: props.filters?.date_to || getLastDayOfMonth()
 })
 
 // Edit form
 const editForm = reactive({
   status: '',
-  assigned_employee_id: ''
+  assigned_employee_id: '',
+  total_price: 0,
+  paid_amount: 0
 })
 
 // Create form
@@ -404,11 +421,8 @@ const createForm = reactive({
   customer_name: '',
   customer_phone: '',
   event_date: '',
-  event_time: '',
-  event_address: '',
   total_price: 0,
   paid_amount: 0,
-  guest_count: 1,
   assigned_employee_id: '',
   special_requests: ''
 })
@@ -448,6 +462,8 @@ const resetFilters = () => {
   searchForm.search = ''
   searchForm.status = ''
   searchForm.employee = ''
+  searchForm.date_from = getFirstDayOfMonth()
+  searchForm.date_to = getLastDayOfMonth()
   applyFilters()
 }
 
@@ -455,6 +471,8 @@ const quickEdit = (order) => {
   selectedOrder.value = order
   editForm.status = order.status
   editForm.assigned_employee_id = order.assigned_employee_id || ''
+  editForm.total_price = order.total_price || 0
+  editForm.paid_amount = order.paid_amount || 0
   showEditModal.value = true
 }
 
@@ -476,11 +494,8 @@ const openCreateModal = () => {
   createForm.customer_name = ''
   createForm.customer_phone = ''
   createForm.event_date = ''
-  createForm.event_time = ''
-  createForm.event_address = ''
   createForm.total_price = 0
   createForm.paid_amount = 0
-  createForm.guest_count = 1
   createForm.assigned_employee_id = ''
   createForm.special_requests = ''
   
@@ -488,22 +503,21 @@ const openCreateModal = () => {
 }
 
 const saveNewOrder = () => {
-  if (!createForm.customer_name || !createForm.customer_phone || !createForm.event_date || !createForm.event_address || !createForm.total_price) {
-    alert('الرجاء ملء جميع الحقول المطلوبة (*)');
+  if (!createForm.customer_name || !createForm.customer_phone || !createForm.event_date || !createForm.total_price) {
+    alert('الرجاء ملء جميع الحقول المطلوبة (*)')
     return
   }
   
   processing.value = true
   
-  // تحضير البيانات
   const formData = {
-    decoration_id: 1, // يمكن تغييرها حسب الحاجة أو إضافة حقل اختيار الديكور
+    decoration_id: 1,
     customer_name: createForm.customer_name,
     customer_phone: createForm.customer_phone,
     event_date: createForm.event_date,
-    event_time: createForm.event_time || '12:00',
-    event_address: createForm.event_address,
-    guest_count: createForm.guest_count || 1,
+    event_time: '12:00',
+    event_address: createForm.special_requests || '-',
+    guest_count: 1,
     special_requests: createForm.special_requests,
     total_price: createForm.total_price,
     paid_amount: createForm.paid_amount || 0,
@@ -515,13 +529,12 @@ const saveNewOrder = () => {
     onSuccess: () => {
       processing.value = false
       showCreateModal.value = false
-      // Reload page to show new order
       router.reload({ only: ['orders'] })
     },
     onError: (errors) => {
       processing.value = false
       console.error('Errors:', errors)
-      alert('حدث خطأ أثناء حفظ الطلب. الرجاء المحاولة مرة أخرى.')
+      alert('حدث خطأ أثناء حفظ الطلب')
     }
   })
 }

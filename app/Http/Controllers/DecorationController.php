@@ -763,6 +763,12 @@ class DecorationController extends Controller
                       });
                 });
             })
+            ->when($request->date_from, function ($query, $dateFrom) {
+                return $query->whereDate('event_date', '>=', $dateFrom);
+            })
+            ->when($request->date_to, function ($query, $dateTo) {
+                return $query->whereDate('event_date', '<=', $dateTo);
+            })
             ->latest()
             ->paginate(20);
 
@@ -776,7 +782,7 @@ class DecorationController extends Controller
             'translations' => __('messages'),
             'orders' => $orders,
             'employees' => $employees,
-            'filters' => $request->only(['status', 'search', 'employee'])
+            'filters' => $request->only(['status', 'search', 'employee', 'date_from', 'date_to'])
         ]);
     }
 
@@ -934,6 +940,7 @@ class DecorationController extends Controller
             'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
             'assigned_employee_id' => 'nullable|exists:users,id',
             'assigned_team_id' => 'nullable|exists:decoration_teams,id',
+            'total_price' => 'nullable|numeric|min:0',
             'paid_amount' => 'nullable|numeric|min:0',
             'scheduled_date' => 'nullable|date',
             'notes' => 'nullable|string'
@@ -951,6 +958,9 @@ class DecorationController extends Controller
         }
         if ($request->has('assigned_team_id')) {
             $data['assigned_team_id'] = $request->assigned_team_id;
+        }
+        if ($request->has('total_price')) {
+            $data['total_price'] = $request->total_price;
         }
         if ($request->has('paid_amount')) {
             $data['paid_amount'] = $request->paid_amount;
