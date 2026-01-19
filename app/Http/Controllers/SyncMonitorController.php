@@ -491,6 +491,9 @@ class SyncMonitorController extends Controller
                 }
             }
             
+            // إعادة تفعيل Foreign Key Checks
+            DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = ON');
+            
             $response = [
                 'success' => true,
                 'message' => 'تمت المزامنة بنجاح',
@@ -511,6 +514,13 @@ class SyncMonitorController extends Controller
             
             return response()->json($response);
         } catch (\Exception $e) {
+            // التأكد من إعادة تفعيل Foreign Keys حتى في حالة الخطأ
+            try {
+                DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = ON');
+            } catch (\Exception $pragmaError) {
+                // تجاهل خطأ PRAGMA
+            }
+            
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
@@ -554,6 +564,9 @@ class SyncMonitorController extends Controller
                 Log::error("Failed to create table {$tableName} in SQLite: " . $e->getMessage());
                 throw new \Exception("فشل إنشاء الجدول {$tableName} في SQLite: " . $e->getMessage());
             }
+            
+            // تعطيل Foreign Key Checks في SQLite لتجنب مشاكل الترتيب
+            DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = OFF');
             
             // جلب البيانات من MySQL (باستخدام chunks للجداول الكبيرة)
             $batchSize = 500;

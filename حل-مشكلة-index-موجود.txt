@@ -1,15 +1,0 @@
-✅ تم حل المشكلة!
-
-المشكلة:
-  index purchase_invoices_supplier_id_index already exists
-
-الحل:
-  ✅ تم تعديل Migration ليتخطى إنشاء index في SQLite
-  ✅ الـ index موجود مسبقاً، لا حاجة لإنشائه
-
-الآن:
-  - في SQLite: لا يفعل Migration أي شيء (الـ index موجود)
-  - في MySQL: يعدل foreign key بشكل صحيح
-
-🚀 الآن Migration سيعمل بدون مشاكل!
-   جرّبه من تاب Migrations في Sync Monitor

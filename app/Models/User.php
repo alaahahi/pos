@@ -71,21 +71,48 @@ class User extends Authenticatable
         'password',
         'created_at',
         'is_active',
-        'avatar',
+        'avatar_url',
         'updated_at',
         'commission_enabled',
         'commission_rate_percent',
         'last_activity_at'
     ];
 
-    protected $appends = ['avatar_url'];
+    protected $appends = [];
 
+    /**
+     * Get the avatar URL attribute.
+     * الآن avatar_url محفوظ في قاعدة البيانات، لذا نقرأه مباشرةً
+     * أو نبنيه من avatar إذا لم يكن محفوظاً
+     */
     public function getAvatarUrlAttribute()
     {
+        // إذا كان avatar_url محفوظ في قاعدة البيانات، استخدمه
+        if (isset($this->attributes['avatar_url']) && !empty($this->attributes['avatar_url'])) {
+            return $this->attributes['avatar_url'];
+        }
+        
+        // وإلا، بناه من avatar (للتوافق مع الإصدارات القديمة)
         if (isset($this->attributes['avatar']) && $this->attributes['avatar']) {
             return asset("storage/{$this->attributes['avatar']}");
         }
         return asset('storage/avatars/default_avatar.png');
+    }
+    
+    /**
+     * Set the avatar URL attribute when avatar changes.
+     * يتم تحديث avatar_url تلقائياً عند تغيير avatar
+     */
+    public function setAvatarAttribute($value)
+    {
+        $this->attributes['avatar'] = $value;
+        
+        // تحديث avatar_url تلقائياً
+        if (!empty($value)) {
+            $this->attributes['avatar_url'] = asset("storage/{$value}");
+        } else {
+            $this->attributes['avatar_url'] = asset('storage/avatars/default_avatar.png');
+        }
     }
     /**
      * The attributes that should be hidden for serialization.

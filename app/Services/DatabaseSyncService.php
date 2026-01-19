@@ -449,6 +449,7 @@ class DatabaseSyncService
      * - تحويل timestamps من ISO 8601 إلى MySQL format
      * - إزالة deleted_at للعمليات insert
      * - إزالة id (السيرفر سينشئ id جديد)
+     * - إزالة الحقول الإضافية (مثل avatar_url)
      */
     protected function cleanDataForSync(array $data, string $action = 'insert'): array
     {
@@ -458,6 +459,16 @@ class DatabaseSyncService
         // للعمليات insert، إزالة deleted_at (لا نريد إدراج سجل محذوف)
         if ($action === 'insert') {
             unset($data['deleted_at']);
+        }
+        
+        // إزالة الحقول الإضافية التي لا توجد في MySQL
+        // ملاحظة: avatar_url الآن موجود في MySQL (تمت إضافته عبر migration)
+        $extraFields = [
+            // يمكن إضافة حقول إضافية أخرى هنا إذا لزم الأمر
+        ];
+        
+        foreach ($extraFields as $field) {
+            unset($data[$field]);
         }
         
         // تحويل timestamps من ISO 8601 إلى MySQL format (Y-m-d H:i:s)

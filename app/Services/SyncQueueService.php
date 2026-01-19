@@ -10,19 +10,21 @@ class SyncQueueService
 {
     /**
      * إضافة تغيير إلى قائمة الانتظار للمزامنة
-     * يعمل فقط في البيئة المحلية (Local)
+     * يعمل فقط في البيئة المحلية (Local) أو عندما يكون الاتصال الافتراضي SQLite
      */
     public function queueChange(string $tableName, int $recordId, string $action, array $data = null, array $changes = null): bool
     {
-        // فقط في البيئة المحلية أو إذا كان الاتصال الافتراضي SQLite
+        // العمل فقط إذا كان الاتصال الافتراضي SQLite
         $defaultConnection = config('database.default');
         $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
         
-        if (!$isSQLite && (env('APP_ENV') === 'server' || env('APP_ENV') === 'production')) {
-            return false; // على السيرفر: لا حاجة لـ sync_queue
+        // إذا لم يكن SQLite، لا نحتاج لـ sync_queue
+        // (على السيرفر مع MySQL، لا حاجة للمزامنة)
+        if (!$isSQLite) {
+            return false;
         }
 
-        // استخدام الاتصال الافتراضي (sync_sqlite في Local، mysql في Online)
+        // استخدام الاتصال الافتراضي (sync_sqlite)
         $connection = config('database.default');
         
         // التحقق من وجود الجدول

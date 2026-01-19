@@ -75,12 +75,11 @@ class Kernel extends ConsoleKernel
             }
         })->everyFiveMinutes()
           ->name('auto-sync-to-server')
-          ->withoutOverlapping(10) // منع التداخل - انتظر 10 دقائق إذا كان job آخر يعمل
-          ->runInBackground(); // تشغيل في الخلفية
+          ->withoutOverlapping(10); // منع التداخل - انتظر 10 دقائق إذا كان job آخر يعمل
         
         // مزامنة تلقائية من السيرفر إلى المحلي كل 10 دقائق (إذا كان هناك إنترنت)
         // يعمل فقط في النظام المحلي
-        if (config('app.env') === 'local') {
+        if (config('app.env') === 'local' || str_contains(config('app.url'), 'local') || str_contains(config('app.url'), '127.0.0.1')) {
             $schedule->call(function () {
                 try {
                     // التحقق من أن API Sync مفعّل
@@ -116,8 +115,7 @@ class Kernel extends ConsoleKernel
                 }
             })->everyTenMinutes()
               ->name('auto-sync-from-server')
-              ->withoutOverlapping(15) // منع التداخل - انتظر 15 دقيقة إذا كان job آخر يعمل
-              ->runInBackground(); // تشغيل في الخلفية
+              ->withoutOverlapping(15); // منع التداخل - انتظر 15 دقيقة إذا كان job آخر يعمل
         }
     }
 
