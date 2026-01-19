@@ -140,14 +140,7 @@
                   <tr v-for="(order, index) in orders.data" :key="order.id" class="table-row-excel">
                     <td class="text-center fw-bold text-muted">{{ index + 1 + (orders.current_page - 1) * orders.per_page }}</td>
                     <td>
-                      <div class="d-flex align-items-center">
-                        <div class="decoration-icon">🎨</div>
-                        <div>
-                          <strong>{{ order.decoration?.name || 'غير محدد' }}</strong>
-                          <br>
-                          <small class="text-muted">{{ order.decoration?.type_name || '' }}</small>
-                        </div>
-                      </div>
+                      {{ order.decoration?.name || 'غير محدد' }}
                     </td>
                     <td>
                       <div>
@@ -511,7 +504,7 @@ const saveNewOrder = () => {
   processing.value = true
   
   const formData = {
-    decoration_id: 1,
+    decoration_id: null,
     customer_name: createForm.customer_name,
     customer_phone: createForm.customer_phone,
     event_date: createForm.event_date,

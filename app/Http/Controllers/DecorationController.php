@@ -815,32 +815,48 @@ class DecorationController extends Controller
 
         try {
             $request->validate([
-                'decoration_id' => 'required|exists:decorations,id',
+                'decoration_id' => 'nullable|exists:decorations,id',
                 'customer_id' => 'nullable|exists:customers,id',
                 'customer_name' => 'required|string|max:255',
                 'customer_phone' => 'required|string|max:20',
                 'customer_email' => 'nullable|email',
-                'event_address' => 'required|string',
-                'event_date' => 'required|date|after_or_equal:today',
-                'event_time' => 'required',
-                'guest_count' => 'required|integer|min:1',
+                'event_address' => 'nullable|string',
+                'event_date' => 'required|date',
+                'event_time' => 'nullable',
+                'guest_count' => 'nullable|integer|min:1',
                 'special_requests' => 'nullable|string',
                 'selected_items' => 'nullable|array',
                 'additional_cost' => 'nullable|numeric|min:0',
                 'discount' => 'nullable|numeric|min:0'
             ]);
 
-            $decoration = Decoration::findOrFail($request->decoration_id);
+            // إذا لم يتم تحديد decoration_id، استخدم أول decoration متاح أو null
+            $decorationId = $request->decoration_id;
+            if (!$decorationId) {
+                $firstDecoration = Decoration::first();
+                $decorationId = $firstDecoration ? $firstDecoration->id : null;
+            }
             
-            $basePrice = $decoration->currency === 'dollar' ? $decoration->base_price_dollar : $decoration->base_price_dinar;
-            $additionalCost = $request->additional_cost ?? 0;
-            $discount = $request->discount ?? 0;
-            $totalPrice = $basePrice + $additionalCost - $discount;
+            $decoration = $decorationId ? Decoration::find($decorationId) : null;
+            
+            // حساب السعر
+            if ($decoration) {
+                $basePrice = $decoration->currency === 'dollar' ? $decoration->base_price_dollar : $decoration->base_price_dinar;
+                $additionalCost = $request->additional_cost ?? 0;
+                $discount = $request->discount ?? 0;
+                $totalPrice = $basePrice + $additionalCost - $discount;
+                $currency = $decoration->currency;
+            } else {
+                $basePrice = $request->total_price ?? 0;
+                $totalPrice = $request->total_price ?? 0;
+                $currency = $request->currency ?? 'dollar';
+            }
 
             $orderData = $request->all();
+            $orderData['decoration_id'] = $decorationId;
             $orderData['base_price'] = $basePrice;
             $orderData['total_price'] = $totalPrice;
-            $orderData['currency'] = $decoration->currency; // إضافة العملة
+            $orderData['currency'] = $currency;
             $orderData['status'] = 'created';
 
             // Create customer balance if customer exists and doesn't have one
