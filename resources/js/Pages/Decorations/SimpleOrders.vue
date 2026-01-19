@@ -140,7 +140,7 @@
                   <tr v-for="(order, index) in orders.data" :key="order.id" class="table-row-excel">
                     <td class="text-center fw-bold text-muted">{{ index + 1 + (orders.current_page - 1) * orders.per_page }}</td>
                     <td>
-                      {{ order.decoration?.name || 'غير محدد' }}
+                      {{ order.decoration_name || 'غير محدد' }}
                     </td>
                     <td>
                       <div>
@@ -194,9 +194,9 @@
                     </td>
                     <td class="text-center">
                       <div class="btn-group-sm" role="group">
-                        <Link v-if="hasPermission('read decoration')" :href="route('decoration.orders.show', order.id)" class="btn btn-sm btn-outline-primary" title="عرض التفاصيل">
+                        <button v-if="hasPermission('read decoration')" @click="showDetails(order)" class="btn btn-sm btn-outline-primary" title="عرض التفاصيل">
                           <i class="bi bi-eye"></i>
-                        </Link>
+                        </button>
                         <a v-if="hasPermission('read decoration')" :href="route('decoration.orders.print', order.id)" target="_blank" class="btn btn-sm btn-outline-info" title="طباعة">
                           <i class="bi bi-printer"></i>
                         </a>
@@ -355,6 +355,112 @@
         </div>
       </div>
     </div>
+
+    <!-- Show Details Modal -->
+    <div v-if="showDetailsModal" class="modal-overlay" @click.self="showDetailsModal = false">
+      <div class="modal-content-custom" style="max-width: 700px;">
+        <div class="modal-header-custom" style="background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);">
+          <h5>📋 تفاصيل الطلب</h5>
+          <button @click="showDetailsModal = false" class="btn-close-custom">×</button>
+        </div>
+        <div class="modal-body-custom">
+          <div class="details-grid" v-if="selectedOrder">
+            <div class="detail-card">
+              <div class="detail-icon">📦</div>
+              <div class="detail-content">
+                <div class="detail-label">اسم الديكور</div>
+                <div class="detail-value">{{ selectedOrder.decoration_name || 'غير محدد' }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">👤</div>
+              <div class="detail-content">
+                <div class="detail-label">اسم الزبون</div>
+                <div class="detail-value">{{ selectedOrder.customer_name }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">📞</div>
+              <div class="detail-content">
+                <div class="detail-label">رقم الهاتف</div>
+                <div class="detail-value">{{ selectedOrder.customer_phone }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">🔧</div>
+              <div class="detail-content">
+                <div class="detail-label">المنجز</div>
+                <div class="detail-value">{{ selectedOrder.assigned_employee?.name || 'غير محدد' }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">📅</div>
+              <div class="detail-content">
+                <div class="detail-label">تاريخ المناسبة</div>
+                <div class="detail-value">{{ formatDate(selectedOrder.event_date) }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">✨</div>
+              <div class="detail-content">
+                <div class="detail-label">الحالة</div>
+                <div class="detail-value">
+                  <span class="status-badge" :class="`status-${selectedOrder.status}`">
+                    {{ getStatusText(selectedOrder.status) }}
+                  </span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">💵</div>
+              <div class="detail-content">
+                <div class="detail-label">السعر الكلي</div>
+                <div class="detail-value text-primary fw-bold">{{ formatCurrency(selectedOrder.total_price) }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">💰</div>
+              <div class="detail-content">
+                <div class="detail-label">المدفوع</div>
+                <div class="detail-value text-success fw-bold">{{ formatCurrency(selectedOrder.paid_amount) }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card">
+              <div class="detail-icon">📊</div>
+              <div class="detail-content">
+                <div class="detail-label">المتبقي</div>
+                <div class="detail-value text-danger fw-bold">{{ formatCurrency(selectedOrder.total_price - selectedOrder.paid_amount) }}</div>
+              </div>
+            </div>
+            
+            <div class="detail-card full-width" v-if="selectedOrder.special_requests">
+              <div class="detail-icon">📝</div>
+              <div class="detail-content">
+                <div class="detail-label">ملاحظات خاصة</div>
+                <div class="detail-value" style="white-space: pre-wrap;">{{ selectedOrder.special_requests }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer-custom">
+          <button @click="showDetailsModal = false" class="btn btn-secondary">إغلاق</button>
+          <button v-if="hasPermission('update decoration')" @click="editFromDetails" class="btn btn-warning">
+            <i class="bi bi-pencil me-1"></i> تعديل
+          </button>
+          <a v-if="hasPermission('read decoration')" :href="route('decoration.orders.print', selectedOrder?.id)" target="_blank" class="btn btn-info">
+            <i class="bi bi-printer me-1"></i> طباعة
+          </a>
+        </div>
+      </div>
+    </div>
   </AuthenticatedLayout>
 </template>
 
@@ -384,6 +490,7 @@ const hasPermission = (permission) => {
 // State
 const showEditModal = ref(false)
 const showCreateModal = ref(false)
+const showDetailsModal = ref(false)
 const selectedOrder = ref(null)
 const processing = ref(false)
 
@@ -403,8 +510,8 @@ const searchForm = reactive({
   search: props.filters?.search || '',
   status: props.filters?.status || '',
   employee: props.filters?.employee || '',
-  date_from: props.filters?.date_from || getFirstDayOfMonth(),
-  date_to: props.filters?.date_to || getLastDayOfMonth()
+  date_from: props.filters?.date_from || '',
+  date_to: props.filters?.date_to || ''
 })
 
 // Edit form
@@ -462,8 +569,8 @@ const resetFilters = () => {
   searchForm.search = ''
   searchForm.status = ''
   searchForm.employee = ''
-  searchForm.date_from = getFirstDayOfMonth()
-  searchForm.date_to = getLastDayOfMonth()
+  searchForm.date_from = ''
+  searchForm.date_to = ''
   applyFilters()
 }
 
@@ -473,6 +580,16 @@ const quickEdit = (order) => {
   editForm.assigned_employee_id = order.assigned_employee_id || ''
   editForm.total_price = order.total_price || 0
   editForm.paid_amount = order.paid_amount || 0
+  showEditModal.value = true
+}
+
+const showDetails = (order) => {
+  selectedOrder.value = order
+  showDetailsModal.value = true
+}
+
+const editFromDetails = () => {
+  showDetailsModal.value = false
   showEditModal.value = true
 }
 
@@ -827,5 +944,60 @@ const getTotalRemaining = () => {
   .stat-card {
     margin-bottom: 15px;
   }
+}
+
+/* Details Grid */
+.details-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  padding: 10px 0;
+}
+
+.detail-card {
+  background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+  border-radius: 12px;
+  padding: 15px;
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  transition: all 0.3s ease;
+  border: 1px solid #dee2e6;
+}
+
+.detail-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+  border-color: #6366f1;
+}
+
+.detail-card.full-width {
+  grid-column: 1 / -1;
+}
+
+.detail-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.detail-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.detail-label {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 600;
+  margin-bottom: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.detail-value {
+  font-size: 15px;
+  color: #212529;
+  font-weight: 500;
+  word-wrap: break-word;
 }
 </style>

@@ -747,7 +747,7 @@ class DecorationController extends Controller
      */
     public function simpleOrders(Request $request)
     {
-        $orders = DecorationOrder::with(['decoration', 'assignedEmployee', 'customer'])
+        $orders = \App\Models\SimpleDecorationOrder::with(['assignedEmployee'])
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
             })
@@ -758,9 +758,7 @@ class DecorationController extends Controller
                 return $query->where(function ($q) use ($search) {
                     $q->where('customer_name', 'LIKE', "%{$search}%")
                       ->orWhere('customer_phone', 'LIKE', "%{$search}%")
-                      ->orWhereHas('decoration', function ($decorationQuery) use ($search) {
-                          $decorationQuery->where('name', 'LIKE', "%{$search}%");
-                      });
+                      ->orWhere('decoration_name', 'LIKE', "%{$search}%");
                 });
             })
             ->when($request->date_from, function ($query, $dateFrom) {
@@ -815,80 +813,31 @@ class DecorationController extends Controller
 
         try {
             $request->validate([
-                'decoration_id' => 'nullable|exists:decorations,id',
-                'decoration_name' => 'nullable|string|max:255',
-                'customer_id' => 'nullable|exists:customers,id',
+                'decoration_name' => 'required|string|max:255',
                 'customer_name' => 'required|string|max:255',
                 'customer_phone' => 'required|string|max:20',
-                'customer_email' => 'nullable|email',
-                'event_address' => 'nullable|string',
                 'event_date' => 'required|date',
-                'event_time' => 'nullable',
-                'guest_count' => 'nullable|integer|min:1',
+                'total_price' => 'required|numeric|min:0',
+                'paid_amount' => 'nullable|numeric|min:0',
+                'assigned_employee_id' => 'nullable|exists:users,id',
                 'special_requests' => 'nullable|string',
-                'selected_items' => 'nullable|array',
-                'additional_cost' => 'nullable|numeric|min:0',
-                'discount' => 'nullable|numeric|min:0'
+                'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
+                'currency' => 'nullable|in:dollar,dinar'
             ]);
 
-            // إذا تم إرسال اسم الديكور، إنشاء أو إيجاد الديكور
-            $decorationId = $request->decoration_id;
-            
-            if (!$decorationId && $request->decoration_name) {
-                // البحث عن ديكور بنفس الاسم أو إنشاء واحد جديد
-                $decoration = Decoration::firstOrCreate(
-                    ['name' => $request->decoration_name],
-                    [
-                        'type_name' => 'عادي',
-                        'base_price_dinar' => 0,
-                        'base_price_dollar' => $request->total_price ?? 0,
-                        'currency' => 'dollar',
-                        'status' => 'active'
-                    ]
-                );
-                $decorationId = $decoration->id;
-            } elseif (!$decorationId) {
-                $firstDecoration = Decoration::first();
-                $decorationId = $firstDecoration ? $firstDecoration->id : null;
-                $decoration = $decorationId ? Decoration::find($decorationId) : null;
-            } else {
-                $decoration = Decoration::find($decorationId);
-            }
-            
-            // حساب السعر
-            if ($decoration) {
-                $basePrice = $decoration->currency === 'dollar' ? $decoration->base_price_dollar : $decoration->base_price_dinar;
-                $additionalCost = $request->additional_cost ?? 0;
-                $discount = $request->discount ?? 0;
-                $totalPrice = $basePrice + $additionalCost - $discount;
-                $currency = $decoration->currency;
-            } else {
-                $basePrice = $request->total_price ?? 0;
-                $totalPrice = $request->total_price ?? 0;
-                $currency = $request->currency ?? 'dollar';
-            }
-
-            $orderData = $request->all();
-            $orderData['decoration_id'] = $decorationId;
-            $orderData['base_price'] = $basePrice;
-            $orderData['total_price'] = $totalPrice;
-            $orderData['currency'] = $currency;
-            $orderData['status'] = 'created';
-
-            // Create customer balance if customer exists and doesn't have one
-            if ($request->customer_id) {
-                $customer = \App\Models\Customer::find($request->customer_id);
-                if ($customer && !$customer->balance) {
-                    \App\Models\CustomerBalance::create([
-                        'customer_id' => $customer->id,
-                        'balance_dollar' => 0,
-                        'balance_dinar' => 0,
-                        'currency_preference' => 'dinar'
-                    ]);
-                }
-            }
-
-            $order = DecorationOrder::create($orderData);
+            // إنشاء طلب ديكور بسيط جديد
+            $order = \App\Models\SimpleDecorationOrder::create([
+                'decoration_name' => $request->decoration_name,
+                'customer_name' => $request->customer_name,
+                'customer_phone' => $request->customer_phone,
+                'event_date' => $request->event_date,
+                'total_price' => $request->total_price,
+                'paid_amount' => $request->paid_amount ?? 0,
+                'assigned_employee_id' => $request->assigned_employee_id,
+                'special_requests' => $request->special_requests,
+                'status' => $request->status ?? 'created',
+                'currency' => $request->currency ?? 'dollar'
+            ]);
 
             // Log the order creation
             \App\Models\Log::create([
@@ -964,9 +913,54 @@ class DecorationController extends Controller
     }
 
     /**
-     * Update order status
+     * Update simple decoration order
      */
-    public function updateOrderStatus(Request $request, DecorationOrder $order)
+    public function updateOrderStatus(Request $request, $order)
+    {
+        // محاولة العثور على الطلب في الجدول الجديد أولاً
+        $simpleOrder = \App\Models\SimpleDecorationOrder::find($order);
+        
+        if (!$simpleOrder) {
+            return response()->json(['message' => 'Order not found'], 404);
+        }
+
+        $request->validate([
+            'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',
+            'assigned_employee_id' => 'nullable|exists:users,id',
+            'total_price' => 'nullable|numeric|min:0',
+            'paid_amount' => 'nullable|numeric|min:0'
+        ]);
+        
+        // Only include fields that are provided in the request
+        $data = [];
+        if ($request->has('status') && $request->status) {
+            $data['status'] = $request->status;
+        }
+        if ($request->has('assigned_employee_id')) {
+            $data['assigned_employee_id'] = $request->assigned_employee_id;
+        }
+        if ($request->has('total_price')) {
+            $data['total_price'] = $request->total_price;
+        }
+        if ($request->has('paid_amount')) {
+            $data['paid_amount'] = $request->paid_amount;
+        }
+        if ($request->has('special_requests')) {
+            $data['special_requests'] = $request->special_requests;
+        }
+
+        // Only update if there's data to update
+        if (!empty($data)) {
+            $simpleOrder->update($data);
+        }
+
+        return back()->with('success', 'تم تحديث الطلب بنجاح');
+    }
+
+    /**
+     * Update old decoration order status (legacy)
+     */
+    public function updateOldOrderStatus(Request $request, DecorationOrder $order)
     {
         $request->validate([
             'status' => 'nullable|in:created,received,executing,partial_payment,full_payment,completed,cancelled',

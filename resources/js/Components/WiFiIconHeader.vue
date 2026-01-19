@@ -135,9 +135,11 @@ const toast = useToast();
 const showMenu = ref(false);
 const isOnline = ref(navigator.onLine);
 const apiAvailable = ref(true);
+// التحقق من أننا على Local بناءً على FRONTEND_URL
+const frontendUrl = window.location.origin;
 const isLocal = ref(
-  window.location.href.startsWith("http://127.0.0.1") || 
-  window.location.href.startsWith("http://localhost")
+  frontendUrl.includes("127.0.0.1") || 
+  frontendUrl.includes("localhost")
 );
 const isQuickSyncing = ref(false);
 
@@ -167,6 +169,12 @@ const closeMenu = () => {
 };
 
 const checkApiStatus = async (showToast = false) => {
+  // لا تفحص الـ API إذا كنا على السيرفر
+  if (!isLocal.value) {
+    apiAvailable.value = true;
+    return true;
+  }
+  
   try {
     const response = await axios.get('/api/sync-monitor/check-health', { 
       timeout: 5000,
@@ -324,7 +332,7 @@ onMounted(() => {
   }
   
   const apiCheckInterval = setInterval(() => {
-    if (isOnline.value) {
+    if (isLocal.value && isOnline.value) {
       checkApiStatus(false);
     }
   }, 30000);
