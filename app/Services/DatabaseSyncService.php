@@ -132,6 +132,16 @@ class DatabaseSyncService
 
                         while ($retryCount < $maxRetries && !$synced) {
                             try {
+                                // إذا كانت محاولة إعادة (retry > 0)، انتظر دقيقة
+                                if ($retryCount > 0) {
+                                    Log::info('Waiting 60 seconds before retry', [
+                                        'table' => $change['table_name'],
+                                        'record_id' => $change['record_id'],
+                                        'retry' => $retryCount,
+                                    ]);
+                                    sleep(60); // انتظار دقيقة كاملة
+                                }
+                                
                                 Log::debug('Processing sync change', [
                                     'table' => $change['table_name'],
                                     'record_id' => $change['record_id'],
@@ -176,6 +186,18 @@ class DatabaseSyncService
                                     str_contains($errorMessage, 'SQLSTATE[HY000] [2002]')) {
                                     // لا تحاول مرة أخرى - MySQL غير متاح
                                     throw new \Exception('MySQL غير متاح - لا يمكن المزامنة. يرجى التحقق من الاتصال بالسيرفر.', 0, $e);
+                                }
+                                
+                                // إذا كان الخطأ 429 (Too Many Requests)، توقف تماماً عن المحاولات
+                                if (str_contains($errorMessage, 'HTTP 429') || 
+                                    str_contains($errorMessage, 'Too Many Requests') ||
+                                    str_contains($errorMessage, 'rate limit')) {
+                                    Log::warning('Rate limit hit (429), stopping retry attempts for this batch', [
+                                        'table' => $change['table_name'],
+                                        'record_id' => $change['record_id'],
+                                    ]);
+                                    // وضع علامة failed مع رسالة واضحة
+                                    throw new \Exception('تم تجاوز حد الطلبات (429). يرجى الانتظار قبل المحاولة مرة أخرى.', 0, $e);
                                 }
 
                                 // إذا كانت المحاولة الأخيرة، سجل الخطأ
@@ -461,6 +483,20 @@ class DatabaseSyncService
             unset($data['deleted_at']);
         }
         
+        // إزالة الحقول التي لا نريد مزامنتها أبداً
+        // هذه الحقول خاصة بكل سيرفر ولا يجب مزامنتها
+        $excludedFields = [
+            'last_activity_at',  // آخر تفاعل - خاص بكل سيرفر
+            'avatar',            // مسار الصورة - قد يختلف بين السيرفرات
+            'avatar_url',        // رابط الصورة - خاص بكل سيرفر
+            'session_id',        // Session - خاص بكل سيرفر
+            'updated_at',        // وقت التحديث - سيتم تحديثه تلقائياً على كل سيرفر
+        ];
+        
+        foreach ($excludedFields as $field) {
+            unset($data[$field]);
+        }
+        
         // إزالة الحقول الإضافية التي لا توجد في MySQL
         // ملاحظة: avatar_url الآن موجود في MySQL (تمت إضافته عبر migration)
         $extraFields = [
@@ -472,7 +508,8 @@ class DatabaseSyncService
         }
         
         // تحويل timestamps من ISO 8601 إلى MySQL format (Y-m-d H:i:s)
-        $timestampFields = ['created_at', 'updated_at', 'deleted_at'];
+        // ملاحظة: last_activity_at و updated_at تم استثناؤهما أعلاه، لذا لن يصلا هنا
+        $timestampFields = ['created_at', 'deleted_at', 'email_verified_at'];
         foreach ($timestampFields as $field) {
             if (isset($data[$field])) {
                 $timestampValue = $data[$field];

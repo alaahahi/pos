@@ -21,8 +21,22 @@ class ApiSyncService
 
     /**
      * التحقق من توفر API باستخدام sync-health endpoint
+     * مع Cache لمدة دقيقتين لتقليل عدد الطلبات
      */
     public function isApiAvailable(): bool
+    {
+        // استخدام Cache لمدة دقيقتين (120 ثانية)
+        $cacheKey = 'api_health_check_' . md5($this->apiUrl);
+        
+        return Cache::remember($cacheKey, 120, function () {
+            return $this->performHealthCheck();
+        });
+    }
+    
+    /**
+     * تنفيذ فحص الاتصال الفعلي
+     */
+    protected function performHealthCheck(): bool
     {
         try {
             // محاولة الاتصال بـ API - نستخدم endpoint أبسط للتجريب
@@ -65,10 +79,7 @@ class ApiSyncService
                         if (isset($responseData['success']) && $responseData['success'] === true) {
                             $connected = $responseData['connection']['connected'] ?? false;
                             if ($connected) {
-                                Log::debug('API health check passed (check-database-connection)', [
-                                    'connected' => $connected,
-                                    'url' => $this->apiUrl,
-                                ]);
+                                // تم إزالة Log::debug لتقليل الـ logs
                                 return true;
                             }
                         }
@@ -87,10 +98,7 @@ class ApiSyncService
                             
                             // إذا كان overall_status "ok" أو "warning"، API متاح
                             if (in_array($overallStatus, ['ok', 'warning'])) {
-                                Log::debug('API health check passed (sync-health)', [
-                                    'overall_status' => $overallStatus,
-                                    'url' => $this->apiUrl,
-                                ]);
+                                // تم إزالة Log::debug لتقليل الـ logs
                                 return true;
                             }
                             
@@ -120,12 +128,14 @@ class ApiSyncService
                         default => 'Server error'
                     };
                     
-                    Log::info('API health check: server responded with status code', [
-                        'status' => $statusCode,
-                        'endpoint' => $usedEndpoint,
-                        'url' => $this->apiUrl,
-                        'message' => $message,
-                    ]);
+                    // تقليل اللوغات - فقط warning عند وجود مشكلة
+                    if ($statusCode >= 500) {
+                        Log::warning('API health check: server error', [
+                            'status' => $statusCode,
+                            'endpoint' => $usedEndpoint,
+                            'message' => $message,
+                        ]);
+                    }
                     return true; // API متاح (السيرفر يعمل) لكن يحتاج authentication أو به مشكلة
                 }
             }
@@ -231,6 +241,16 @@ class ApiSyncService
                 ];
             }
 
+            // إذا كان 429 (Too Many Requests)، رفع Exception لإيقاف المحاولات
+            if ($statusCode === 429) {
+                $errorMsg = 'HTTP 429 - Too Many Requests. Server rate limit exceeded.';
+                Log::warning('API sync: Rate limit exceeded (429)', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                ]);
+                throw new \Exception($errorMsg);
+            }
+            
             $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
             Log::warning('API sync insert failed (HTTP error)', [
                 'table' => $tableName,
@@ -327,6 +347,16 @@ class ApiSyncService
                 ];
             }
 
+            // إذا كان 429 (Too Many Requests)، رفع Exception لإيقاف المحاولات
+            if ($statusCode === 429) {
+                $errorMsg = 'HTTP 429 - Too Many Requests. Server rate limit exceeded.';
+                Log::warning('API sync: Rate limit exceeded (429)', [
+                    'table' => $tableName,
+                    'record_id' => $recordId,
+                ]);
+                throw new \Exception($errorMsg);
+            }
+            
             $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
             Log::warning('API sync update failed (HTTP error)', [
                 'table' => $tableName,

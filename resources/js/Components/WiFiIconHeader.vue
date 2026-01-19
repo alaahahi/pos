@@ -259,30 +259,6 @@ const switchToOnline = () => {
   }, 500);
 };
 
-const smartSync = async () => {
-  if (!realOnlineStatus.value || !isLocal.value) {
-    toast.warning('غير متصل أو غير متاح في النظام المحلي');
-    return false;
-  }
-  
-  try {
-    toast.info('🔄 بدء المزامنة الذكية...', { timeout: 3000 });
-    
-    const response = await axios.post('/api/sync-monitor/smart-sync', {
-      limit: 1000
-    }, { withCredentials: true });
-    
-    if (response.data?.success) {
-      toast.success('✅ تمت المزامنة الذكية');
-      return true;
-    }
-    return false;
-  } catch (error) {
-    toast.error('❌ فشلت المزامنة: ' + (error.response?.data?.message || error.message));
-    return false;
-  }
-};
-
 const quickSync = async () => {
   if (!realOnlineStatus.value || !isLocal.value) {
     toast.warning('غير متصل بالإنترنت');
@@ -293,12 +269,34 @@ const quickSync = async () => {
   
   isQuickSyncing.value = true;
   try {
-    await smartSync();
+    // استخدام auto-sync الفوري
+    const response = await axios.post('/api/sync-monitor/auto-sync', {}, { 
+      timeout: 30000,
+      withCredentials: true 
+    });
     
-    // إعادة تحميل الصفحة لتحديث عدد الملفات المعلقة
-    setTimeout(() => {
-      window.location.reload();
-    }, 1000);
+    if (response.data?.success) {
+      const pushData = response.data?.data?.push || {};
+      const synced = pushData.synced || 0;
+      const failed = pushData.failed || 0;
+      
+      if (synced > 0) {
+        toast.success(`✅ تم مزامنة ${synced} سجل`);
+        // إعادة تحميل الصفحة لتحديث عدد الملفات المعلقة
+        setTimeout(() => {
+          window.location.reload();
+        }, 1000);
+      } else if (failed > 0) {
+        toast.warning(`⚠️ فشل ${failed} سجل`);
+      } else {
+        toast.info('ℹ️ لا توجد تغييرات للمزامنة');
+      }
+    } else {
+      toast.error('❌ فشلت المزامنة');
+    }
+  } catch (error) {
+    console.error('Quick sync error:', error);
+    toast.error('❌ خطأ في المزامنة');
   } finally {
     isQuickSyncing.value = false;
     closeMenu();
