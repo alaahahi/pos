@@ -389,7 +389,7 @@ const updateOrderStatus = () => {
 }
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ar-EG')
+  return new Date(date).toLocaleDateString('en-US')
 }
 
 const formatDateTimeLocal = (date) => {

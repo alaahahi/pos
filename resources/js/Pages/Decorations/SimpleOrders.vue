@@ -662,7 +662,7 @@ const saveNewOrder = () => {
 }
 
 const formatNumber = (num) => {
-  return new Intl.NumberFormat('ar-EG').format(num || 0)
+  return new Intl.NumberFormat('en-US').format(num || 0)
 }
 
 const formatCurrency = (num) => {
@@ -670,7 +670,7 @@ const formatCurrency = (num) => {
 }
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ar-EG', { 
+  return new Date(date).toLocaleDateString('en-US', { 
     year: 'numeric', 
     month: 'short', 
     day: 'numeric' 

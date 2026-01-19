@@ -169,7 +169,7 @@ const props = defineProps({
 
 // Methods
 const formatCurrency = (amount) => {
-  return new Intl.NumberFormat('ar-EG', {
+  return new Intl.NumberFormat('en-US', {
     style: 'currency',
     currency: 'EGP',
     minimumFractionDigits: 2

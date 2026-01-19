@@ -924,7 +924,7 @@ const formatNumber = (num) => {
 
 const formatDate = (date) => {
   if (!date) return 'N/A'
-  return new Date(date).toLocaleDateString('ar-EG')
+  return new Date(date).toLocaleDateString('en-US')
 }
 
 const getMonthName = (month) => {

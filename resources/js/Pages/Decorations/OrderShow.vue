@@ -388,11 +388,11 @@ const updateOrderStatus = () => {
 }
 
 const formatDate = (date) => {
-  return new Date(date).toLocaleDateString('ar-EG')
+  return new Date(date).toLocaleDateString('en-US')
 }
 
 const formatDateTime = (date) => {
-  return new Date(date).toLocaleString('ar-EG')
+  return new Date(date).toLocaleString('en-US')
 }
 
 const formatDateTimeLocal = (date) => {

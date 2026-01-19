@@ -2365,7 +2365,7 @@ const loadDatabaseInfo = async () => {
 // مساعدات
 const formatDate = (dateString) => {
   if (!dateString) return '-';
-  return new Date(dateString).toLocaleString('ar-EG');
+  return new Date(dateString).toLocaleString('en-US');
 };
 
 const formatFileSize = (bytes) => {
