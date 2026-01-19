@@ -1,6 +1,7 @@
 <template>
   <AuthenticatedLayout>
-       <div class="d-flex justify-content-between align-items-center">
+    <template #header>
+      <div class="d-flex justify-content-between align-items-center">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
@@ -17,7 +18,8 @@
           </Link>
         </div>
       </div>
- 
+    </template>
+
     <div class="py-4">
       <div class="container-fluid">
         <!-- Statistics Cards -->
