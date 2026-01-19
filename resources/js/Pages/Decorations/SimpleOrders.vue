@@ -286,6 +286,10 @@
               <label class="form-label">💰 المدفوع ($)</label>
               <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" step="0.01">
             </div>
+            <div class="col-md-6">
+              <label class="form-label">🕐 ساعة المناسبة</label>
+              <input type="time" class="form-control" v-model="editForm.event_time">
+            </div>
           </div>
         </div>
         <div class="modal-footer-custom">
@@ -322,6 +326,10 @@
             <div class="col-md-6">
               <label class="form-label">📅 تاريخ المناسبة <span class="text-danger">*</span></label>
               <input type="date" class="form-control" v-model="createForm.event_date">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">🕐 ساعة المناسبة</label>
+              <input type="time" class="form-control" v-model="createForm.event_time">
             </div>
             <div class="col-md-6">
               <label class="form-label">🔧 المنجز</label>
@@ -519,7 +527,8 @@ const editForm = reactive({
   status: '',
   assigned_employee_id: '',
   total_price: 0,
-  paid_amount: 0
+  paid_amount: 0,
+  event_time: ''
 })
 
 // Create form
@@ -528,6 +537,7 @@ const createForm = reactive({
   customer_name: '',
   customer_phone: '',
   event_date: '',
+  event_time: '',
   total_price: 0,
   paid_amount: 0,
   assigned_employee_id: '',
@@ -580,6 +590,7 @@ const quickEdit = (order) => {
   editForm.assigned_employee_id = order.assigned_employee_id || ''
   editForm.total_price = order.total_price || 0
   editForm.paid_amount = order.paid_amount || 0
+  editForm.event_time = order.event_time || ''
   showEditModal.value = true
 }
 
@@ -614,6 +625,7 @@ const openCreateModal = () => {
   createForm.customer_name = ''
   createForm.customer_phone = ''
   createForm.event_date = ''
+  createForm.event_time = ''
   createForm.total_price = 0
   createForm.paid_amount = 0
   createForm.assigned_employee_id = ''
@@ -636,7 +648,7 @@ const saveNewOrder = () => {
     customer_name: createForm.customer_name,
     customer_phone: createForm.customer_phone,
     event_date: createForm.event_date,
-    event_time: '12:00',
+    event_time: createForm.event_time || '12:00',
     event_address: createForm.special_requests || '-',
     guest_count: 1,
     special_requests: createForm.special_requests,
@@ -647,11 +659,11 @@ const saveNewOrder = () => {
   }
   
   router.post(route('decoration.orders.store'), formData, {
+    preserveScroll: true,
     onSuccess: () => {
       processing.value = false
       showCreateModal.value = false
       toast.success('✅ تم إضافة الطلب بنجاح')
-      router.reload({ only: ['orders'] })
     },
     onError: (errors) => {
       processing.value = false
