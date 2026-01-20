@@ -26,7 +26,7 @@
                 <i class="bi bi-list-check"></i>
               </div>
               <div class="stat-content">
-                <h3>{{ orders.total || 0 }}</h3>
+                <h3>{{ statistics?.total_count || 0 }}</h3>
                 <p>إجمالي الطلبات</p>
               </div>
             </div>
@@ -513,7 +513,18 @@ const props = defineProps({
   orders: Object,
   filters: Object,
   translations: Object,
-  employees: Array
+  employees: Array,
+  statistics: {
+    type: Object,
+    default: () => ({
+      total_count: 0,
+      pending_count: 0,
+      completed_count: 0,
+      total_revenue: 0,
+      total_paid: 0,
+      total_remaining: 0
+    })
+  }
 })
 
 // Check permissions
@@ -570,31 +581,25 @@ const createForm = reactive({
   special_requests: ''
 })
 
-// Computed statistics
+// Computed statistics (using backend statistics for accurate totals)
 const pendingCount = computed(() => {
-  return props.orders.data.filter(o => ['created', 'received', 'executing'].includes(o.status) && o.status !== 'cancelled').length
+  return Number(props.statistics?.pending_count) || 0
 })
 
 const completedCount = computed(() => {
-  return props.orders.data.filter(o => o.status === 'completed').length
+  return Number(props.statistics?.completed_count) || 0
 })
 
 const totalRevenue = computed(() => {
-  return props.orders.data
-    .filter(o => o.status !== 'cancelled') // استثناء الملغية
-    .reduce((sum, o) => sum + (o.total_price || 0), 0)
+  return Number(props.statistics?.total_revenue) || 0
 })
 
 const totalPaid = computed(() => {
-  return props.orders.data
-    .filter(o => o.status !== 'cancelled') // استثناء الملغية
-    .reduce((sum, o) => sum + (o.paid_amount || 0), 0)
+  return Number(props.statistics?.total_paid) || 0
 })
 
 const totalRemaining = computed(() => {
-  return props.orders.data
-    .filter(o => o.status !== 'cancelled') // استثناء الملغية
-    .reduce((sum, o) => sum + ((o.total_price || 0) - (o.paid_amount || 0)), 0)
+  return Number(props.statistics?.total_remaining) || 0
 })
 
 // Functions
@@ -608,7 +613,8 @@ const debouncedSearch = (() => {
 
 const applyFilters = () => {
   router.get(route('decorations.orders.simple'), searchForm, {
-    preserveState: true,
+    preserveState: false,
+    preserveScroll: false,
     replace: true
   })
 }
@@ -716,7 +722,11 @@ const formatNumber = (num) => {
 }
 
 const formatCurrency = (num) => {
-  return '$' + new Intl.NumberFormat('en-US').format(num || 0)
+  const value = Number(num) || 0
+  return '$' + new Intl.NumberFormat('en-US', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  }).format(value)
 }
 
 const formatDate = (date) => {

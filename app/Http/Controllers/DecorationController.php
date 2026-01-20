@@ -747,6 +747,44 @@ class DecorationController extends Controller
      */
     public function simpleOrders(Request $request)
     {
+        // Build query with filters
+        $query = \App\Models\SimpleDecorationOrder::with(['assignedEmployee'])
+            ->when($request->status, function ($query, $status) {
+                return $query->where('status', $status);
+            })
+            ->when($request->employee, function ($query, $employeeId) {
+                return $query->where('assigned_employee_id', $employeeId);
+            })
+            ->when($request->search, function ($query, $search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('customer_name', 'LIKE', "%{$search}%")
+                      ->orWhere('customer_phone', 'LIKE', "%{$search}%")
+                      ->orWhere('decoration_name', 'LIKE', "%{$search}%");
+                });
+            })
+            ->when($request->date_from, function ($query, $dateFrom) {
+                return $query->whereDate('event_date', '>=', $dateFrom);
+            })
+            ->when($request->date_to, function ($query, $dateTo) {
+                return $query->whereDate('event_date', '<=', $dateTo);
+            });
+
+        // Calculate statistics from ALL filtered data (not just current page)
+        $allOrders = $query->get();
+        $filteredOrders = $allOrders->where('status', '!=', 'cancelled');
+        
+        $statistics = [
+            'total_count' => $allOrders->count(),
+            'pending_count' => $allOrders->whereIn('status', ['created', 'received', 'executing'])->where('status', '!=', 'cancelled')->count(),
+            'completed_count' => $allOrders->where('status', 'completed')->count(),
+            'total_revenue' => $filteredOrders->sum('total_price'),
+            'total_paid' => $filteredOrders->sum('paid_amount'),
+            'total_remaining' => $filteredOrders->sum(function($order) {
+                return ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
+            })
+        ];
+
+        // Paginate orders
         $orders = \App\Models\SimpleDecorationOrder::with(['assignedEmployee'])
             ->when($request->status, function ($query, $status) {
                 return $query->where('status', $status);
@@ -780,6 +818,7 @@ class DecorationController extends Controller
             'translations' => __('messages'),
             'orders' => $orders,
             'employees' => $employees,
+            'statistics' => $statistics,
             'filters' => $request->only(['status', 'search', 'employee', 'date_from', 'date_to'])
         ]);
     }
