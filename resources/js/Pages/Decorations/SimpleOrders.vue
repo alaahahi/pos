@@ -5,6 +5,13 @@
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
         <div class="d-flex gap-2">
+          <a 
+            :href="exportUrl" 
+            class="btn btn-primary"
+            title="تصدير إلى Excel"
+          >
+            <i class="bi bi-file-earmark-excel"></i> تصدير Excel
+          </a>
           <button 
             v-if="hasPermission('create decoration')" 
             @click="openCreateModal" 
@@ -233,21 +240,6 @@
                     </td>
                   </tr>
                 </tbody>
-                <tfoot v-if="orders.data.length > 0" class="table-footer-excel">
-                  <tr>
-                    <td colspan="4" class="text-end fw-bold">المجموع:</td>
-                    <td>
-                      <strong class="text-primary">{{ formatNumber(getTotalPrice()) }}</strong>
-                    </td>
-                    <td>
-                      <strong class="text-success">{{ formatNumber(getTotalPaid()) }}</strong>
-                    </td>
-                    <td>
-                      <strong class="text-danger">{{ formatNumber(getTotalRemaining()) }}</strong>
-                    </td>
-                    <td colspan="3"></td>
-                  </tr>
-                </tfoot>
               </table>
             </div>
 
@@ -602,6 +594,20 @@ const totalRemaining = computed(() => {
   return Number(props.statistics?.total_remaining) || 0
 })
 
+// Export URL with filters
+const exportUrl = computed(() => {
+  const params = new URLSearchParams()
+  
+  if (searchForm.search) params.append('search', searchForm.search)
+  if (searchForm.status) params.append('status', searchForm.status)
+  if (searchForm.employee) params.append('employee', searchForm.employee)
+  if (searchForm.date_from) params.append('date_from', searchForm.date_from)
+  if (searchForm.date_to) params.append('date_to', searchForm.date_to)
+  
+  const queryString = params.toString()
+  return route('decorations.orders.simple.export') + (queryString ? '?' + queryString : '')
+})
+
 // Functions
 const debouncedSearch = (() => {
   let timeout
@@ -759,17 +765,6 @@ const getStatusText = (status) => {
   return statuses[status] || status
 }
 
-const getTotalPrice = () => {
-  return props.orders.data.reduce((sum, o) => sum + (o.total_price || 0), 0)
-}
-
-const getTotalPaid = () => {
-  return props.orders.data.reduce((sum, o) => sum + (o.paid_amount || 0), 0)
-}
-
-const getTotalRemaining = () => {
-  return getTotalPrice() - getTotalPaid()
-}
 </script>
 
 <style scoped>

@@ -824,6 +824,21 @@ class DecorationController extends Controller
     }
 
     /**
+     * Export simple decoration orders to Excel
+     */
+    public function exportSimpleOrders(Request $request)
+    {
+        $filters = $request->only(['status', 'search', 'employee', 'date_from', 'date_to']);
+        
+        $fileName = 'decoration_orders_' . date('Y-m-d_H-i-s') . '.xlsx';
+        
+        return \Maatwebsite\Excel\Facades\Excel::download(
+            new \App\Exports\SimpleDecorationOrdersExport($filters),
+            $fileName
+        );
+    }
+
+    /**
      * Show form for creating new decoration order
      */
     public function createOrderForm()

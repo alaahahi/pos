@@ -79,6 +79,7 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
     Route::post('decorations/{decoration}/update-post', [DecorationController::class, 'updatePost'])->name('decorations.update.post');
     Route::get('/decorations-orders', [DecorationController::class, 'orders'])->name('decorations.orders');
     Route::get('/decorations-orders-simple', [DecorationController::class, 'simpleOrders'])->name('decorations.orders.simple');
+    Route::get('/decorations-orders-simple/export', [DecorationController::class, 'exportSimpleOrders'])->name('decorations.orders.simple.export');
     Route::get('/decoration-orders/create', [DecorationController::class, 'createOrderForm'])->name('decoration.orders.create');
     Route::post('/decoration-orders', [DecorationController::class, 'createOrder'])->name('decoration.orders.store');
     Route::patch('/decoration-orders/{order}/status', [DecorationController::class, 'updateOrderStatus'])->name('decoration.orders.status');
