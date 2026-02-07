@@ -1,7 +1,7 @@
 <template>
   <AuthenticatedLayout>
       <div class="d-flex justify-content-between align-items-center">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+        <h2 class="font-semibold text-xl text-gray-800 dark:text-gray-100 leading-tight">
           📋 {{ translations.decoration_orders || 'طلبات الديكور' }}
         </h2>
         <div class="d-flex gap-2">
@@ -73,147 +73,153 @@
           </div>
         </div>
 
-        <!-- Financial Stats by Currency -->
-        <div class="row g-3 mb-4" v-if="activeCurrencyFilter !== 'dinar'">
-          <div class="col-12">
-            <h6 class="mb-0 text-muted">💵 الإجماليات بالدولار</h6>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-info">
-              <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalRevenueUsd, 'dollar') }}</h3>
-                <p>إجمالي الإيرادات</p>
+        <!-- Financial Stats (Accordion) -->
+        <details class="stats-details mb-4">
+          <summary>
+            <span class="stats-summary-title">💱 إجماليات حسب العملة</span>
+            <span class="stats-summary-sub" v-if="activeCurrencyFilter">({{ activeCurrencyFilter === 'dollar' ? 'دولار' : 'دينار' }})</span>
+          </summary>
+          <div class="stats-details-body">
+            <div class="row g-3" v-if="activeCurrencyFilter !== 'dinar'">
+              <div class="col-12">
+                <h6 class="mb-0 text-gray-600 dark:text-gray-200 fw-semibold">💵 الإجماليات بالدولار</h6>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-info">
+                  <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalRevenueUsd, 'dollar') }}</h3>
+                    <p>إجمالي الإيرادات</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-success">
+                  <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalPaidUsd, 'dollar') }}</h3>
+                    <p>💰 إجمالي المدفوع</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-warning">
+                  <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalRemainingUsd, 'dollar') }}</h3>
+                    <p>📊 إجمالي المتبقي</p>
+                  </div>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-success">
-              <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalPaidUsd, 'dollar') }}</h3>
-                <p>💰 إجمالي المدفوع</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-warning">
-              <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalRemainingUsd, 'dollar') }}</h3>
-                <p>📊 إجمالي المتبقي</p>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        <div class="row g-3 mb-4" v-if="activeCurrencyFilter !== 'dollar'">
-          <div class="col-12">
-            <h6 class="mb-0 text-muted">💴 الإجماليات بالدينار</h6>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-info">
-              <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalRevenueDinar, 'dinar') }}</h3>
-                <p>إجمالي الإيرادات</p>
+            <div class="row g-3 mt-2" v-if="activeCurrencyFilter !== 'dollar'">
+              <div class="col-12">
+                <h6 class="mb-0 text-gray-600 dark:text-gray-200 fw-semibold">💴 الإجماليات بالدينار</h6>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-info">
+                  <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalRevenueDinar, 'dinar') }}</h3>
+                    <p>إجمالي الإيرادات</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-success">
+                  <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalPaidDinar, 'dinar') }}</h3>
+                    <p>💰 إجمالي المدفوع</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-warning">
+                  <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(totalRemainingDinar, 'dinar') }}</h3>
+                    <p>📊 إجمالي المتبقي</p>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-success">
-              <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalPaidDinar, 'dinar') }}</h3>
-                <p>💰 إجمالي المدفوع</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-warning">
-              <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(totalRemainingDinar, 'dinar') }}</h3>
-                <p>📊 إجمالي المتبقي</p>
-              </div>
-            </div>
-          </div>
-        </div>
+        </details>
 
         <!-- This Month Stats -->
-        <div class="row g-3 mb-4">
-          <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-              <h6 class="mb-0 text-muted">
-                📅 إجماليات هذا الشهر
-                <small v-if="monthlyStatistics?.month_start && monthlyStatistics?.month_end" class="ms-2">
-                  ({{ monthlyStatistics.month_start }} → {{ monthlyStatistics.month_end }})
-                </small>
-              </h6>
+        <details class="stats-details mb-4">
+          <summary>
+            <span class="stats-summary-title">📅 إجماليات هذا الشهر</span>
+            <span class="stats-summary-sub" v-if="monthlyStatistics?.month_start && monthlyStatistics?.month_end">
+              ({{ monthlyStatistics.month_start }} → {{ monthlyStatistics.month_end }})
+            </span>
+          </summary>
+          <div class="stats-details-body">
+            <div class="row g-3" v-if="activeCurrencyFilter !== 'dinar'">
+              <div class="col-12"><small class="text-gray-500 dark:text-gray-300">💵 هذا الشهر بالدولار</small></div>
+              <div class="col-md-4">
+                <div class="stat-card bg-info">
+                  <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyRevenueUsd, 'dollar') }}</h3>
+                    <p>إيرادات هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-success">
+                  <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyPaidUsd, 'dollar') }}</h3>
+                    <p>مدفوع هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-warning">
+                  <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyRemainingUsd, 'dollar') }}</h3>
+                    <p>متبقي هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="row g-3 mt-2" v-if="activeCurrencyFilter !== 'dollar'">
+              <div class="col-12"><small class="text-gray-500 dark:text-gray-300">💴 هذا الشهر بالدينار</small></div>
+              <div class="col-md-4">
+                <div class="stat-card bg-info">
+                  <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyRevenueDinar, 'dinar') }}</h3>
+                    <p>إيرادات هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-success">
+                  <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyPaidDinar, 'dinar') }}</h3>
+                    <p>مدفوع هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
+              <div class="col-md-4">
+                <div class="stat-card bg-warning">
+                  <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                  <div class="stat-content">
+                    <h3>{{ formatCurrency(monthlyRemainingDinar, 'dinar') }}</h3>
+                    <p>متبقي هذا الشهر</p>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
-          <template v-if="activeCurrencyFilter !== 'dinar'">
-            <div class="col-12"><small class="text-muted">💵 هذا الشهر بالدولار</small></div>
-            <div class="col-md-4">
-              <div class="stat-card bg-info">
-                <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyRevenueUsd, 'dollar') }}</h3>
-                  <p>إيرادات هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card bg-success">
-                <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyPaidUsd, 'dollar') }}</h3>
-                  <p>مدفوع هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card bg-warning">
-                <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyRemainingUsd, 'dollar') }}</h3>
-                  <p>متبقي هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-          </template>
-
-          <template v-if="activeCurrencyFilter !== 'dollar'">
-            <div class="col-12"><small class="text-muted">💴 هذا الشهر بالدينار</small></div>
-            <div class="col-md-4">
-              <div class="stat-card bg-info">
-                <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyRevenueDinar, 'dinar') }}</h3>
-                  <p>إيرادات هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card bg-success">
-                <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyPaidDinar, 'dinar') }}</h3>
-                  <p>مدفوع هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-            <div class="col-md-4">
-              <div class="stat-card bg-warning">
-                <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
-                <div class="stat-content">
-                  <h3>{{ formatCurrency(monthlyRemainingDinar, 'dinar') }}</h3>
-                  <p>متبقي هذا الشهر</p>
-                </div>
-              </div>
-            </div>
-          </template>
-        </div>
+        </details>
 
         <!-- Filters and Search -->
         <div class="card mb-4 shadow-sm">
@@ -1334,5 +1340,74 @@ const getStatusText = (status) => {
 
 .currency-card.active {
   transform: translateY(-1px);
+}
+
+/* Stats Accordion (details/summary) */
+.stats-details {
+  border: 1px solid #e9ecef;
+  border-radius: 12px;
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.dark .stats-details {
+  border-color: rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.stats-details summary {
+  list-style: none;
+  padding: 12px 16px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  user-select: none;
+  font-weight: 700;
+  color: #495057;
+}
+
+.dark .stats-details summary {
+  color: #e5e7eb;
+}
+
+.stats-details summary::-webkit-details-marker {
+  display: none;
+}
+
+.stats-details summary::after {
+  content: '▾';
+  opacity: 0.85;
+  transition: transform 160ms ease;
+}
+
+.stats-details[open] summary::after {
+  transform: rotate(180deg);
+}
+
+.stats-details-body {
+  padding: 12px 16px 16px;
+  border-top: 1px solid #e9ecef;
+}
+
+.dark .stats-details-body {
+  border-top-color: rgba(255, 255, 255, 0.12);
+}
+
+.stats-summary-title {
+  flex: 1;
+  min-width: 0;
+}
+
+.stats-summary-sub {
+  font-weight: 600;
+  font-size: 12px;
+  color: #6c757d;
+  white-space: nowrap;
+}
+
+.dark .stats-summary-sub {
+  color: #cbd5e1;
 }
 </style>
