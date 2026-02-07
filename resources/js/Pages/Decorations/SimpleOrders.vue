@@ -297,12 +297,12 @@
               </select>
             </div>
             <div class="col-md-6">
-              <label class="form-label">💵 السعر الكلي ($)</label>
-              <input type="number" class="form-control" v-model="editForm.total_price" min="0" step="0.01">
+              <label class="form-label">💵 السعر الكلي ({{ editCurrencySymbol }})</label>
+              <input type="number" class="form-control" v-model="editForm.total_price" min="0" :step="selectedOrder?.currency === 'dinar' ? 1 : 0.01">
             </div>
             <div class="col-md-6">
-              <label class="form-label">💰 المدفوع ($)</label>
-              <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" step="0.01">
+              <label class="form-label">💰 المدفوع ({{ editCurrencySymbol }})</label>
+              <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" :step="selectedOrder?.currency === 'dinar' ? 1 : 0.01">
             </div>
             <div class="col-md-6">
               <label class="form-label">🕐 ساعة المناسبة</label>
@@ -358,13 +358,36 @@
                 </option>
               </select>
             </div>
-            <div class="col-md-6">
-              <label class="form-label">💵 السعر الكلي ($) <span class="text-danger">*</span></label>
-              <input type="number" class="form-control" v-model="createForm.total_price" min="0" step="0.01">
+            <div class="col-md-12">
+              <label class="form-label">💱 العملة</label>
+              <div class="currency-cards">
+                <button
+                  type="button"
+                  class="currency-card"
+                  :class="{ active: createForm.currency === 'dollar' }"
+                  @click="createForm.currency = 'dollar'"
+                >
+                  <div class="currency-card-title">💵 دولار</div>
+                  <div class="currency-card-sub">{{ getCurrencySymbol('dollar') }}</div>
+                </button>
+                <button
+                  type="button"
+                  class="currency-card"
+                  :class="{ active: createForm.currency === 'dinar' }"
+                  @click="createForm.currency = 'dinar'"
+                >
+                  <div class="currency-card-title">💴 دينار</div>
+                  <div class="currency-card-sub">{{ getCurrencySymbol('dinar') }}</div>
+                </button>
+              </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label">💰 المدفوع ($)</label>
-              <input type="number" class="form-control" v-model="createForm.paid_amount" min="0" step="0.01">
+              <label class="form-label">💵 السعر الكلي ({{ createCurrencySymbol }}) <span class="text-danger">*</span></label>
+              <input type="number" class="form-control" v-model="createForm.total_price" min="0" :step="createForm.currency === 'dinar' ? 1 : 0.01">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">💰 المدفوع ({{ createCurrencySymbol }})</label>
+              <input type="number" class="form-control" v-model="createForm.paid_amount" min="0" :step="createForm.currency === 'dinar' ? 1 : 0.01">
             </div>
             <div class="col-md-12">
               <label class="form-label">📝 ملاحظات</label>
@@ -447,7 +470,7 @@
               <div class="detail-icon">💵</div>
               <div class="detail-content">
                 <div class="detail-label">السعر الكلي</div>
-                <div class="detail-value text-primary fw-bold">{{ formatCurrency(selectedOrder.total_price) }}</div>
+                <div class="detail-value text-primary fw-bold">{{ formatCurrency(selectedOrder.total_price, selectedOrder.currency) }}</div>
               </div>
             </div>
             
@@ -455,7 +478,7 @@
               <div class="detail-icon">💰</div>
               <div class="detail-content">
                 <div class="detail-label">المدفوع</div>
-                <div class="detail-value text-success fw-bold">{{ formatCurrency(selectedOrder.paid_amount) }}</div>
+                <div class="detail-value text-success fw-bold">{{ formatCurrency(selectedOrder.paid_amount, selectedOrder.currency) }}</div>
               </div>
             </div>
             
@@ -463,7 +486,7 @@
               <div class="detail-icon">📊</div>
               <div class="detail-content">
                 <div class="detail-label">المتبقي</div>
-                <div class="detail-value text-danger fw-bold">{{ formatCurrency(selectedOrder.total_price - selectedOrder.paid_amount) }}</div>
+                <div class="detail-value text-danger fw-bold">{{ formatCurrency(selectedOrder.total_price - selectedOrder.paid_amount, selectedOrder.currency) }}</div>
               </div>
             </div>
             
@@ -531,6 +554,14 @@ const showDetailsModal = ref(false)
 const selectedOrder = ref(null)
 const processing = ref(false)
 
+const editCurrencySymbol = computed(() => {
+  return getCurrencySymbol(selectedOrder.value?.currency || 'dollar')
+})
+
+const createCurrencySymbol = computed(() => {
+  return getCurrencySymbol(createForm.currency || 'dollar')
+})
+
 // Get first and last day of current month
 const getFirstDayOfMonth = () => {
   const now = new Date()
@@ -570,7 +601,8 @@ const createForm = reactive({
   total_price: 0,
   paid_amount: 0,
   assigned_employee_id: '',
-  special_requests: ''
+  special_requests: '',
+  currency: 'dollar'
 })
 
 // Computed statistics (using backend statistics for accurate totals)
@@ -680,6 +712,7 @@ const openCreateModal = () => {
   createForm.paid_amount = 0
   createForm.assigned_employee_id = ''
   createForm.special_requests = ''
+  createForm.currency = 'dollar'
   
   showCreateModal.value = true
 }
@@ -705,7 +738,7 @@ const saveNewOrder = () => {
     total_price: createForm.total_price,
     paid_amount: createForm.paid_amount || 0,
     assigned_employee_id: createForm.assigned_employee_id || null,
-    currency: 'dollar'
+    currency: createForm.currency || 'dollar'
   }
   
   router.post(route('decoration.orders.store'), formData, {
@@ -727,12 +760,14 @@ const formatNumber = (num) => {
   return new Intl.NumberFormat('en-US').format(num || 0)
 }
 
-const formatCurrency = (num) => {
+const formatCurrency = (num, currency = 'dollar') => {
   const value = Number(num) || 0
-  return '$' + new Intl.NumberFormat('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(value)
+  const symbol = getCurrencySymbol(currency)
+  const formatOptions = currency === 'dollar'
+    ? { minimumFractionDigits: 0, maximumFractionDigits: 2 }
+    : { minimumFractionDigits: 0, maximumFractionDigits: 0 }
+  const formatted = new Intl.NumberFormat('en-US', formatOptions).format(value)
+  return currency === 'dollar' ? (symbol + formatted) : (symbol + ' ' + formatted)
 }
 
 const formatDate = (date) => {
@@ -1054,5 +1089,49 @@ const getStatusText = (status) => {
   color: #212529;
   font-weight: 500;
   word-wrap: break-word;
+}
+
+/* Currency Cards (Create Order Modal) */
+.currency-cards {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+.currency-card {
+  width: 100%;
+  display: block;
+  border: 1px solid #dee2e6;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f8f9fa 0%, #ffffff 100%);
+  padding: 14px 12px;
+  text-align: right;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  appearance: none;
+  outline: none;
+}
+
+.currency-card:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.08);
+  border-color: #adb5bd;
+}
+
+.currency-card.active {
+  border-color: #10b981;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.currency-card-title {
+  font-weight: 700;
+  color: #212529;
+  margin-bottom: 4px;
+}
+
+.currency-card-sub {
+  font-size: 12px;
+  color: #6c757d;
+  font-weight: 600;
 }
 </style>
