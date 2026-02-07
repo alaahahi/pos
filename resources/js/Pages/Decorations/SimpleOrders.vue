@@ -66,7 +66,7 @@
                 <i class="bi bi-cash-stack"></i>
               </div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalRevenue) }}</h3>
+                <h3>{{ formatCurrency(totalRevenue, 'dinar') }}</h3>
                 <p>إجمالي الإيرادات</p>
               </div>
             </div>
@@ -81,7 +81,7 @@
                 <i class="bi bi-wallet2"></i>
               </div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalPaid) }}</h3>
+                <h3>{{ formatCurrency(totalPaid, 'dinar') }}</h3>
                 <p>💰 إجمالي المدفوع</p>
               </div>
             </div>
@@ -92,8 +92,55 @@
                 <i class="bi bi-exclamation-circle"></i>
               </div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalRemaining) }}</h3>
+                <h3>{{ formatCurrency(totalRemaining, 'dinar') }}</h3>
                 <p>📊 إجمالي المتبقي</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- This Month Stats -->
+        <div class="row g-3 mb-4">
+          <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center">
+              <h6 class="mb-0 text-muted">
+                📅 إجماليات هذا الشهر
+                <small v-if="monthlyStatistics?.month_start && monthlyStatistics?.month_end" class="ms-2">
+                  ({{ monthlyStatistics.month_start }} → {{ monthlyStatistics.month_end }})
+                </small>
+              </h6>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-info">
+              <div class="stat-icon">
+                <i class="bi bi-cash-coin"></i>
+              </div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(monthlyRevenue, 'dinar') }}</h3>
+                <p>إيرادات هذا الشهر</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-success">
+              <div class="stat-icon">
+                <i class="bi bi-wallet2"></i>
+              </div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(monthlyPaid, 'dinar') }}</h3>
+                <p>مدفوع هذا الشهر</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-warning">
+              <div class="stat-icon">
+                <i class="bi bi-exclamation-circle"></i>
+              </div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(monthlyRemaining, 'dinar') }}</h3>
+                <p>متبقي هذا الشهر</p>
               </div>
             </div>
           </div>
@@ -136,10 +183,22 @@
                 </select>
               </div>
               <div class="col-md-2">
+                <select class="form-select" v-model="searchForm.currency" @change="applyFilters">
+                  <option value="">💱 كل العملات</option>
+                  <option value="dollar">💵 دولار</option>
+                  <option value="dinar">💴 دينار</option>
+                </select>
+              </div>
+              <div class="col-md-2">
                 <input type="date" class="form-control" v-model="searchForm.date_from" @change="applyFilters" placeholder="من تاريخ">
               </div>
               <div class="col-md-2">
                 <input type="date" class="form-control" v-model="searchForm.date_to" @change="applyFilters" placeholder="إلى تاريخ">
+              </div>
+              <div class="col-md-2">
+                <button class="btn btn-outline-primary w-100" @click="setThisMonth">
+                  <i class="bi bi-calendar2-week"></i> هذا الشهر
+                </button>
               </div>
               <div class="col-md-2">
                 <button class="btn btn-outline-secondary w-100" @click="resetFilters">
@@ -296,13 +355,36 @@
                 </option>
               </select>
             </div>
+            <div class="col-md-12">
+              <label class="form-label">💱 العملة</label>
+              <div class="currency-cards currency-cards--compact">
+                <button
+                  type="button"
+                  class="currency-card currency-card--quick"
+                  :class="{ active: editForm.currency === 'dollar' }"
+                  @click="editForm.currency = 'dollar'"
+                >
+                  <div class="currency-card-title">💵 دولار</div>
+                  <div class="currency-card-sub">{{ getCurrencySymbol('dollar') }}</div>
+                </button>
+                <button
+                  type="button"
+                  class="currency-card currency-card--quick"
+                  :class="{ active: editForm.currency === 'dinar' }"
+                  @click="editForm.currency = 'dinar'"
+                >
+                  <div class="currency-card-title">💴 دينار</div>
+                  <div class="currency-card-sub">{{ getCurrencySymbol('dinar') }}</div>
+                </button>
+              </div>
+            </div>
             <div class="col-md-6">
               <label class="form-label">💵 السعر الكلي ({{ editCurrencySymbol }})</label>
-              <input type="number" class="form-control" v-model="editForm.total_price" min="0" :step="selectedOrder?.currency === 'dinar' ? 1 : 0.01">
+              <input type="number" class="form-control" v-model="editForm.total_price" min="0" :step="editForm.currency === 'dinar' ? 1 : 0.01">
             </div>
             <div class="col-md-6">
               <label class="form-label">💰 المدفوع ({{ editCurrencySymbol }})</label>
-              <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" :step="selectedOrder?.currency === 'dinar' ? 1 : 0.01">
+              <input type="number" class="form-control" v-model="editForm.paid_amount" min="0" :step="editForm.currency === 'dinar' ? 1 : 0.01">
             </div>
             <div class="col-md-6">
               <label class="form-label">🕐 ساعة المناسبة</label>
@@ -529,6 +611,18 @@ const props = defineProps({
   filters: Object,
   translations: Object,
   employees: Array,
+  monthly_statistics: {
+    type: Object,
+    default: () => ({
+      month_start: null,
+      month_end: null,
+      total_revenue: 0,
+      total_paid: 0,
+      total_remaining: 0,
+      currency: 'dinar',
+      exchange_rate: 1500
+    })
+  },
   statistics: {
     type: Object,
     default: () => ({
@@ -555,7 +649,7 @@ const selectedOrder = ref(null)
 const processing = ref(false)
 
 const editCurrencySymbol = computed(() => {
-  return getCurrencySymbol(selectedOrder.value?.currency || 'dollar')
+  return getCurrencySymbol(editForm.currency || selectedOrder.value?.currency || 'dollar')
 })
 
 const createCurrencySymbol = computed(() => {
@@ -578,9 +672,16 @@ const searchForm = reactive({
   search: props.filters?.search || '',
   status: props.filters?.status || '',
   employee: props.filters?.employee || '',
+  currency: props.filters?.currency || '',
   date_from: props.filters?.date_from || '',
   date_to: props.filters?.date_to || ''
 })
+
+const monthlyStatistics = computed(() => props.monthly_statistics || null)
+
+const monthlyRevenue = computed(() => Number(props.monthly_statistics?.total_revenue) || 0)
+const monthlyPaid = computed(() => Number(props.monthly_statistics?.total_paid) || 0)
+const monthlyRemaining = computed(() => Number(props.monthly_statistics?.total_remaining) || 0)
 
 // Edit form
 const editForm = reactive({
@@ -588,7 +689,8 @@ const editForm = reactive({
   assigned_employee_id: '',
   total_price: 0,
   paid_amount: 0,
-  event_time: ''
+  event_time: '',
+  currency: 'dollar'
 })
 
 // Create form
@@ -633,6 +735,7 @@ const exportUrl = computed(() => {
   if (searchForm.search) params.append('search', searchForm.search)
   if (searchForm.status) params.append('status', searchForm.status)
   if (searchForm.employee) params.append('employee', searchForm.employee)
+  if (searchForm.currency) params.append('currency', searchForm.currency)
   if (searchForm.date_from) params.append('date_from', searchForm.date_from)
   if (searchForm.date_to) params.append('date_to', searchForm.date_to)
   
@@ -661,8 +764,15 @@ const resetFilters = () => {
   searchForm.search = ''
   searchForm.status = ''
   searchForm.employee = ''
+  searchForm.currency = ''
   searchForm.date_from = ''
   searchForm.date_to = ''
+  applyFilters()
+}
+
+const setThisMonth = () => {
+  searchForm.date_from = getFirstDayOfMonth()
+  searchForm.date_to = getLastDayOfMonth()
   applyFilters()
 }
 
@@ -673,6 +783,7 @@ const quickEdit = (order) => {
   editForm.total_price = order.total_price || 0
   editForm.paid_amount = order.paid_amount || 0
   editForm.event_time = order.event_time || ''
+  editForm.currency = order.currency || 'dollar'
   showEditModal.value = true
 }
 
@@ -779,7 +890,7 @@ const formatDate = (date) => {
 }
 
 const getCurrencySymbol = (currency) => {
-  return currency === 'dollar' ? '$' : 'IQD'
+  return currency === 'dollar' ? '$' : 'د.ع'
 }
 
 const getRemainingClass = (order) => {
@@ -1133,5 +1244,22 @@ const getStatusText = (status) => {
   font-size: 12px;
   color: #6c757d;
   font-weight: 600;
+}
+
+.currency-cards--compact {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.currency-card--quick {
+  padding: 12px 12px;
+}
+
+/* Subtle animation on selection */
+.currency-card {
+  transition: transform 160ms ease, box-shadow 160ms ease, border-color 160ms ease;
+}
+
+.currency-card.active {
+  transform: translateY(-1px);
 }
 </style>

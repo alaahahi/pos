@@ -33,6 +33,9 @@ class SimpleDecorationOrdersExport implements FromCollection, WithHeadings, With
             ->when($this->filters['employee'] ?? null, function ($query, $employeeId) {
                 return $query->where('assigned_employee_id', $employeeId);
             })
+            ->when($this->filters['currency'] ?? null, function ($query, $currency) {
+                return $query->where('currency', $currency);
+            })
             ->when($this->filters['search'] ?? null, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
                     $q->where('customer_name', 'LIKE', "%{$search}%")
@@ -62,6 +65,7 @@ class SimpleDecorationOrdersExport implements FromCollection, WithHeadings, With
             $order->customer_name,
             $order->customer_phone,
             $order->assigned_employee ? $order->assigned_employee->name : 'غير معين',
+            $order->currency ?? 'dollar',
             $order->total_price,
             $order->paid_amount ?? 0,
             $order->total_price - ($order->paid_amount ?? 0), // المتبقي
@@ -84,9 +88,10 @@ class SimpleDecorationOrdersExport implements FromCollection, WithHeadings, With
             'اسم الزبون',
             'رقم الهاتف',
             'المنجز',
-            'السعر الكلي ($)',
-            'المدفوع ($)',
-            'المتبقي ($)',
+            'العملة',
+            'السعر الكلي',
+            'المدفوع',
+            'المتبقي',
             'تاريخ المناسبة',
             'ساعة المناسبة',
             'الحالة',
@@ -131,14 +136,15 @@ class SimpleDecorationOrdersExport implements FromCollection, WithHeadings, With
             'C' => 20,  // اسم الزبون
             'D' => 15,  // رقم الهاتف
             'E' => 15,  // المنجز
-            'F' => 15,  // السعر الكلي
-            'G' => 15,  // المدفوع
-            'H' => 15,  // المتبقي
-            'I' => 15,  // تاريخ المناسبة
-            'J' => 15,  // ساعة المناسبة
-            'K' => 15,  // الحالة
-            'L' => 30,  // ملاحظات
-            'M' => 20,  // تاريخ الإنشاء
+            'F' => 12,  // العملة
+            'G' => 15,  // السعر الكلي
+            'H' => 15,  // المدفوع
+            'I' => 15,  // المتبقي
+            'J' => 15,  // تاريخ المناسبة
+            'K' => 15,  // ساعة المناسبة
+            'L' => 15,  // الحالة
+            'M' => 30,  // ملاحظات
+            'N' => 20,  // تاريخ الإنشاء
         ];
     }
 

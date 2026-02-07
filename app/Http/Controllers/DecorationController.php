@@ -747,6 +747,10 @@ class DecorationController extends Controller
      */
     public function simpleOrders(Request $request)
     {
+        $systemConfig = SystemConfig::first();
+        $exchangeRate = $systemConfig ? (float) ($systemConfig->exchange_rate ?? 1500) : 1500;
+        $exchangeRate = $exchangeRate > 0 ? $exchangeRate : 1500;
+
         // Build query with filters
         $query = \App\Models\SimpleDecorationOrder::with(['assignedEmployee'])
             ->when($request->status, function ($query, $status) {
@@ -754,6 +758,9 @@ class DecorationController extends Controller
             })
             ->when($request->employee, function ($query, $employeeId) {
                 return $query->where('assigned_employee_id', $employeeId);
+            })
+            ->when($request->currency, function ($query, $currency) {
+                return $query->where('currency', $currency);
             })
             ->when($request->search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
@@ -772,16 +779,71 @@ class DecorationController extends Controller
         // Calculate statistics from ALL filtered data (not just current page)
         $allOrders = $query->get();
         $filteredOrders = $allOrders->where('status', '!=', 'cancelled');
+
+        $toIqd = function ($amount, $currency) use ($exchangeRate) {
+            $value = (float) ($amount ?? 0);
+            return $currency === 'dollar' ? ($value * $exchangeRate) : $value;
+        };
         
         $statistics = [
             'total_count' => $allOrders->count(),
             'pending_count' => $allOrders->whereIn('status', ['created', 'received', 'executing'])->where('status', '!=', 'cancelled')->count(),
             'completed_count' => $allOrders->where('status', 'completed')->count(),
-            'total_revenue' => $filteredOrders->sum('total_price'),
-            'total_paid' => $filteredOrders->sum('paid_amount'),
-            'total_remaining' => $filteredOrders->sum(function($order) {
-                return ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
+            // All totals returned in IQD (converted from USD using exchangeRate)
+            'total_revenue' => $filteredOrders->sum(function ($order) use ($toIqd) {
+                return $toIqd($order->total_price, $order->currency);
+            }),
+            'total_paid' => $filteredOrders->sum(function ($order) use ($toIqd) {
+                return $toIqd($order->paid_amount ?? 0, $order->currency);
+            }),
+            'total_remaining' => $filteredOrders->sum(function ($order) use ($toIqd) {
+                $remaining = ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
+                return $toIqd($remaining, $order->currency);
+            }),
+            'currency' => 'dinar',
+            'exchange_rate' => $exchangeRate
+        ];
+
+        // Monthly statistics (current month) - same filters except date_from/date_to are replaced by current month range
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd = now()->endOfMonth()->toDateString();
+
+        $monthlyQuery = \App\Models\SimpleDecorationOrder::query()
+            ->when($request->status, function ($query, $status) {
+                return $query->where('status', $status);
             })
+            ->when($request->employee, function ($query, $employeeId) {
+                return $query->where('assigned_employee_id', $employeeId);
+            })
+            ->when($request->currency, function ($query, $currency) {
+                return $query->where('currency', $currency);
+            })
+            ->when($request->search, function ($query, $search) {
+                return $query->where(function ($q) use ($search) {
+                    $q->where('customer_name', 'LIKE', "%{$search}%")
+                      ->orWhere('customer_phone', 'LIKE', "%{$search}%")
+                      ->orWhere('decoration_name', 'LIKE', "%{$search}%");
+                });
+            })
+            ->whereBetween('event_date', [$monthStart, $monthEnd]);
+
+        $monthlyOrders = $monthlyQuery->get()->where('status', '!=', 'cancelled');
+
+        $monthlyStatistics = [
+            'month_start' => $monthStart,
+            'month_end' => $monthEnd,
+            'total_revenue' => $monthlyOrders->sum(function ($order) use ($toIqd) {
+                return $toIqd($order->total_price, $order->currency);
+            }),
+            'total_paid' => $monthlyOrders->sum(function ($order) use ($toIqd) {
+                return $toIqd($order->paid_amount ?? 0, $order->currency);
+            }),
+            'total_remaining' => $monthlyOrders->sum(function ($order) use ($toIqd) {
+                $remaining = ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
+                return $toIqd($remaining, $order->currency);
+            }),
+            'currency' => 'dinar',
+            'exchange_rate' => $exchangeRate,
         ];
 
         // Paginate orders
@@ -791,6 +853,9 @@ class DecorationController extends Controller
             })
             ->when($request->employee, function ($query, $employeeId) {
                 return $query->where('assigned_employee_id', $employeeId);
+            })
+            ->when($request->currency, function ($query, $currency) {
+                return $query->where('currency', $currency);
             })
             ->when($request->search, function ($query, $search) {
                 return $query->where(function ($q) use ($search) {
@@ -819,7 +884,9 @@ class DecorationController extends Controller
             'orders' => $orders,
             'employees' => $employees,
             'statistics' => $statistics,
-            'filters' => $request->only(['status', 'search', 'employee', 'date_from', 'date_to'])
+            'monthly_statistics' => $monthlyStatistics,
+            'exchangeRate' => $exchangeRate,
+            'filters' => $request->only(['status', 'search', 'employee', 'currency', 'date_from', 'date_to'])
         ]);
     }
 
@@ -828,7 +895,7 @@ class DecorationController extends Controller
      */
     public function exportSimpleOrders(Request $request)
     {
-        $filters = $request->only(['status', 'search', 'employee', 'date_from', 'date_to']);
+        $filters = $request->only(['status', 'search', 'employee', 'currency', 'date_from', 'date_to']);
         
         $fileName = 'decoration_orders_' . date('Y-m-d_H-i-s') . '.xlsx';
         
@@ -985,7 +1052,8 @@ class DecorationController extends Controller
             'assigned_employee_id' => 'nullable|exists:users,id',
             'total_price' => 'nullable|numeric|min:0',
             'paid_amount' => 'nullable|numeric|min:0',
-            'event_time' => 'nullable'
+            'event_time' => 'nullable',
+            'currency' => 'nullable|in:dollar,dinar'
         ]);
         
         // Only include fields that are provided in the request
@@ -1007,6 +1075,9 @@ class DecorationController extends Controller
         }
         if ($request->has('special_requests')) {
             $data['special_requests'] = $request->special_requests;
+        }
+        if ($request->has('currency')) {
+            $data['currency'] = $request->currency;
         }
 
         // Only update if there's data to update
