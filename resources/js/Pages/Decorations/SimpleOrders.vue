@@ -66,33 +66,74 @@
                 <i class="bi bi-cash-stack"></i>
               </div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalRevenue, 'dinar') }}</h3>
-                <p>إجمالي الإيرادات</p>
+                <h3>{{ (activeCurrencyFilter === 'dinar') ? formatCurrency(totalRevenueDinar, 'dinar') : formatCurrency(totalRevenueUsd, 'dollar') }}</h3>
+                <p>إجمالي الإيرادات (حسب الفلتر)</p>
               </div>
             </div>
           </div>
         </div>
 
-        <!-- Second Row - Financial Stats -->
-        <div class="row g-3 mb-4">
-          <div class="col-md-6">
-            <div class="stat-card bg-success">
-              <div class="stat-icon">
-                <i class="bi bi-wallet2"></i>
-              </div>
+        <!-- Financial Stats by Currency -->
+        <div class="row g-3 mb-4" v-if="activeCurrencyFilter !== 'dinar'">
+          <div class="col-12">
+            <h6 class="mb-0 text-muted">💵 الإجماليات بالدولار</h6>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-info">
+              <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalPaid, 'dinar') }}</h3>
+                <h3>{{ formatCurrency(totalRevenueUsd, 'dollar') }}</h3>
+                <p>إجمالي الإيرادات</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-success">
+              <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalPaidUsd, 'dollar') }}</h3>
                 <p>💰 إجمالي المدفوع</p>
               </div>
             </div>
           </div>
-          <div class="col-md-6">
+          <div class="col-md-4">
             <div class="stat-card bg-warning">
-              <div class="stat-icon">
-                <i class="bi bi-exclamation-circle"></i>
-              </div>
+              <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
               <div class="stat-content">
-                <h3>{{ formatCurrency(totalRemaining, 'dinar') }}</h3>
+                <h3>{{ formatCurrency(totalRemainingUsd, 'dollar') }}</h3>
+                <p>📊 إجمالي المتبقي</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4" v-if="activeCurrencyFilter !== 'dollar'">
+          <div class="col-12">
+            <h6 class="mb-0 text-muted">💴 الإجماليات بالدينار</h6>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-info">
+              <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalRevenueDinar, 'dinar') }}</h3>
+                <p>إجمالي الإيرادات</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-success">
+              <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalPaidDinar, 'dinar') }}</h3>
+                <p>💰 إجمالي المدفوع</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="stat-card bg-warning">
+              <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+              <div class="stat-content">
+                <h3>{{ formatCurrency(totalRemainingDinar, 'dinar') }}</h3>
                 <p>📊 إجمالي المتبقي</p>
               </div>
             </div>
@@ -111,39 +152,67 @@
               </h6>
             </div>
           </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-info">
-              <div class="stat-icon">
-                <i class="bi bi-cash-coin"></i>
-              </div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(monthlyRevenue, 'dinar') }}</h3>
-                <p>إيرادات هذا الشهر</p>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-success">
-              <div class="stat-icon">
-                <i class="bi bi-wallet2"></i>
-              </div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(monthlyPaid, 'dinar') }}</h3>
-                <p>مدفوع هذا الشهر</p>
+          <template v-if="activeCurrencyFilter !== 'dinar'">
+            <div class="col-12"><small class="text-muted">💵 هذا الشهر بالدولار</small></div>
+            <div class="col-md-4">
+              <div class="stat-card bg-info">
+                <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyRevenueUsd, 'dollar') }}</h3>
+                  <p>إيرادات هذا الشهر</p>
+                </div>
               </div>
             </div>
-          </div>
-          <div class="col-md-4">
-            <div class="stat-card bg-warning">
-              <div class="stat-icon">
-                <i class="bi bi-exclamation-circle"></i>
-              </div>
-              <div class="stat-content">
-                <h3>{{ formatCurrency(monthlyRemaining, 'dinar') }}</h3>
-                <p>متبقي هذا الشهر</p>
+            <div class="col-md-4">
+              <div class="stat-card bg-success">
+                <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyPaidUsd, 'dollar') }}</h3>
+                  <p>مدفوع هذا الشهر</p>
+                </div>
               </div>
             </div>
-          </div>
+            <div class="col-md-4">
+              <div class="stat-card bg-warning">
+                <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyRemainingUsd, 'dollar') }}</h3>
+                  <p>متبقي هذا الشهر</p>
+                </div>
+              </div>
+            </div>
+          </template>
+
+          <template v-if="activeCurrencyFilter !== 'dollar'">
+            <div class="col-12"><small class="text-muted">💴 هذا الشهر بالدينار</small></div>
+            <div class="col-md-4">
+              <div class="stat-card bg-info">
+                <div class="stat-icon"><i class="bi bi-cash-coin"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyRevenueDinar, 'dinar') }}</h3>
+                  <p>إيرادات هذا الشهر</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card bg-success">
+                <div class="stat-icon"><i class="bi bi-wallet2"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyPaidDinar, 'dinar') }}</h3>
+                  <p>مدفوع هذا الشهر</p>
+                </div>
+              </div>
+            </div>
+            <div class="col-md-4">
+              <div class="stat-card bg-warning">
+                <div class="stat-icon"><i class="bi bi-exclamation-circle"></i></div>
+                <div class="stat-content">
+                  <h3>{{ formatCurrency(monthlyRemainingDinar, 'dinar') }}</h3>
+                  <p>متبقي هذا الشهر</p>
+                </div>
+              </div>
+            </div>
+          </template>
         </div>
 
         <!-- Filters and Search -->
@@ -616,11 +685,11 @@ const props = defineProps({
     default: () => ({
       month_start: null,
       month_end: null,
-      total_revenue: 0,
-      total_paid: 0,
-      total_remaining: 0,
-      currency: 'dinar',
-      exchange_rate: 1500
+      by_currency: {
+        dollar: { count: 0, revenue: 0, paid: 0, remaining: 0 },
+        dinar: { count: 0, revenue: 0, paid: 0, remaining: 0 },
+      },
+      exchange_rate: 1500,
     })
   },
   statistics: {
@@ -679,9 +748,23 @@ const searchForm = reactive({
 
 const monthlyStatistics = computed(() => props.monthly_statistics || null)
 
-const monthlyRevenue = computed(() => Number(props.monthly_statistics?.total_revenue) || 0)
-const monthlyPaid = computed(() => Number(props.monthly_statistics?.total_paid) || 0)
-const monthlyRemaining = computed(() => Number(props.monthly_statistics?.total_remaining) || 0)
+const activeCurrencyFilter = computed(() => searchForm.currency || '')
+
+const statsByCurrency = computed(() => props.statistics?.by_currency || {})
+const totalRevenueUsd = computed(() => Number(statsByCurrency.value?.dollar?.revenue) || 0)
+const totalPaidUsd = computed(() => Number(statsByCurrency.value?.dollar?.paid) || 0)
+const totalRemainingUsd = computed(() => Number(statsByCurrency.value?.dollar?.remaining) || 0)
+const totalRevenueDinar = computed(() => Number(statsByCurrency.value?.dinar?.revenue) || 0)
+const totalPaidDinar = computed(() => Number(statsByCurrency.value?.dinar?.paid) || 0)
+const totalRemainingDinar = computed(() => Number(statsByCurrency.value?.dinar?.remaining) || 0)
+
+const monthlyByCurrency = computed(() => props.monthly_statistics?.by_currency || {})
+const monthlyRevenueUsd = computed(() => Number(monthlyByCurrency.value?.dollar?.revenue) || 0)
+const monthlyPaidUsd = computed(() => Number(monthlyByCurrency.value?.dollar?.paid) || 0)
+const monthlyRemainingUsd = computed(() => Number(monthlyByCurrency.value?.dollar?.remaining) || 0)
+const monthlyRevenueDinar = computed(() => Number(monthlyByCurrency.value?.dinar?.revenue) || 0)
+const monthlyPaidDinar = computed(() => Number(monthlyByCurrency.value?.dinar?.paid) || 0)
+const monthlyRemainingDinar = computed(() => Number(monthlyByCurrency.value?.dinar?.remaining) || 0)
 
 // Edit form
 const editForm = reactive({
@@ -716,17 +799,7 @@ const completedCount = computed(() => {
   return Number(props.statistics?.completed_count) || 0
 })
 
-const totalRevenue = computed(() => {
-  return Number(props.statistics?.total_revenue) || 0
-})
-
-const totalPaid = computed(() => {
-  return Number(props.statistics?.total_paid) || 0
-})
-
-const totalRemaining = computed(() => {
-  return Number(props.statistics?.total_remaining) || 0
-})
+// Note: totals are now separated by currency via statistics.by_currency
 
 // Export URL with filters
 const exportUrl = computed(() => {

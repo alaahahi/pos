@@ -780,28 +780,54 @@ class DecorationController extends Controller
         $allOrders = $query->get();
         $filteredOrders = $allOrders->where('status', '!=', 'cancelled');
 
-        $toIqd = function ($amount, $currency) use ($exchangeRate) {
-            $value = (float) ($amount ?? 0);
-            return $currency === 'dollar' ? ($value * $exchangeRate) : $value;
+        $normalizeCurrency = function ($currency) {
+            $currency = $currency ?: 'dollar';
+            return in_array($currency, ['dollar', 'dinar'], true) ? $currency : 'dinar';
         };
-        
+
+        $sumRevenue = function ($orders) {
+            return $orders->sum(function ($order) {
+                return (float) ($order->total_price ?? 0);
+            });
+        };
+        $sumPaid = function ($orders) {
+            return $orders->sum(function ($order) {
+                return (float) ($order->paid_amount ?? 0);
+            });
+        };
+        $sumRemaining = function ($orders) {
+            return $orders->sum(function ($order) {
+                return (float) (($order->total_price ?? 0) - ($order->paid_amount ?? 0));
+            });
+        };
+
+        $ordersDollar = $filteredOrders->filter(function ($order) use ($normalizeCurrency) {
+            return $normalizeCurrency($order->currency ?? null) === 'dollar';
+        });
+        $ordersDinar = $filteredOrders->filter(function ($order) use ($normalizeCurrency) {
+            return $normalizeCurrency($order->currency ?? null) === 'dinar';
+        });
+
         $statistics = [
             'total_count' => $allOrders->count(),
             'pending_count' => $allOrders->whereIn('status', ['created', 'received', 'executing'])->where('status', '!=', 'cancelled')->count(),
             'completed_count' => $allOrders->where('status', 'completed')->count(),
-            // All totals returned in IQD (converted from USD using exchangeRate)
-            'total_revenue' => $filteredOrders->sum(function ($order) use ($toIqd) {
-                return $toIqd($order->total_price, $order->currency);
-            }),
-            'total_paid' => $filteredOrders->sum(function ($order) use ($toIqd) {
-                return $toIqd($order->paid_amount ?? 0, $order->currency);
-            }),
-            'total_remaining' => $filteredOrders->sum(function ($order) use ($toIqd) {
-                $remaining = ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
-                return $toIqd($remaining, $order->currency);
-            }),
-            'currency' => 'dinar',
-            'exchange_rate' => $exchangeRate
+            'by_currency' => [
+                'dollar' => [
+                    'count' => $ordersDollar->count(),
+                    'revenue' => $sumRevenue($ordersDollar),
+                    'paid' => $sumPaid($ordersDollar),
+                    'remaining' => $sumRemaining($ordersDollar),
+                ],
+                'dinar' => [
+                    'count' => $ordersDinar->count(),
+                    'revenue' => $sumRevenue($ordersDinar),
+                    'paid' => $sumPaid($ordersDinar),
+                    'remaining' => $sumRemaining($ordersDinar),
+                ],
+            ],
+            // Still provided for reference (not used for grouping UI)
+            'exchange_rate' => $exchangeRate,
         ];
 
         // Monthly statistics (current month) - same filters except date_from/date_to are replaced by current month range
@@ -829,20 +855,30 @@ class DecorationController extends Controller
 
         $monthlyOrders = $monthlyQuery->get()->where('status', '!=', 'cancelled');
 
+        $monthlyDollar = $monthlyOrders->filter(function ($order) use ($normalizeCurrency) {
+            return $normalizeCurrency($order->currency ?? null) === 'dollar';
+        });
+        $monthlyDinar = $monthlyOrders->filter(function ($order) use ($normalizeCurrency) {
+            return $normalizeCurrency($order->currency ?? null) === 'dinar';
+        });
+
         $monthlyStatistics = [
             'month_start' => $monthStart,
             'month_end' => $monthEnd,
-            'total_revenue' => $monthlyOrders->sum(function ($order) use ($toIqd) {
-                return $toIqd($order->total_price, $order->currency);
-            }),
-            'total_paid' => $monthlyOrders->sum(function ($order) use ($toIqd) {
-                return $toIqd($order->paid_amount ?? 0, $order->currency);
-            }),
-            'total_remaining' => $monthlyOrders->sum(function ($order) use ($toIqd) {
-                $remaining = ($order->total_price ?? 0) - ($order->paid_amount ?? 0);
-                return $toIqd($remaining, $order->currency);
-            }),
-            'currency' => 'dinar',
+            'by_currency' => [
+                'dollar' => [
+                    'count' => $monthlyDollar->count(),
+                    'revenue' => $sumRevenue($monthlyDollar),
+                    'paid' => $sumPaid($monthlyDollar),
+                    'remaining' => $sumRemaining($monthlyDollar),
+                ],
+                'dinar' => [
+                    'count' => $monthlyDinar->count(),
+                    'revenue' => $sumRevenue($monthlyDinar),
+                    'paid' => $sumPaid($monthlyDinar),
+                    'remaining' => $sumRemaining($monthlyDinar),
+                ],
+            ],
             'exchange_rate' => $exchangeRate,
         ];
 
