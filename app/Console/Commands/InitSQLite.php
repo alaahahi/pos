@@ -63,11 +63,7 @@ class InitSQLite extends Command
             
             $tables = [];
             foreach ($mysqlTables as $table) {
-                $tableName = $table->$tableKey;
-                // استثناء جداول النظام
-                if (!in_array($tableName, ['migrations', 'sync_metadata', 'sync_queue', 'sync_id_mapping', 'failed_jobs', 'jobs', 'password_reset_tokens', 'personal_access_tokens'])) {
-                    $tables[] = $tableName;
-                }
+                $tables[] = $table->$tableKey;
             }
 
             $this->info("📊 تم العثور على " . count($tables) . " جدول في MySQL");
@@ -83,13 +79,16 @@ class InitSQLite extends Command
                 try {
                     // إنشاء الجدول في SQLite
                     if (!Schema::connection('sync_sqlite')->hasTable($tableName) || $this->option('force')) {
-                        $this->createTableInSQLite($tableName);
+                        $this->createTableInSQLite($tableName, (bool) $this->option('force'));
                         $created++;
                     }
 
-                    // نسخ البيانات
-                    $syncedCount = $this->copyDataFromMySQL($tableName);
-                    $synced += $syncedCount;
+                    // نسخ البيانات فقط للجداول غير المستثناة (جداول "بنية فقط" لا تُنسخ بياناتها)
+                    $structureOnlyTables = config('sync.structure_only_tables', []);
+                    if (!in_array($tableName, $structureOnlyTables)) {
+                        $syncedCount = $this->copyDataFromMySQL($tableName);
+                        $synced += $syncedCount;
+                    }
 
                     $bar->advance();
                 } catch (\Exception $e) {
@@ -122,13 +121,18 @@ class InitSQLite extends Command
     /**
      * إنشاء جدول في SQLite بناءً على MySQL
      */
-    private function createTableInSQLite($tableName)
+    private function createTableInSQLite($tableName, bool $force = false): void
     {
         try {
+            // في حالة --force: احذف الجدول الحالي لإعادة إنشائه ببنية صحيحة
+            if ($force && Schema::connection('sync_sqlite')->hasTable($tableName)) {
+                Schema::connection('sync_sqlite')->drop($tableName);
+            }
+
             // جلب بنية الجدول من MySQL
             $columns = DB::connection('mysql')->select("SHOW COLUMNS FROM `{$tableName}`");
             
-            $createTable = "CREATE TABLE IF NOT EXISTS `{$tableName}` (";
+            $createTable = "CREATE TABLE `{$tableName}` (";
             $columnDefinitions = [];
             $primaryKeyColumns = [];
             
@@ -165,10 +169,36 @@ class InitSQLite extends Command
             
             DB::connection('sync_sqlite')->statement($createTable);
         } catch (\Exception $e) {
-            // إذا فشل إنشاء الجدول، حاول إنشاءه بشكل بسيط
+            // إذا فشل إنشاء الجدول، جرّب إنشاء "أبسط" بدون DEFAULT/NOT NULL (لكن مع الأعمدة)
             try {
-                DB::connection('sync_sqlite')->statement("CREATE TABLE IF NOT EXISTS `{$tableName}` (id INTEGER PRIMARY KEY)");
+                $columns = DB::connection('mysql')->select("SHOW COLUMNS FROM `{$tableName}`");
+                if (empty($columns)) {
+                    throw new \Exception("لا توجد أعمدة لجدول {$tableName} في MySQL");
+                }
+
+                $columnDefinitions = [];
+                $primaryKeyColumns = [];
+
+                foreach ($columns as $column) {
+                    $name = $column->Field;
+                    $type = $this->convertMySQLTypeToSQLite($column->Type);
+                    $columnDefinitions[] = "`{$name}` {$type}";
+                    if ($column->Key === 'PRI') {
+                        $primaryKeyColumns[] = "`{$name}`";
+                    }
+                }
+
+                // في حالة --force ربما يكون الجدول ما زال موجوداً (إذا فشل drop بسبب قفل/صلاحيات)
+                // لذا نستخدم IF NOT EXISTS هنا كحل أخير لمنع انهيار العملية.
+                $createTable = "CREATE TABLE IF NOT EXISTS `{$tableName}` (" . implode(', ', $columnDefinitions);
+                if (count($primaryKeyColumns) > 0) {
+                    $createTable .= ', PRIMARY KEY (' . implode(', ', $primaryKeyColumns) . ')';
+                }
+                $createTable .= ')';
+
+                DB::connection('sync_sqlite')->statement($createTable);
             } catch (\Exception $e2) {
+                // لا تنشئ جدول placeholder (id فقط) لأنه يكسر الجداول ذات المفاتيح المركبة مثل Spatie pivot tables
                 throw new \Exception("فشل إنشاء الجدول {$tableName} في SQLite: " . $e->getMessage());
             }
         }
@@ -183,32 +213,68 @@ class InitSQLite extends Command
         $batchSize = 500;
 
         try {
-            DB::connection('mysql')
-                ->table($tableName)
-                ->orderBy('id')
-                ->chunk($batchSize, function ($rows) use ($tableName, &$syncedCount) {
-                    foreach ($rows as $row) {
-                        try {
-                            $rowArray = (array) $row;
+            $mysql = DB::connection('mysql');
+
+            // بعض الجداول (مثل model_has_roles) لا تحتوي على id
+            $hasId = $mysql->getSchemaBuilder()->hasColumn($tableName, 'id');
+
+            if ($hasId) {
+                $mysql->table($tableName)
+                    ->orderBy('id')
+                    ->chunk($batchSize, function ($rows) use ($tableName, &$syncedCount) {
+                        foreach ($rows as $row) {
+                            try {
+                                $rowArray = (array) $row;
+                                DB::connection('sync_sqlite')
+                                    ->table($tableName)
+                                    ->updateOrInsert(['id' => $rowArray['id']], $rowArray);
+                                $syncedCount++;
+                            } catch (\Exception $e) {
+                                continue;
+                            }
+                        }
+                    });
+            } else {
+                // جداول بدون id: استخدم مفاتيح upsert المناسبة (خصوصاً جداول Spatie)
+                $rows = $mysql->table($tableName)->get();
+                foreach ($rows as $row) {
+                    try {
+                        $rowArray = (array) $row;
+                        $keys = $this->getUpsertKeys($tableName, $rowArray);
+
+                        if ($keys) {
                             DB::connection('sync_sqlite')
                                 ->table($tableName)
-                                ->updateOrInsert(['id' => $rowArray['id']], $rowArray);
-                            $syncedCount++;
-                        } catch (\Exception $e) {
-                            // تخطي السجلات التي تفشل
-                            continue;
+                                ->updateOrInsert($keys, $rowArray);
+                        } else {
+                            // إذا لم نستطع تحديد مفاتيح، قم بإدراج مباشر (قد ينتج تكرار، لكنه أفضل من 0 بيانات)
+                            DB::connection('sync_sqlite')
+                                ->table($tableName)
+                                ->insert($rowArray);
                         }
+
+                        $syncedCount++;
+                    } catch (\Exception $e) {
+                        continue;
                     }
-                });
+                }
+            }
         } catch (\Exception $e) {
             // إذا فشل chunk، جرب الطريقة العادية
             $rows = DB::connection('mysql')->table($tableName)->get();
             foreach ($rows as $row) {
                 try {
                     $rowArray = (array) $row;
-                    DB::connection('sync_sqlite')
-                        ->table($tableName)
-                        ->updateOrInsert(['id' => $rowArray['id']], $rowArray);
+                    $keys = $this->getUpsertKeys($tableName, $rowArray);
+                    if ($keys) {
+                        DB::connection('sync_sqlite')
+                            ->table($tableName)
+                            ->updateOrInsert($keys, $rowArray);
+                    } else {
+                        DB::connection('sync_sqlite')
+                            ->table($tableName)
+                            ->insert($rowArray);
+                    }
                     $syncedCount++;
                 } catch (\Exception $e2) {
                     continue;
@@ -217,6 +283,78 @@ class InitSQLite extends Command
         }
 
         return $syncedCount;
+    }
+
+    /**
+     * تحديد مفاتيح upsert للجداول التي لا تحتوي على id.
+     * يدعم جداول Spatie Permission القياسية.
+     */
+    private function getUpsertKeys(string $tableName, array $rowArray): ?array
+    {
+        if (array_key_exists('id', $rowArray)) {
+            return ['id' => $rowArray['id']];
+        }
+
+        // Spatie Permission pivot tables
+        if ($tableName === 'model_has_roles'
+            && isset($rowArray['role_id'], $rowArray['model_id'], $rowArray['model_type'])) {
+            return [
+                'role_id' => $rowArray['role_id'],
+                'model_id' => $rowArray['model_id'],
+                'model_type' => $rowArray['model_type'],
+            ];
+        }
+
+        if ($tableName === 'model_has_permissions'
+            && isset($rowArray['permission_id'], $rowArray['model_id'], $rowArray['model_type'])) {
+            return [
+                'permission_id' => $rowArray['permission_id'],
+                'model_id' => $rowArray['model_id'],
+                'model_type' => $rowArray['model_type'],
+            ];
+        }
+
+        if ($tableName === 'role_has_permissions'
+            && isset($rowArray['permission_id'], $rowArray['role_id'])) {
+            return [
+                'permission_id' => $rowArray['permission_id'],
+                'role_id' => $rowArray['role_id'],
+            ];
+        }
+
+        // محاولة عامة: استخدم أعمدة المفتاح الأساسي من MySQL إن وُجدت
+        try {
+            $pkCols = $this->getPrimaryKeyColumnsFromMySQL($tableName);
+            if (!empty($pkCols)) {
+                $keys = [];
+                foreach ($pkCols as $col) {
+                    if (!array_key_exists($col, $rowArray)) {
+                        return null;
+                    }
+                    $keys[$col] = $rowArray[$col];
+                }
+                return $keys;
+            }
+        } catch (\Exception $e) {
+            // ignore
+        }
+
+        return null;
+    }
+
+    /**
+     * جلب أعمدة المفتاح الأساسي من MySQL لجدول معيّن.
+     */
+    private function getPrimaryKeyColumnsFromMySQL(string $tableName): array
+    {
+        $keys = DB::connection('mysql')->select("SHOW KEYS FROM `{$tableName}` WHERE Key_name = 'PRIMARY'");
+        $cols = [];
+        foreach ($keys as $key) {
+            if (!empty($key->Column_name)) {
+                $cols[] = $key->Column_name;
+            }
+        }
+        return $cols;
     }
 
     /**

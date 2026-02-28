@@ -170,6 +170,7 @@ Route::prefix('sync-monitor')->group(function () {
     
     Route::get('/tables', [App\Http\Controllers\SyncMonitorController::class, 'tables']);
     Route::get('/table/{tableName}', [App\Http\Controllers\SyncMonitorController::class, 'tableDetails']);
+    Route::get('/table/{tableName}/structure', [App\Http\Controllers\SyncMonitorController::class, 'tableStructure']);
     Route::post('/sync', [App\Http\Controllers\SyncMonitorController::class, 'sync']);
     Route::get('/sync-progress', [App\Http\Controllers\SyncMonitorController::class, 'syncProgress']);
     Route::get('/metadata', [App\Http\Controllers\SyncMonitorController::class, 'syncMetadata']);
@@ -180,6 +181,8 @@ Route::prefix('sync-monitor')->group(function () {
     Route::get('/check-health', [App\Http\Controllers\SyncMonitorController::class, 'checkSystemStatus']); // فحص سريع - Offline First (لا يتطلب اتصال)
     Route::get('/auto-sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getAutoSyncStatus']); // حالة المزامنة التلقائية
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
+    Route::post('/run-schedule', [App\Http\Controllers\SyncMonitorController::class, 'runSchedule']); // تشغيل schedule:run مرة واحدة (مثل shipping)
+    Route::post('/run-worker-once', [App\Http\Controllers\SyncMonitorController::class, 'runWorkerOnce']); // تشغيل queue worker مرة واحدة (مثل shipping)
     
     // Migration routes (تنفيذ Migrations بأمان)
     Route::get('/migrations', [App\Http\Controllers\SyncMonitorController::class, 'getMigrations']); // جلب قائمة Migrations

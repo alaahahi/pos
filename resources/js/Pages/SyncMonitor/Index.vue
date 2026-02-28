@@ -16,12 +16,12 @@
             <span v-else>⏳ جاري...</span>
           </button>
           <button
-            v-if="syncStatus.pendingCount > 0 && connectionStatus.online"
+            v-if="connectionStatus.online"
             @click="syncAll"
             class="px-4 py-2 bg-green-500 text-white rounded hover:bg-green-600"
             :disabled="isSyncing"
           >
-            <span v-if="!isSyncing">✅ مزامنة الكل</span>
+            <span v-if="!isSyncing">✅ مزامنة الكل (سحب + رفع)</span>
             <span v-else>⏳ جاري المزامنة...</span>
           </button>
         </div>
@@ -103,11 +103,11 @@
                 </button>
                 <button
                   @click="syncAll"
-                  :disabled="!connectionStatus.online || !connectionStatus.serverAvailable || isSyncing || syncStatus.pendingCount === 0"
+                  :disabled="!connectionStatus.online || !connectionStatus.serverAvailable || isSyncing"
                   class="w-full px-3 py-2 bg-green-600 text-white text-xs rounded hover:bg-green-700 disabled:opacity-50"
-                  :title="syncStatus.pendingCount === 0 ? 'لا توجد سجلات في الانتظار' : !connectionStatus.serverAvailable ? 'السيرفر غير متاح' : ''"
+                  :title="!connectionStatus.serverAvailable ? 'السيرفر غير متاح' : ''"
                 >
-                  🔄 مزامنة الطابور ({{ syncStatus.pendingCount }})
+                  🔄 مزامنة الكل (سحب + رفع)
                 </button>
               </div>
             </div>
@@ -753,6 +753,58 @@
 
           <!-- تبويب المزامنة -->
           <div v-if="activeTab === 'sync'" class="p-6">
+            <!-- Auto-sync + تشغيل scheduler/worker (مثل shipping) -->
+            <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+              <div class="flex justify-between items-center gap-4 flex-wrap">
+                <div>
+                  <h4 class="text-md font-semibold dark:text-gray-50">⏱️ المزامنة التلقائية + تشغيل الخدمات</h4>
+                  <p class="text-xs text-gray-600 dark:text-gray-400">
+                    تشغيل one-off: `schedule:run` و `queue:work --once` من الواجهة (مثل مشروع shipping)
+                  </p>
+                </div>
+                <div class="flex gap-2 flex-wrap">
+                  <button
+                    type="button"
+                    class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 disabled:opacity-50"
+                    :disabled="runningSchedule"
+                    @click="triggerScheduleRun"
+                  >
+                    <span v-if="!runningSchedule">▶ تشغيل المهام المجدولة</span>
+                    <span v-else>⏳ جاري...</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="px-4 py-2 bg-slate-700 text-white rounded hover:bg-slate-800 disabled:opacity-50"
+                    :disabled="runningWorkerOnce"
+                    @click="runWorkerOnce"
+                  >
+                    <span v-if="!runningWorkerOnce">⚙️ تشغيل Worker مرة</span>
+                    <span v-else>⏳ جاري...</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="px-4 py-2 bg-amber-600 text-white rounded hover:bg-amber-700 disabled:opacity-50"
+                    :disabled="isSyncing"
+                    @click="initSQLite"
+                  >
+                    💾 تهيئة SQLite
+                  </button>
+                </div>
+              </div>
+
+              <div class="mt-3 text-sm">
+                <span class="font-medium dark:text-gray-200">الحالة:</span>
+                <span class="mr-2 font-semibold" :class="autoSyncStatusFormatted.class">
+                  {{ autoSyncStatusFormatted.icon }} {{ autoSyncStatusFormatted.text }}
+                </span>
+              </div>
+
+              <div v-if="lastCommandOutput" class="mt-3">
+                <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">آخر نتيجة أمر:</div>
+                <pre class="text-xs whitespace-pre-wrap bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded p-3 overflow-auto max-h-48 dark:text-gray-100">{{ JSON.stringify(lastCommandOutput, null, 2) }}</pre>
+              </div>
+            </div>
+
             <div class="mb-4">
               <h3 class="text-lg font-semibold mb-4 dark:text-gray-50">🔄 عمليات المزامنة</h3>
               <div class="flex gap-2 flex-wrap">
@@ -768,6 +820,42 @@
                 <button @click="syncAllTables('down')" :disabled="isSyncing" class="px-4 py-2 bg-purple-600 text-white rounded hover:bg-purple-700 disabled:opacity-50">
                   🔄 الكل ↓
                 </button>
+              </div>
+            </div>
+
+            <!-- سجل العمليات (مثل shipping) -->
+            <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+              <div class="flex justify-between items-center mb-3">
+                <h4 class="text-md font-semibold dark:text-gray-50">🧾 سجل الصفحة (آخر {{ systemLogs.length }})</h4>
+                <button
+                  type="button"
+                  class="px-3 py-1.5 text-xs bg-gray-200 dark:bg-gray-700 dark:text-gray-100 rounded hover:bg-gray-300 dark:hover:bg-gray-600"
+                  @click="clearSystemLogs"
+                  :disabled="systemLogs.length === 0"
+                >
+                  مسح
+                </button>
+              </div>
+              <div v-if="systemLogs.length === 0" class="text-sm text-gray-500 dark:text-gray-400">
+                لا يوجد سجل بعد.
+              </div>
+              <div v-else class="space-y-2 max-h-56 overflow-auto">
+                <div
+                  v-for="log in systemLogs"
+                  :key="log.id"
+                  class="text-xs p-2 rounded border dark:border-gray-700"
+                  :class="{
+                    'bg-red-50 border-red-200 dark:bg-red-900/20': log.type === 'error',
+                    'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20': log.type === 'warning',
+                    'bg-green-50 border-green-200 dark:bg-green-900/20': log.type === 'success',
+                    'bg-blue-50 border-blue-200 dark:bg-blue-900/20': log.type === 'info'
+                  }"
+                >
+                  <div class="flex justify-between gap-2">
+                    <div class="dark:text-gray-100">{{ log.message }}</div>
+                    <div class="text-gray-500 dark:text-gray-400 whitespace-nowrap">{{ log.at }}</div>
+                  </div>
+                </div>
               </div>
             </div>
             <div class="mt-4">
@@ -1416,9 +1504,46 @@ const currentJobId = ref(null);
 const syncQueueDetails = ref(null);
 const loadingQueueDetails = ref(false);
 
+// Auto Sync + أدوات تشغيل (مثل shipping)
+const autoSyncStatus = ref(null);
+const runningSchedule = ref(false);
+const runningWorkerOnce = ref(false);
+const lastCommandOutput = ref(null);
+
+// System logs (مثل shipping) - آخر 50 حدث
+const systemLogs = ref([]);
+
 // Jobs للمزامنة من السيرفر
 const syncFromServerJobs = ref(null);
 const loadingSyncJobs = ref(false);
+
+const addSystemLog = (type, message) => {
+  systemLogs.value.unshift({
+    id: `${Date.now()}_${Math.random().toString(16).slice(2)}`,
+    type,
+    message,
+    at: new Date().toLocaleString()
+  });
+  if (systemLogs.value.length > 50) {
+    systemLogs.value = systemLogs.value.slice(0, 50);
+  }
+};
+
+const clearSystemLogs = () => {
+  systemLogs.value = [];
+};
+
+const autoSyncStatusFormatted = computed(() => {
+  const s = autoSyncStatus.value?.status;
+  if (!s) return { text: 'غير محمّل', class: 'text-gray-600 dark:text-gray-300', icon: '⏳' };
+  if (!s.is_local) return { text: 'متاح فقط محلياً', class: 'text-amber-600 dark:text-amber-400', icon: '⚠️' };
+  if (s.is_running) return { text: 'جاري المزامنة...', class: 'text-blue-600 dark:text-blue-400', icon: '🔄' };
+  if (!s.enabled) return { text: 'غير مفعّل', class: 'text-amber-600 dark:text-amber-400', icon: '⚠️' };
+  const last = s.last_sync_at ? `آخر: ${s.last_sync_at}` : 'لم تُشغّل بعد';
+  const next = typeof s.next_sync_in === 'number' ? ` | القادم خلال: ${s.next_sync_in}s` : '';
+  const sched = s.schedule_running ? ' | Scheduler: ✅' : ' | Scheduler: ❌';
+  return { text: `${last}${next}${sched}`, class: 'text-green-600 dark:text-green-400', icon: '✅' };
+});
 
 // Jobs للمزامنة من السيرفر
 const loadSyncFromServerJobs = async () => {
@@ -1439,6 +1564,89 @@ const loadSyncFromServerJobs = async () => {
     toast.error('فشل تحميل Jobs: ' + (error.response?.data?.message || error.message));
   } finally {
     loadingSyncJobs.value = false;
+  }
+};
+
+const loadAutoSyncStatus = async () => {
+  try {
+    const response = await axios.get('/api/sync-monitor/auto-sync-status', { withCredentials: true });
+    autoSyncStatus.value = response.data;
+  } catch (error) {
+    autoSyncStatus.value = { success: false, status: null, error: error.response?.data?.message || error.message };
+  }
+};
+
+const triggerScheduleRun = async () => {
+  if (runningSchedule.value) return;
+  runningSchedule.value = true;
+  lastCommandOutput.value = null;
+  try {
+    addSystemLog('info', 'تشغيل schedule:run...');
+    const response = await axios.post('/api/sync-monitor/run-schedule', {}, { withCredentials: true, timeout: 60000 });
+    lastCommandOutput.value = response.data;
+    if (response.data.success) {
+      toast.success('تم تشغيل المهام المجدولة');
+      addSystemLog('success', 'تم تشغيل schedule:run بنجاح');
+    } else {
+      toast.warning(response.data.message || 'انتهى مع أخطاء');
+      addSystemLog('warning', response.data.message || 'انتهى schedule:run مع أخطاء');
+    }
+    await loadAutoSyncStatus();
+  } catch (error) {
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    toast.error('فشل تشغيل المهام المجدولة: ' + msg);
+    addSystemLog('error', 'فشل تشغيل schedule:run: ' + msg);
+  } finally {
+    runningSchedule.value = false;
+  }
+};
+
+const runWorkerOnce = async () => {
+  if (runningWorkerOnce.value) return;
+  runningWorkerOnce.value = true;
+  lastCommandOutput.value = null;
+  try {
+    addSystemLog('info', 'تشغيل queue worker مرة واحدة...');
+    const response = await axios.post('/api/sync-monitor/run-worker-once', { queue: 'sync', timeout: 60 }, { withCredentials: true, timeout: 90000 });
+    lastCommandOutput.value = response.data;
+    if (response.data.success) {
+      toast.success('تم تشغيل الـ Worker مرة واحدة');
+      addSystemLog('success', 'تم تشغيل worker once بنجاح');
+    } else {
+      toast.warning(response.data.message || 'انتهى مع أخطاء');
+      addSystemLog('warning', response.data.message || 'انتهى worker once مع أخطاء');
+    }
+  } catch (error) {
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    toast.error('فشل تشغيل الـ Worker: ' + msg);
+    addSystemLog('error', 'فشل تشغيل worker once: ' + msg);
+  } finally {
+    runningWorkerOnce.value = false;
+  }
+};
+
+const initSQLite = async () => {
+  if (!confirm('هل تريد تهيئة/إعادة بناء SQLite من MySQL؟\n\nقد يستغرق ذلك بعض الوقت.')) return;
+  isSyncing.value = true;
+  lastCommandOutput.value = null;
+  try {
+    addSystemLog('info', 'بدء تهيئة SQLite...');
+    const response = await axios.post('/api/sync-monitor/init-sqlite', {}, { withCredentials: true, timeout: 180000 });
+    lastCommandOutput.value = response.data;
+    if (response.data.success) {
+      toast.success(response.data.message || 'تمت تهيئة SQLite بنجاح');
+      addSystemLog('success', 'تمت تهيئة SQLite');
+      await loadAllData();
+    } else {
+      toast.error(response.data.message || 'فشلت تهيئة SQLite');
+      addSystemLog('error', response.data.message || 'فشلت تهيئة SQLite');
+    }
+  } catch (error) {
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    toast.error('فشلت تهيئة SQLite: ' + msg);
+    addSystemLog('error', 'فشلت تهيئة SQLite: ' + msg);
+  } finally {
+    isSyncing.value = false;
   }
 };
 
@@ -1633,6 +1841,9 @@ const loadTabData = async (tab) => {
         
         // جلب jobs
         await loadSyncFromServerJobs();
+
+        // Auto-sync status
+        await loadAutoSyncStatus();
         
         loadedTabs.value.sync = true;
         break;
@@ -1831,67 +2042,75 @@ const syncAll = async () => {
       return;
     }
   }
-  
-  if (syncStatus.value.pendingCount === 0) {
-    toast.info('لا توجد سجلات في الانتظار للمزامنة');
+
+  if (!confirm('هل تريد مزامنة الكل؟\n\nسيتم أولاً: 📥 سحب (MySQL → SQLite)\nثم: 📤 رفع الطابور (SQLite → Server)')) {
     return;
   }
-  
+
   isSyncing.value = true;
   try {
-    toast.info('🔄 بدء المزامنة...', { timeout: 3000 });
-    
-    // استخدام smartSync للمزامنة الذكية
-    const response = await axios.post('/api/sync-monitor/smart-sync', {
-      limit: 1000 // مزامنة حتى 1000 سجل
-    }, { withCredentials: true });
-    
-    if (!response.data || !response.data.success) {
-      throw new Error(response.data?.message || 'فشل بدء المزامنة');
+    toast.info('🔄 بدء مزامنة الكل...', { timeout: 3000 });
+    addSystemLog('info', 'بدء مزامنة الكل (Pull ثم Push)');
+
+    // 1) Pull: MySQL → SQLite (مثل shipping)
+    addSystemLog('info', '📥 Pull: سحب البيانات من السيرفر...');
+    const pullResponse = await axios.post('/api/sync-monitor/sync', {
+      direction: 'down',
+      tables: null,
+      safe_mode: false,
+      create_backup: false,
+      force_full_sync: false
+    }, {
+      withCredentials: true,
+      timeout: 120000
+    });
+
+    if (pullResponse.data?.success) {
+      const totalSynced = pullResponse.data.results?.total_synced || 0;
+      toast.success(`📥 تم السحب: ${totalSynced} سجل`, { timeout: 4000 });
+      addSystemLog('success', `تم Pull بنجاح: ${totalSynced} سجل`);
+    } else {
+      const msg = pullResponse.data?.message || pullResponse.data?.error || 'فشل Pull';
+      toast.warning('⚠️ تحذير: فشل السحب - ' + msg, { timeout: 5000 });
+      addSystemLog('warning', 'فشل Pull: ' + msg);
     }
-    
-    const jobId = response.data.job_id;
-    toast.info('🔄 تم بدء المزامنة في الخلفية...', { timeout: 3000 });
-    
-    // Polling: التحقق من حالة المزامنة كل ثانية
-    const pollInterval = setInterval(async () => {
-      try {
-        const statusResponse = await axios.get('/api/sync-monitor/sync-status', {
-          params: { job_id: jobId }
-        });
-        
-        if (statusResponse.data && statusResponse.data.success) {
-          const status = statusResponse.data.status;
-          
-          if (status.status === 'completed') {
-            clearInterval(pollInterval);
-            toast.success(`✅ تمت المزامنة بنجاح! (${status.synced || 0} سجل)`);
-            await refreshData(); // تحديث البيانات بعد المزامنة
-            isSyncing.value = false;
-          } else if (status.status === 'failed') {
-            clearInterval(pollInterval);
-            toast.error('❌ فشلت المزامنة: ' + (status.error || 'خطأ غير معروف'));
-            isSyncing.value = false;
-          }
-          // إذا كان status === 'running' أو 'waiting'، نستمر في الانتظار
-        }
-      } catch (error) {
-        console.error('Error checking sync status:', error);
-      }
-    }, 1000); // كل ثانية
-    
-    // timeout بعد 5 دقائق
-    setTimeout(() => {
-      clearInterval(pollInterval);
-      if (isSyncing.value) {
-        toast.warning('⏱️ انتهت مهلة الانتظار - المزامنة قد تستمر في الخلفية');
-        isSyncing.value = false;
-      }
-    }, 300000); // 5 دقائق
-    
+
+    // تحديث counts بعد Pull
+    await loadAllData();
+
+    // 2) Push: Smart Sync (SQLite → Server) عبر Queue
+    if (syncStatus.value.pendingCount === 0) {
+      toast.info('لا يوجد طابور Pending للرفع', { timeout: 3000 });
+      addSystemLog('info', 'لا يوجد Pending للـ Push');
+      return;
+    }
+
+    addSystemLog('info', `📤 Push: بدء Smart Sync للطابور (${syncStatus.value.pendingCount})...`);
+    const pushResponse = await axios.post('/api/sync-monitor/smart-sync', {
+      limit: 1000
+    }, { withCredentials: true });
+
+    if (!pushResponse.data?.success || !pushResponse.data?.job_id) {
+      throw new Error(pushResponse.data?.message || 'فشل بدء Smart Sync');
+    }
+
+    const jobId = pushResponse.data.job_id;
+    currentJobId.value = jobId;
+    toast.info('📤 تم بدء الرفع في الخلفية (Job)', { timeout: 3000 });
+    addSystemLog('info', `تم dispatch Job: ${jobId}`);
+
+    // شغّل Worker مرة واحدة لمعالجة job (بدون تشغيل دائم)
+    await runWorkerOnce();
+
+    // Polling status (الموجود أصلاً)
+    pollSyncStatus(jobId);
   } catch (error) {
     console.error('Error syncing:', error);
-    toast.error('❌ فشلت المزامنة: ' + (error.response?.data?.message || error.message));
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    toast.error('❌ فشلت المزامنة: ' + msg);
+    addSystemLog('error', 'فشلت مزامنة الكل: ' + msg);
+  }
+  finally {
     isSyncing.value = false;
   }
 };
@@ -1987,57 +2206,35 @@ const syncDirection = async (direction) => {
   if (!confirm(`هل تريد المزامنة ${direction === 'up' ? 'من SQLite إلى MySQL' : 'من MySQL إلى SQLite'}?`)) return;
   isSyncing.value = true;
   try {
-    // إذا كان الاتجاه "down" (من MySQL إلى SQLite)، استخدم endpoint جديد يعمل عبر API
-    if (direction === 'down') {
-      // في النظام المحلي، استخدم sync-from-server لجدول orders أولاً (يمكن توسيعها)
-      try {
-        const response = await axios.post('/api/sync-monitor/sync-from-server', {
-          table_name: 'orders',
-          limit: 1000
-        }, { withCredentials: true });
-        
-        if (response.data.success) {
-          toast.success(`✅ تمت مزامنة ${response.data.synced || 0} سجل(ات) من السيرفر لجدول orders`);
-          await loadAllData();
-        } else {
-          toast.error(response.data.message || 'فشلت المزامنة من السيرفر');
-        }
-      } catch (error) {
-        console.error('Error syncing from server:', error);
-        toast.error('فشلت المزامنة من السيرفر: ' + (error.response?.data?.message || error.message));
-      }
+    addSystemLog('info', `بدء المزامنة: ${direction === 'up' ? 'SQLite → Server' : 'Server → SQLite'}`);
+
+    const response = await axios.post('/api/sync-monitor/sync', {
+      direction,
+      tables: null,
+      safe_mode: direction === 'up',
+      create_backup: direction === 'up',
+      force_full_sync: false
+    }, {
+      withCredentials: true,
+      timeout: direction === 'down' ? 120000 : 60000
+    });
+
+    if (response.data.success) {
+      toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
+      addSystemLog('success', `نجحت المزامنة (${direction}): ${response.data.results?.total_synced || 0} سجل`);
+      await loadAllData();
     } else {
-      // الاتجاه "up" (من SQLite إلى MySQL) - استخدم endpoint العادي
-      try {
-        const response = await axios.post('/api/sync-monitor/sync', {
-          direction,
-          tables: null,
-          safe_mode: direction === 'up',
-          create_backup: direction === 'up'
-        }, { withCredentials: true });
-        
-        if (response.data.success) {
-          toast.success(`✅ تمت المزامنة: ${response.data.results?.total_synced || 0} سجل`);
-          await loadAllData();
-        } else {
-          // التحقق من حالة MySQL
-          if (response.data.mysql_available === false) {
-            toast.warning('⚠️ قاعدة MySQL البعيدة غير متاحة حالياً. يمكنك الاستمرار بالعمل على SQLite محلياً.');
-          } else {
-            toast.error(response.data.message || 'فشلت المزامنة');
-          }
-        }
-      } catch (error) {
-        // التحقق من حالة الخطأ
-        if (error.response?.status === 503) {
-          toast.warning('⚠️ قاعدة MySQL البعيدة غير متاحة حالياً. يمكنك الاستمرار بالعمل على SQLite محلياً.');
-        } else {
-          toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message));
-        }
+      if (response.data.mysql_available === false) {
+        toast.warning('⚠️ قاعدة MySQL البعيدة غير متاحة حالياً. يمكنك الاستمرار بالعمل على SQLite محلياً.');
+        addSystemLog('warning', 'MySQL غير متاح - تم البقاء على SQLite');
+      } else {
+        toast.error(response.data.message || 'فشلت المزامنة');
+        addSystemLog('error', 'فشلت المزامنة: ' + (response.data.message || ''));
       }
     }
   } catch (error) {
     toast.error('فشلت المزامنة: ' + (error.response?.data?.message || error.message));
+    addSystemLog('error', 'فشلت المزامنة: ' + (error.response?.data?.message || error.message));
   } finally {
     isSyncing.value = false;
   }
@@ -2143,15 +2340,21 @@ const startSmartSync = async () => {
     if (response.data.success && response.data.job_id) {
       currentJobId.value = response.data.job_id;
       toast.success('✅ تم بدء المزامنة في الخلفية');
+      addSystemLog('info', `تم dispatch Smart Sync Job: ${response.data.job_id}`);
+
+      // شغّل Worker مرة واحدة لمعالجة job
+      await runWorkerOnce();
       
       // بدء polling لحالة المزامنة
       pollSyncStatus(response.data.job_id);
     } else {
       toast.error(response.data.message || 'فشل بدء المزامنة');
+      addSystemLog('error', response.data.message || 'فشل بدء Smart Sync');
     }
   } catch (error) {
     console.error('Error starting smart sync:', error);
     toast.error('فشل بدء المزامنة: ' + (error.response?.data?.message || error.message));
+    addSystemLog('error', 'فشل بدء Smart Sync: ' + (error.response?.data?.message || error.message));
   } finally {
     isSyncing.value = false;
   }

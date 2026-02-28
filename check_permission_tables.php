@@ -60,6 +60,8 @@ try {
     echo "🧪 اختبار استعلام الأدوار:\n";
     echo str_repeat("─", 60) . "\n\n";
     
+    $modelType = \App\Models\User::class; // "App\Models\User"
+    
     // على MySQL
     echo "1️⃣ على MySQL:\n";
     try {
@@ -69,10 +71,10 @@ try {
              INNER JOIN model_has_roles 
                ON users.id = model_has_roles.model_id 
              WHERE roles.id = model_has_roles.role_id 
-               AND model_has_roles.model_type = 'App\\\\Models\\\\User') as users_count
+               AND model_has_roles.model_type = ?) as users_count
         FROM roles";
         
-        $mysqlRoles = DB::connection('mysql')->select($sql);
+        $mysqlRoles = DB::connection('mysql')->select($sql, [$modelType]);
         foreach ($mysqlRoles as $role) {
             echo sprintf("   %-20s → %d مستخدم\n", $role->name, $role->users_count);
         }
@@ -88,10 +90,10 @@ try {
              INNER JOIN model_has_roles 
                ON users.id = model_has_roles.model_id 
              WHERE roles.id = model_has_roles.role_id 
-               AND model_has_roles.model_type = 'App\\\\Models\\\\User') as users_count
+               AND model_has_roles.model_type = ?) as users_count
         FROM roles";
         
-        $sqliteRoles = DB::connection('sync_sqlite')->select($sql);
+        $sqliteRoles = DB::connection('sync_sqlite')->select($sql, [$modelType]);
         foreach ($sqliteRoles as $role) {
             echo sprintf("   %-20s → %d مستخدم\n", $role->name, $role->users_count);
         }

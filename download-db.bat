@@ -1,0 +1,1 @@
+php artisan sqlite:init --force -v

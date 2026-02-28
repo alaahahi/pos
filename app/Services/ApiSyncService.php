@@ -559,6 +559,93 @@ class ApiSyncService
     }
 
     /**
+     * جلب استجابة all-data من السيرفر (للعرض على اللوكل بدل الاتصال المباشر بـ MySQL)
+     */
+    public function getAllDataFromServer(string $forceConnection = 'mysql'): array
+    {
+        try {
+            $httpRequest = Http::timeout($this->timeout * 3);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            $response = $httpRequest->get("{$this->apiUrl}/api/sync-monitor/all-data", [
+                'force_connection' => $forceConnection,
+            ]);
+            if (!$response->successful()) {
+                return ['success' => false, 'error' => 'HTTP ' . $response->status(), 'tables' => []];
+            }
+            $body = $response->json();
+            return $body;
+        } catch (\Exception $e) {
+            Log::warning('Failed to get all-data from server', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage(), 'tables' => []];
+        }
+    }
+
+    /**
+     * جلب قائمة الجداول من السيرفر (MySQL فقط) للمزامنة الكاملة عبر API
+     */
+    public function getTablesList(): array
+    {
+        try {
+            $httpRequest = Http::timeout($this->timeout * 2);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            $response = $httpRequest->get("{$this->apiUrl}/api/sync-monitor/tables", [
+                'force_connection' => 'mysql',
+            ]);
+            if (!$response->successful()) {
+                return ['success' => false, 'error' => 'HTTP ' . $response->status(), 'tables' => []];
+            }
+            $body = $response->json();
+            if (!($body['success'] ?? false)) {
+                return ['success' => false, 'error' => $body['message'] ?? 'Unknown', 'tables' => []];
+            }
+            $tables = $body['tables'] ?? [];
+            $names = [];
+            foreach ($tables as $t) {
+                if (($t['connection'] ?? '') === 'mysql') {
+                    $names[] = $t['name'] ?? $t['table'] ?? '';
+                }
+            }
+            $names = array_values(array_filter($names));
+            return ['success' => true, 'tables' => $names];
+        } catch (\Exception $e) {
+            Log::warning('Failed to get tables list via API', ['error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage(), 'tables' => []];
+        }
+    }
+
+    /**
+     * جلب بنية جدول من السيرفر (لإنشاء الجدول محلياً عند المزامنة عبر API)
+     */
+    public function getTableStructure(string $tableName): array
+    {
+        try {
+            $httpRequest = Http::timeout($this->timeout * 2);
+            if (!empty($this->apiToken)) {
+                $httpRequest->withToken($this->apiToken);
+            }
+            $response = $httpRequest->get("{$this->apiUrl}/api/sync-monitor/table/" . urlencode($tableName) . "/structure");
+            if (!$response->successful()) {
+                return ['success' => false, 'error' => 'HTTP ' . $response->status(), 'columns' => []];
+            }
+            $body = $response->json();
+            if (!($body['success'] ?? false)) {
+                return ['success' => false, 'error' => $body['error'] ?? 'Unknown', 'columns' => []];
+            }
+            return [
+                'success' => true,
+                'columns' => $body['columns'] ?? [],
+            ];
+        } catch (\Exception $e) {
+            Log::warning('Failed to get table structure via API', ['table' => $tableName, 'error' => $e->getMessage()]);
+            return ['success' => false, 'error' => $e->getMessage(), 'columns' => []];
+        }
+    }
+
+    /**
      * مزامنة batch عبر API (أكثر كفاءة)
      */
     public function syncBatch(array $changes): array
