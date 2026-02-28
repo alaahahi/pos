@@ -1422,7 +1422,7 @@ import axios from 'axios';
 import { useToast } from 'vue-toastification';
 
 const toast = useToast();
-const props = defineProps({ translations: Object });
+const props = defineProps({ translations: Object, syncServerApiUrl: { type: String, default: null } });
 
 // البيانات الأساسية
 const isRefreshing = ref(false);
@@ -1877,14 +1877,23 @@ const loadTabData = async (tab) => {
   }
 };
 
+// عنوان طلبات sync-monitor: عند طلب MySQL فقط والسيرفر معرّف نرسل الطلب للسيرفر مباشرة (لا للوكل)
+const getSyncMonitorBaseUrl = (forceConnection) => {
+  const useServer = forceConnection === 'mysql' && props.syncServerApiUrl;
+  return useServer ? props.syncServerApiUrl.replace(/\/$/, '') : '';
+};
+
 // جلب كل البيانات (للتحديث الكامل)
 const loadAllData = async () => {
   isRefreshing.value = true;
   try {
     connectionStatus.value.online = navigator.onLine;
-    
-    const response = await axios.get('/api/sync-monitor/all-data', { 
-      params: { force_connection: selectedDatabase.value !== 'auto' ? selectedDatabase.value : 'auto' },
+    const forceConnection = selectedDatabase.value !== 'auto' ? selectedDatabase.value : 'auto';
+    const baseUrl = getSyncMonitorBaseUrl(forceConnection);
+    const url = baseUrl ? `${baseUrl}/api/sync-monitor/all-data` : '/api/sync-monitor/all-data';
+
+    const response = await axios.get(url, { 
+      params: { force_connection: forceConnection },
       withCredentials: true 
     });
     
@@ -1932,8 +1941,10 @@ const loadServerTables = async () => {
   isRefreshing.value = true;
   try {
     toast.info('🔄 جاري تحميل جداول السيرفر...', { timeout: 2000 });
-    
-    const response = await axios.get('/api/sync-monitor/all-data', { 
+    const baseUrl = getSyncMonitorBaseUrl('mysql');
+    const url = baseUrl ? `${baseUrl}/api/sync-monitor/all-data` : '/api/sync-monitor/all-data';
+
+    const response = await axios.get(url, { 
       params: { force_connection: 'mysql' },
       withCredentials: true,
       timeout: 15000

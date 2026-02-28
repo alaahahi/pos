@@ -21,8 +21,11 @@ class SyncMonitorController extends Controller
      */
     public function index()
     {
+        $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
+        $onlineUrl = rtrim((string) env('ONLINE_URL', ''), '/');
         return Inertia::render('SyncMonitor/Index', [
             'translations' => __('messages'),
+            'syncServerApiUrl' => $syncViaApi && $onlineUrl !== '' ? $onlineUrl : null,
         ]);
     }
 
