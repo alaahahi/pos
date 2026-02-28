@@ -2211,6 +2211,69 @@ class SyncMonitorController extends Controller
     }
 
     /**
+     * جلب محتوى لوغ الأخطاء (laravel.log)
+     */
+    public function getErrorLog(Request $request)
+    {
+        try {
+            $path = storage_path('logs/laravel.log');
+            $lines = (int) $request->input('lines', 500);
+            $lines = min(max($lines, 50), 2000);
+
+            if (!file_exists($path)) {
+                return response()->json([
+                    'success' => true,
+                    'content' => '(الملف غير موجود أو فارغ)',
+                    'lines_count' => 0,
+                ]);
+            }
+
+            $content = File::get($path);
+            $allLines = explode("\n", $content);
+            $total = count($allLines);
+            $lastLines = array_slice($allLines, -$lines);
+            $content = implode("\n", $lastLines);
+
+            return response()->json([
+                'success' => true,
+                'content' => $content ?: '(فارغ)',
+                'lines_count' => count($lastLines),
+                'total_lines' => $total,
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to read error log: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر قراءة اللوغ: ' . $e->getMessage(),
+                'content' => '',
+            ], 500);
+        }
+    }
+
+    /**
+     * إفراغ لوغ الأخطاء (laravel.log)
+     */
+    public function clearErrorLog(Request $request)
+    {
+        try {
+            $path = storage_path('logs/laravel.log');
+            if (file_exists($path)) {
+                File::put($path, '');
+            }
+            return response()->json([
+                'success' => true,
+                'message' => 'تم إفراغ لوغ الأخطاء.',
+            ]);
+        } catch (\Exception $e) {
+            Log::warning('Failed to clear error log: ' . $e->getMessage());
+            return response()->json([
+                'success' => false,
+                'message' => 'تعذر إفراغ اللوغ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * جلب معلومات المزامنة التلقائية
      */
     public function getAutoSyncStatus(Request $request)

@@ -193,6 +193,8 @@ Route::prefix('sync-monitor')->group(function () {
     Route::get('/sync-status', [App\Http\Controllers\SyncMonitorController::class, 'getSyncStatus']); // جديد: الحصول على حالة المزامنة
     Route::get('/pending-changes', [App\Http\Controllers\SyncMonitorController::class, 'getPendingChanges']);
     Route::get('/sync-queue-details', [App\Http\Controllers\SyncMonitorController::class, 'getSyncQueueDetails']); // جديد: تفاصيل sync_queue
+    Route::get('/error-log', [App\Http\Controllers\SyncMonitorController::class, 'getErrorLog']);
+    Route::post('/error-log/clear', [App\Http\Controllers\SyncMonitorController::class, 'clearErrorLog']);
     Route::post('/retry-failed', [App\Http\Controllers\SyncMonitorController::class, 'retryFailed']);
     Route::post('/api-sync', [App\Http\Controllers\SyncMonitorController::class, 'apiSync']); // استقبال طلبات المزامنة من النظام المحلي
     Route::post('/compare-tables', [App\Http\Controllers\SyncMonitorController::class, 'compareTables']); // مقارنة البيانات بين السيرفر والمحلي

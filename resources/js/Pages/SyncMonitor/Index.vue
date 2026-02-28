@@ -939,6 +939,38 @@
                 </div>
               </div>
             </div>
+
+            <!-- لوغ الأخطاء (laravel.log) -->
+            <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+              <div class="flex justify-between items-center flex-wrap gap-2 mb-3">
+                <h4 class="text-md font-semibold dark:text-gray-50">📄 لوغ الأخطاء (laravel.log)</h4>
+                <div class="flex gap-2">
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600 disabled:opacity-50"
+                    :disabled="loadingErrorLog"
+                    @click="loadErrorLog"
+                  >
+                    <span v-if="!loadingErrorLog">🔄 تحديث</span>
+                    <span v-else>⏳ جاري...</span>
+                  </button>
+                  <button
+                    type="button"
+                    class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600 disabled:opacity-50"
+                    :disabled="clearingErrorLog"
+                    @click="clearErrorLog"
+                  >
+                    <span v-if="!clearingErrorLog">🗑 إفراغ</span>
+                    <span v-else>⏳ جاري...</span>
+                  </button>
+                </div>
+              </div>
+              <p v-if="errorLogLinesCount !== null" class="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                عرض آخر {{ errorLogLinesCount }} سطر{{ errorLogTotalLines != null && errorLogTotalLines > errorLogLinesCount ? ` من ${errorLogTotalLines}` : '' }}
+              </p>
+              <pre class="text-xs whitespace-pre-wrap bg-gray-900 text-gray-100 rounded p-4 overflow-auto max-h-80 font-mono border border-gray-700 dark:border-gray-600">{{ errorLogContent || 'انقر «تحديث» لتحميل اللوغ.' }}</pre>
+            </div>
+
             <div class="mt-4">
               <h4 class="text-md font-semibold mb-2 dark:text-gray-50">📊 بيانات المزامنة</h4>
               <button @click="loadAllData" :disabled="isRefreshing" class="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 text-sm mb-4">
@@ -1584,6 +1616,13 @@ const currentSyncStatus = ref(null);
 const currentJobId = ref(null);
 const syncQueueDetails = ref(null);
 const loadingQueueDetails = ref(false);
+
+// لوغ الأخطاء
+const errorLogContent = ref('');
+const loadingErrorLog = ref(false);
+const clearingErrorLog = ref(false);
+const errorLogLinesCount = ref(null);
+const errorLogTotalLines = ref(null);
 
 // Auto Sync + أدوات تشغيل (مثل shipping)
 const autoSyncStatus = ref(null);
@@ -2565,6 +2604,52 @@ const loadSyncQueueDetails = async (status = 'pending', offset = 0, limit = 50) 
     toast.error('فشل جلب التفاصيل: ' + (error.response?.data?.message || error.message));
   } finally {
     loadingQueueDetails.value = false;
+  }
+};
+
+const loadErrorLog = async () => {
+  loadingErrorLog.value = true;
+  errorLogContent.value = '';
+  errorLogLinesCount.value = null;
+  errorLogTotalLines.value = null;
+  try {
+    const response = await axios.get('/api/sync-monitor/error-log', {
+      params: { lines: 500 },
+      withCredentials: true
+    });
+    if (response.data.success) {
+      errorLogContent.value = response.data.content || '(فارغ)';
+      errorLogLinesCount.value = response.data.lines_count ?? 0;
+      errorLogTotalLines.value = response.data.total_lines ?? null;
+      toast.success('تم تحميل لوغ الأخطاء');
+    } else {
+      toast.error(response.data.message || 'فشل تحميل اللوغ');
+    }
+  } catch (error) {
+    toast.error('فشل تحميل اللوغ: ' + (error.response?.data?.message || error.message));
+    errorLogContent.value = 'تعذر تحميل اللوغ.';
+  } finally {
+    loadingErrorLog.value = false;
+  }
+};
+
+const clearErrorLog = async () => {
+  if (!confirm('هل تريد إفراغ ملف لوغ الأخطاء (laravel.log)؟')) return;
+  clearingErrorLog.value = true;
+  try {
+    const response = await axios.post('/api/sync-monitor/error-log/clear', {}, { withCredentials: true });
+    if (response.data.success) {
+      toast.success(response.data.message || 'تم إفراغ اللوغ');
+      errorLogContent.value = '(تم الإفراغ)';
+      errorLogLinesCount.value = 0;
+      errorLogTotalLines.value = 0;
+    } else {
+      toast.error(response.data.message || 'فشل إفراغ اللوغ');
+    }
+  } catch (error) {
+    toast.error('فشل إفراغ اللوغ: ' + (error.response?.data?.message || error.message));
+  } finally {
+    clearingErrorLog.value = false;
   }
 };
 
