@@ -1891,10 +1891,11 @@ const loadAllData = async () => {
     const forceConnection = selectedDatabase.value !== 'auto' ? selectedDatabase.value : 'auto';
     const baseUrl = getSyncMonitorBaseUrl(forceConnection);
     const url = baseUrl ? `${baseUrl}/api/sync-monitor/all-data` : '/api/sync-monitor/all-data';
+    const isCrossOrigin = !!baseUrl;
 
     const response = await axios.get(url, { 
       params: { force_connection: forceConnection },
-      withCredentials: true 
+      withCredentials: !isCrossOrigin 
     });
     
     if (response.data.success) {
@@ -1943,10 +1944,11 @@ const loadServerTables = async () => {
     toast.info('🔄 جاري تحميل جداول السيرفر...', { timeout: 2000 });
     const baseUrl = getSyncMonitorBaseUrl('mysql');
     const url = baseUrl ? `${baseUrl}/api/sync-monitor/all-data` : '/api/sync-monitor/all-data';
+    const isCrossOrigin = !!baseUrl;
 
     const response = await axios.get(url, { 
       params: { force_connection: 'mysql' },
-      withCredentials: true,
+      withCredentials: !isCrossOrigin,
       timeout: 15000
     });
     
