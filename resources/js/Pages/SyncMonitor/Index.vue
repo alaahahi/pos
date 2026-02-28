@@ -759,7 +759,7 @@
                 <div>
                   <h4 class="text-md font-semibold dark:text-gray-50">⏱️ المزامنة التلقائية + تشغيل الخدمات</h4>
                   <p class="text-xs text-gray-600 dark:text-gray-400">
-                    تشغيل one-off: `schedule:run` و `queue:work --once` من الواجهة (مثل مشروع shipping)
+                    تشغيل مرة: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">schedule:run</code> و <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">queue:work --once</code>. للمزامنة كل 5 دقائق شغّل <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">run-scheduler.vbs</code> أو في التيرمنال: <code class="bg-gray-100 dark:bg-gray-700 px-1 rounded">php artisan schedule:work</code>.
                   </p>
                 </div>
                 <div class="flex gap-2 flex-wrap">
@@ -798,10 +798,91 @@
                   {{ autoSyncStatusFormatted.icon }} {{ autoSyncStatusFormatted.text }}
                 </span>
               </div>
+              <p v-if="autoSyncStatus?.status && !autoSyncStatus.status.schedule_running && autoSyncStatus.status.scheduler_hint" class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+                💡 {{ autoSyncStatus.status.scheduler_hint }}
+              </p>
 
               <div v-if="lastCommandOutput" class="mt-3">
                 <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">آخر نتيجة أمر:</div>
                 <pre class="text-xs whitespace-pre-wrap bg-gray-50 dark:bg-gray-900/40 border border-gray-200 dark:border-gray-700 rounded p-3 overflow-auto max-h-48 dark:text-gray-100">{{ JSON.stringify(lastCommandOutput, null, 2) }}</pre>
+              </div>
+            </div>
+
+            <!-- جوب رتل المزامنة (للتحقق) -->
+            <div class="mb-6 bg-white dark:bg-gray-800 shadow-sm rounded-lg p-6">
+              <h4 class="text-md font-semibold mb-3 dark:text-gray-50">📋 جوب رتل المزامنة (sync_queue)</h4>
+              <p class="text-xs text-gray-600 dark:text-gray-400 mb-3">عرض السجلات في رتل المزامنة للتحقق: في الانتظار، تمت مزامنتها، أو فاشلة.</p>
+              <div class="flex flex-wrap items-center gap-4 mb-3">
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">في الانتظار:</span>
+                  <span class="font-bold text-blue-600 dark:text-blue-400">{{ syncMetadata.stats?.pending ?? '–' }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">تمت المزامنة:</span>
+                  <span class="font-bold text-green-600 dark:text-green-400">{{ syncMetadata.stats?.synced ?? '–' }}</span>
+                </div>
+                <div class="flex items-center gap-2">
+                  <span class="text-sm text-gray-600 dark:text-gray-400">فاشلة:</span>
+                  <span class="font-bold text-red-600 dark:text-red-400">{{ syncMetadata.stats?.failed ?? '–' }}</span>
+                </div>
+                <button @click="loadAllData(); $nextTick(() => loadSyncQueueDetails('pending'))" :disabled="loadingQueueDetails" class="px-3 py-1.5 bg-indigo-600 text-white text-sm rounded hover:bg-indigo-700">
+                  <span v-if="!loadingQueueDetails">🔄 تحديث وعرض جوب في الانتظار</span>
+                  <span v-else>⏳ جاري...</span>
+                </button>
+                <button @click="loadSyncQueueDetails('pending')" :disabled="loadingQueueDetails" class="px-3 py-1.5 bg-blue-500 text-white text-sm rounded hover:bg-blue-600">عرض في الانتظار</button>
+                <button @click="loadSyncQueueDetails('synced')" :disabled="loadingQueueDetails" class="px-3 py-1.5 bg-green-500 text-white text-sm rounded hover:bg-green-600">عرض تمت مزامنتها</button>
+                <button @click="loadSyncQueueDetails('failed')" :disabled="loadingQueueDetails" class="px-3 py-1.5 bg-red-500 text-white text-sm rounded hover:bg-red-600">عرض فاشلة</button>
+              </div>
+              <!-- جدول الجوب (في تبويب المزامنة) -->
+              <div v-if="activeTab === 'sync' && syncQueueDetails && syncQueueDetails.changes && syncQueueDetails.changes.length > 0" class="mt-4 overflow-x-auto">
+                <div class="flex justify-between items-center mb-2">
+                  <h5 class="text-sm font-semibold dark:text-gray-50">
+                    📋 تفاصيل {{ syncQueueDetails.status === 'pending' ? 'في الانتظار' : syncQueueDetails.status === 'synced' ? 'تمت المزامنة' : 'فاشلة' }}
+                    ({{ syncQueueDetails.total }})
+                  </h5>
+                  <button @click="syncQueueDetails = null" class="px-2 py-1 bg-gray-500 text-white text-xs rounded hover:bg-gray-600">إخفاء</button>
+                </div>
+                <table class="min-w-full border-collapse border border-gray-300 dark:border-gray-500 text-sm">
+                  <thead class="bg-gray-50 dark:bg-gray-700">
+                    <tr>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">ID</th>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الجدول</th>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">Record ID</th>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">الإجراء</th>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">محاولات</th>
+                      <th v-if="syncQueueDetails.status === 'failed'" class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">رسالة الخطأ</th>
+                      <th v-if="syncQueueDetails.status === 'synced'" class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ المزامنة</th>
+                      <th class="px-3 py-2 text-right text-xs font-medium text-gray-700 dark:text-gray-50 border border-gray-300 dark:border-gray-500">تاريخ الإنشاء</th>
+                    </tr>
+                  </thead>
+                  <tbody class="bg-white dark:bg-gray-800">
+                    <tr v-for="change in syncQueueDetails.changes" :key="change.id" class="hover:bg-gray-50 dark:hover:bg-gray-700">
+                      <td class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.id }}</td>
+                      <td class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 font-medium">{{ change.table_name }}</td>
+                      <td class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.record_id }}</td>
+                      <td class="px-3 py-2 border border-gray-300 dark:border-gray-500">
+                        <span :class="{
+                          'bg-green-100 text-green-800 dark:bg-green-800 dark:text-green-100': change.action === 'insert',
+                          'bg-blue-100 text-blue-800 dark:bg-blue-800 dark:text-blue-100': change.action === 'update',
+                          'bg-red-100 text-red-800 dark:bg-red-800 dark:text-red-100': change.action === 'delete'
+                        }" class="px-2 py-0.5 text-xs rounded font-medium">
+                          {{ change.action === 'insert' ? 'إضافة' : change.action === 'update' ? 'تحديث' : 'حذف' }}
+                        </span>
+                      </td>
+                      <td class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500">{{ change.retry_count || 0 }}</td>
+                      <td v-if="syncQueueDetails.status === 'failed'" class="px-3 py-2 text-red-600 dark:text-red-400 text-xs border border-gray-300 dark:border-gray-500 max-w-xs truncate" :title="change.error_message">{{ change.error_message || '–' }}</td>
+                      <td v-if="syncQueueDetails.status === 'synced'" class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 text-xs">{{ change.synced_at || '–' }}</td>
+                      <td class="px-3 py-2 text-gray-900 dark:text-gray-50 border border-gray-300 dark:border-gray-500 text-xs">{{ change.created_at }}</td>
+                    </tr>
+                  </tbody>
+                </table>
+                <div v-if="syncQueueDetails.total > syncQueueDetails.limit" class="mt-2 flex justify-between items-center text-xs">
+                  <span class="text-gray-600 dark:text-gray-400">عرض {{ syncQueueDetails.offset + 1 }}–{{ Math.min(syncQueueDetails.offset + syncQueueDetails.limit, syncQueueDetails.total) }} من {{ syncQueueDetails.total }}</span>
+                  <div class="flex gap-2">
+                    <button @click="loadSyncQueueDetails(syncQueueDetails.status, Math.max(0, syncQueueDetails.offset - syncQueueDetails.limit))" :disabled="syncQueueDetails.offset === 0" class="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded disabled:opacity-50">السابق</button>
+                    <button @click="loadSyncQueueDetails(syncQueueDetails.status, syncQueueDetails.offset + syncQueueDetails.limit)" :disabled="syncQueueDetails.offset + syncQueueDetails.limit >= syncQueueDetails.total" class="px-2 py-1 bg-gray-200 dark:bg-gray-600 rounded disabled:opacity-50">التالي</button>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2065,27 +2146,35 @@ const syncAll = async () => {
     toast.info('🔄 بدء مزامنة الكل...', { timeout: 3000 });
     addSystemLog('info', 'بدء مزامنة الكل (Pull ثم Push)');
 
-    // 1) Pull: MySQL → SQLite (مثل shipping)
-    addSystemLog('info', '📥 Pull: سحب البيانات من السيرفر...');
+    // 1) Pull: MySQL → SQLite (في الخلفية لتجنب 504)
+    addSystemLog('info', '📥 Pull: بدء سحب البيانات من السيرفر (في الخلفية)...');
     const pullResponse = await axios.post('/api/sync-monitor/sync', {
       direction: 'down',
       tables: null,
       safe_mode: false,
       create_backup: false,
-      force_full_sync: false
-    }, {
-      withCredentials: true,
-      timeout: 120000
-    });
+      async: true
+    }, { withCredentials: true, timeout: 15000 });
 
-    if (pullResponse.data?.success) {
-      const totalSynced = pullResponse.data.results?.total_synced || 0;
+    if (!pullResponse.data?.success || !pullResponse.data?.job_id) {
+      const msg = pullResponse.data?.message || pullResponse.data?.error || 'فشل بدء Pull';
+      toast.error(msg);
+      addSystemLog('error', 'فشل بدء Pull: ' + msg);
+      return;
+    }
+
+    const pullJobId = pullResponse.data.job_id;
+    addSystemLog('info', `تم بدء Pull (Job: ${pullJobId}) - جاري الانتظار...`);
+    toast.info('📥 جاري السحب في الخلفية...', { timeout: 2000 });
+
+    const pullCompleted = await pollSyncStatusUntilDone(pullJobId);
+    if (!pullCompleted) {
+      toast.warning('⚠️ لم يكتمل السحب أو انتهت المهلة', { timeout: 5000 });
+      addSystemLog('warning', 'Pull: لم يكتمل أو انتهت المهلة');
+    } else {
+      const totalSynced = pullCompleted.results?.total_synced ?? 0;
       toast.success(`📥 تم السحب: ${totalSynced} سجل`, { timeout: 4000 });
       addSystemLog('success', `تم Pull بنجاح: ${totalSynced} سجل`);
-    } else {
-      const msg = pullResponse.data?.message || pullResponse.data?.error || 'فشل Pull';
-      toast.warning('⚠️ تحذير: فشل السحب - ' + msg, { timeout: 5000 });
-      addSystemLog('warning', 'فشل Pull: ' + msg);
     }
 
     // تحديث counts بعد Pull
@@ -2371,6 +2460,44 @@ const startSmartSync = async () => {
   } finally {
     isSyncing.value = false;
   }
+};
+
+// استعلام عن حالة job حتى اكتماله أو فشله (للمزامنة الكاملة في الخلفية)
+const pollSyncStatusUntilDone = (jobId, maxWaitSeconds = 1800) => {
+  const pollInterval = 2000;
+  const maxAttempts = Math.ceil(maxWaitSeconds * 1000 / pollInterval);
+  let attempts = 0;
+  return new Promise((resolve) => {
+    const tick = async () => {
+      attempts++;
+      try {
+        const response = await axios.get('/api/sync-monitor/sync-status', {
+          params: { job_id: jobId },
+          withCredentials: true
+        });
+        if (response.data?.success && response.data?.status) {
+          const st = response.data.status;
+          const status = typeof st === 'object' ? st.status : st;
+          if (status === 'completed') {
+            resolve(st);
+            return;
+          }
+          if (status === 'failed') {
+            resolve({ ...st, results: { total_synced: 0 }, success: false });
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn('Poll sync status error:', e);
+      }
+      if (attempts >= maxAttempts) {
+        resolve(null);
+        return;
+      }
+      setTimeout(tick, pollInterval);
+    };
+    tick();
+  });
 };
 
 const pollSyncStatus = async (jobId) => {

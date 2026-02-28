@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('licenses')) {
+            return;
+        }
         Schema::create('licenses', function (Blueprint $table) {
             $table->id();
             $table->text('license_key'); // مفتاح الترخيص المشفر

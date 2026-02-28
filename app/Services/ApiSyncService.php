@@ -282,8 +282,9 @@ class ApiSyncService
 
     /**
      * مزامنة update عبر API
+     * @param int|string $recordId
      */
-    public function syncUpdate(string $tableName, int $recordId, array $data): array
+    public function syncUpdate(string $tableName, int|string $recordId, array $data): array
     {
         try {
             Log::info('API sync update attempt', [
@@ -388,8 +389,9 @@ class ApiSyncService
 
     /**
      * مزامنة delete عبر API
+     * @param int|string $recordId
      */
-    public function syncDelete(string $tableName, int $recordId): array
+    public function syncDelete(string $tableName, int|string $recordId): array
     {
         try {
             Log::info('API sync delete attempt', [
@@ -687,10 +689,14 @@ class ApiSyncService
     }
 
     /**
-     * الحصول على server ID من local ID (لحل تعارضات ID)
+     * الحصول على server ID من local ID (لحل تعارضات ID؛ جداول UUID تُعيد نفس القيمة)
      */
-    public function getServerId(string $tableName, int $localId): ?int
+    public function getServerId(string $tableName, int|string $localId): int|string|null
     {
+        $uuidTables = config('sync.uuid_tables', []);
+        if (in_array($tableName, $uuidTables, true)) {
+            return $localId;
+        }
         try {
             $cacheKey = "sync_id_mapping_{$tableName}_{$localId}";
             

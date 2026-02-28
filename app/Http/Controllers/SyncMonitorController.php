@@ -534,152 +534,140 @@ class SyncMonitorController extends Controller
     }
 
     /**
-     * بدء عملية المزامنة
+     * بدء عملية المزامنة (يدعم async=1 لتشغيلها في الخلفية وتجنب 504)
      */
     public function sync(Request $request)
     {
-        // زيادة مهلة التنفيذ لتجنب 504 عند مزامنة كل الجداول (الزيادة داخل المشروع)
-        set_time_limit(300); // 5 دقائق
-        ignore_user_abort(true);
+        $direction = $request->input('direction', 'down');
+        $tables = $request->input('tables');
+        $safeMode = (bool) $request->input('safe_mode', false);
+        $createBackup = (bool) $request->input('create_backup', false);
+        $async = filter_var($request->input('async', false), FILTER_VALIDATE_BOOLEAN);
 
-        try {
-            $direction = $request->input('direction', 'down'); // down = MySQL to SQLite, up = SQLite to MySQL
-            $tables = $request->input('tables'); // يمكن أن يكون null (جميع الجداول) أو string (جدول واحد) أو array
-            $safeMode = $request->input('safe_mode', false); // Safe Mode: إضافة فقط، لا تحديث
-            $createBackup = $request->input('create_backup', false);
-            
-            $sqlitePath = config('database.connections.sync_sqlite.database');
-            
-            // التحقق من وجود ملف SQLite
-            if (!file_exists($sqlitePath)) {
-                // إنشاء ملف SQLite إذا لم يكن موجوداً
-                touch($sqlitePath);
-                chmod($sqlitePath, 0666);
-            }
-            
-            $results = [
-                'success' => [],
-                'failed' => [],
-                'total_synced' => 0,
-            ];
-            
-            // تحديد الجداول المراد مزامنتها
-            $tablesToSync = [];
-            if ($tables) {
-                if (is_string($tables)) {
-                    $tablesToSync = explode(',', $tables);
-                } elseif (is_array($tables)) {
-                    $tablesToSync = $tables;
-                }
-            } else {
-                // جميع الجداول
-                if ($direction === 'down') {
-                    $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
-                    if ($syncViaApi) {
-                        // سحب عبر API من السيرفر (بدون اتصال MySQL محلي)
-                        $apiSync = new \App\Services\ApiSyncService();
-                        if (!$apiSync->isApiAvailable()) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'API السيرفر غير متاح - تحقق من ONLINE_URL والاتصال',
-                            ], 503);
-                        }
-                        $list = $apiSync->getTablesList();
-                        if (!($list['success'] ?? false)) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'فشل جلب قائمة الجداول من API: ' . ($list['error'] ?? 'خطأ غير معروف'),
-                            ], 500);
-                        }
-                        $tablesToSync = $list['tables'] ?? [];
-                    } else {
-                        // اتصال MySQL مباشر
-                        try {
-                            $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
-                            $dbName = DB::connection('mysql')->getDatabaseName();
-                            $tableKey = "Tables_in_{$dbName}";
-                            foreach ($mysqlTables as $table) {
-                                $tablesToSync[] = $table->$tableKey;
-                            }
-                        } catch (\Exception $e) {
-                            return response()->json([
-                                'success' => false,
-                                'message' => 'فشل جلب جداول MySQL: ' . $e->getMessage(),
-                            ], 500);
-                        }
-                    }
-                } else {
-                    // من SQLite إلى MySQL - جلب جميع جداول SQLite
-                    try {
-                        $sqliteTables = DB::connection('sync_sqlite')->select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
-                        foreach ($sqliteTables as $table) {
-                            $tablesToSync[] = $table->name;
-                        }
-                    } catch (\Exception $e) {
-                        // SQLite غير متاح
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'SQLite غير متاح: ' . $e->getMessage(),
-                        ], 500);
-                    }
-                }
-            }
-            
-            // مزامنة كل جدول
-            $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
-            foreach ($tablesToSync as $tableName) {
-                $tableName = trim($tableName);
-                if (empty($tableName)) continue;
-                
-                try {
-                    if ($direction === 'down' && $syncViaApi) {
-                        $synced = $this->syncTableDownViaApi($tableName, $safeMode);
-                    } else {
-                        $synced = $this->syncTable($tableName, $direction, $safeMode);
-                    }
-                    $results['success'][$tableName] = $synced;
-                    $results['total_synced'] += $synced;
-                } catch (\Exception $e) {
-                    $results['failed'][$tableName] = $e->getMessage();
-                }
-            }
-            
-            // إعادة تفعيل Foreign Key Checks
-            DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = ON');
-            
-            $response = [
+        if ($async) {
+            $job = new \App\Jobs\FullSyncJob($direction, $tables, $safeMode, $createBackup);
+            $jobId = $job->getJobId();
+            dispatch($job)->onQueue('sync');
+            Log::info('Full sync dispatched (async)', ['job_id' => $jobId, 'direction' => $direction]);
+            return response()->json([
                 'success' => true,
-                'message' => 'تمت المزامنة بنجاح',
+                'message' => 'تم بدء المزامنة في الخلفية - تابع الحالة عبر job_id',
+                'job_id' => $jobId,
+                'status' => 'queued',
                 'direction' => $direction,
-                'results' => $results,
-            ];
-            
-            if ($createBackup && $direction === 'up') {
-                // إنشاء نسخة احتياطية
-                try {
-                    $backupFile = $this->createBackup();
-                    $response['backup_file'] = $backupFile;
-                } catch (\Exception $e) {
-                    Log::warning('Failed to create backup: ' . $e->getMessage());
-                    $response['backup_file'] = null;
-                }
-            }
-            
-            return response()->json($response);
+            ]);
+        }
+
+        set_time_limit(300);
+        ignore_user_abort(true);
+        try {
+            $result = $this->runSyncInBackground($direction, $tables, $safeMode, $createBackup, null);
+            return response()->json($result);
         } catch (\Exception $e) {
-            // التأكد من إعادة تفعيل Foreign Keys حتى في حالة الخطأ
             try {
                 DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = ON');
             } catch (\Exception $pragmaError) {
-                // تجاهل خطأ PRAGMA
             }
-            
             return response()->json([
                 'success' => false,
                 'message' => 'حدث خطأ: ' . $e->getMessage(),
                 'error' => $e->getMessage(),
             ], 500);
         }
+    }
+
+    /**
+     * تنفيذ المزامنة (يُستدعى من الواجهة مباشرة أو من FullSyncJob)
+     * @return array { success, message, direction, results, backup_file? }
+     */
+    public function runSyncInBackground($direction, $tables, bool $safeMode, bool $createBackup, ?string $jobId = null): array
+    {
+        $sqlitePath = config('database.connections.sync_sqlite.database');
+        if (!file_exists($sqlitePath)) {
+            $dir = dirname($sqlitePath);
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+            touch($sqlitePath);
+            chmod($sqlitePath, 0666);
+        }
+
+        $results = [
+            'success' => [],
+            'failed' => [],
+            'total_synced' => 0,
+        ];
+
+        $tablesToSync = [];
+        if ($tables !== null && $tables !== '') {
+            $tablesToSync = is_string($tables) ? array_map('trim', explode(',', $tables)) : (array) $tables;
+        } else {
+            if ($direction === 'down') {
+                $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
+                if ($syncViaApi) {
+                    $apiSync = new \App\Services\ApiSyncService();
+                    if (!$apiSync->isApiAvailable()) {
+                        throw new \Exception('API السيرفر غير متاح - تحقق من ONLINE_URL والاتصال');
+                    }
+                    $list = $apiSync->getTablesList();
+                    if (!($list['success'] ?? false)) {
+                        throw new \Exception('فشل جلب قائمة الجداول من API: ' . ($list['error'] ?? 'خطأ غير معروف'));
+                    }
+                    $tablesToSync = $list['tables'] ?? [];
+                } else {
+                    $mysqlTables = DB::connection('mysql')->select('SHOW TABLES');
+                    $dbName = DB::connection('mysql')->getDatabaseName();
+                    $tableKey = "Tables_in_{$dbName}";
+                    foreach ($mysqlTables as $table) {
+                        $tablesToSync[] = $table->$tableKey;
+                    }
+                }
+            } else {
+                $sqliteTables = DB::connection('sync_sqlite')->select("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'");
+                foreach ($sqliteTables as $table) {
+                    $tablesToSync[] = $table->name;
+                }
+            }
+        }
+
+        $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
+        foreach ($tablesToSync as $tableName) {
+            $tableName = trim($tableName);
+            if ($tableName === '') {
+                continue;
+            }
+            try {
+                if ($direction === 'down' && $syncViaApi) {
+                    $synced = $this->syncTableDownViaApi($tableName, $safeMode);
+                } else {
+                    $synced = $this->syncTable($tableName, $direction, $safeMode);
+                }
+                $results['success'][$tableName] = $synced;
+                $results['total_synced'] += $synced;
+            } catch (\Exception $e) {
+                $results['failed'][$tableName] = $e->getMessage();
+            }
+        }
+
+        DB::connection('sync_sqlite')->statement('PRAGMA foreign_keys = ON');
+
+        $response = [
+            'success' => true,
+            'message' => 'تمت المزامنة بنجاح',
+            'direction' => $direction,
+            'results' => $results,
+        ];
+
+        if ($createBackup && $direction === 'up') {
+            try {
+                $response['backup_file'] = $this->createBackup();
+            } catch (\Exception $e) {
+                Log::warning('Failed to create backup: ' . $e->getMessage());
+                $response['backup_file'] = null;
+            }
+        }
+
+        return $response;
     }
     
     /**
@@ -2236,6 +2224,7 @@ class SyncMonitorController extends Controller
                 'sync_interval' => 5, // بالدقائق
                 'is_running' => false,
                 'schedule_running' => false,
+                'scheduler_hint' => 'للمزامنة كل 5 دقائق شغّل في التيرمنال: php artisan schedule:work أو انقر مرتين على run-scheduler.vbs في مجلد المشروع.',
             ];
 
             // التحقق من البيئة المحلية
@@ -2250,10 +2239,9 @@ class SyncMonitorController extends Controller
             // التحقق من تفعيل المزامنة التلقائية في .env
             $autoSyncEnabled = filter_var(env('AUTO_SYNC_ENABLED', true), FILTER_VALIDATE_BOOLEAN);
             
-            // التحقق من وجود Laravel Scheduler يعمل
+            // التحقق من وجود Laravel Scheduler يعمل (ملفات قفل في framework)
             try {
-                $cacheFile = storage_path('framework/schedule-*');
-                $scheduleFiles = glob($cacheFile);
+                $scheduleFiles = glob(storage_path('framework/schedule-*'));
                 $status['schedule_running'] = !empty($scheduleFiles);
             } catch (\Exception $e) {
                 // Ignore
@@ -2622,22 +2610,32 @@ class SyncMonitorController extends Controller
                             'message' => 'data مطلوب للـ insert',
                         ], 400);
                     }
-                    
-                    // إزالة id من البيانات إذا كان موجوداً (لأن السيرفر سينشئ id جديد)
-                    unset($data['id']);
-                    
+
+                    $uuidTables = config('sync.uuid_tables', []);
+                    $isUuidTable = in_array($tableName, $uuidTables, true);
+
+                    // إزالة id من البيانات للجداول العادية (السيرفر سينشئ id جديد)
+                    if (!$isUuidTable) {
+                        unset($data['id']);
+                    }
+
                     // إزالة deleted_at للعمليات insert (لا نريد إدراج سجل محذوف)
                     unset($data['deleted_at']);
-                    
+
                     // على السيرفر: استخدام MySQL فقط
-                    $insertedId = DB::connection('mysql')->table($tableName)->insertGetId($data);
+                    if ($isUuidTable && isset($data['id'])) {
+                        DB::connection('mysql')->table($tableName)->insert($data);
+                        $insertedId = $data['id'];
+                    } else {
+                        $insertedId = DB::connection('mysql')->table($tableName)->insertGetId($data);
+                    }
                     $result = DB::connection('mysql')->table($tableName)->where('id', $insertedId)->first();
-                    
+
                     Log::info('API sync insert succeeded', [
                         'table' => $tableName,
                         'inserted_id' => $insertedId,
                     ]);
-                    
+
                     return response()->json([
                         'success' => true,
                         'message' => 'تم إدراج السجل بنجاح',
@@ -3491,7 +3489,8 @@ class SyncMonitorController extends Controller
     {
         try {
             $tableName = $request->input('table_name', 'orders');
-            $recordId = (int) $request->input('record_id', 1);
+            $recordId = $request->input('record_id', 1);
+            $recordId = is_numeric($recordId) ? (int) $recordId : $recordId;
             $action = $request->input('action', 'insert');
 
             Log::info('Testing dispatch sync from server job', [

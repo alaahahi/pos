@@ -11,9 +11,11 @@ class SyncQueueService
     /**
      * إضافة تغيير إلى قائمة الانتظار للمزامنة
      * يعمل فقط في البيئة المحلية (Local) أو عندما يكون الاتصال الافتراضي SQLite
+     * @param int|string $recordId ID السجل (integer أو UUID للجداول في config sync.uuid_tables)
      */
-    public function queueChange(string $tableName, int $recordId, string $action, array $data = null, array $changes = null): bool
+    public function queueChange(string $tableName, int|string $recordId, string $action, array $data = null, array $changes = null): bool
     {
+        $recordId = is_int($recordId) ? (string) $recordId : $recordId;
         // العمل فقط إذا كان الاتصال الافتراضي SQLite
         $defaultConnection = config('database.default');
         $isSQLite = in_array($defaultConnection, ['sync_sqlite', 'sqlite']);
@@ -82,8 +84,9 @@ class SyncQueueService
 
     /**
      * تسجيل تحديث سجل
+     * @param int|string $recordId
      */
-    public function queueUpdate(string $tableName, int $recordId, array $oldData, array $newData): bool
+    public function queueUpdate(string $tableName, int|string $recordId, array $oldData, array $newData): bool
     {
         // حساب الحقول التي تغيرت
         $changes = [];
@@ -107,16 +110,18 @@ class SyncQueueService
 
     /**
      * تسجيل إدراج سجل جديد
+     * @param int|string $recordId
      */
-    public function queueInsert(string $tableName, int $recordId, array $data): bool
+    public function queueInsert(string $tableName, int|string $recordId, array $data): bool
     {
         return $this->queueChange($tableName, $recordId, 'insert', $data);
     }
 
     /**
      * تسجيل حذف سجل
+     * @param int|string $recordId
      */
-    public function queueDelete(string $tableName, int $recordId): bool
+    public function queueDelete(string $tableName, int|string $recordId): bool
     {
         return $this->queueChange($tableName, $recordId, 'delete');
     }

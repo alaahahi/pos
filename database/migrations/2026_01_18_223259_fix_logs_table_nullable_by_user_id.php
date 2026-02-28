@@ -12,31 +12,56 @@ return new class extends Migration
      */
     public function up(): void
     {
-        // فقط لـ SQLite: إعادة إنشاء الجدول بدون foreign key وجعل by_user_id nullable
+        // فقط لـ SQLite: إعادة إنشاء الجدول بنفس أعمدة create_logs_table لكن بدون foreign key وجعل by_user_id nullable
         if (DB::connection()->getDriverName() === 'sqlite') {
-            // نسخ البيانات الموجودة
+            if (!Schema::hasTable('logs')) {
+                Schema::create('logs', function (Blueprint $table) {
+                    $table->id();
+                    $table->string('module_name');
+                    $table->string('action');
+                    $table->string('badge');
+                    $table->unsignedBigInteger('affected_record_id');
+                    $table->json('original_data')->nullable();
+                    $table->json('updated_data')->nullable();
+                    $table->unsignedBigInteger('by_user_id')->nullable();
+                    $table->timestamps();
+                    $table->index('by_user_id');
+                });
+                return;
+            }
+            // إذا كان الجدول يحتوي module_name (البنية المتوافقة مع التطبيق) و by_user_id nullable نتخطى
+            if (Schema::hasColumn('logs', 'module_name') && Schema::hasColumn('logs', 'affected_record_id')) {
+                return;
+            }
+            // جدول ببنية خاطئة (table_name, record_id): إعادة إنشاء بالبنية الصحيحة
             $logs = DB::table('logs')->get();
-            
-            // حذف الجدول القديم
             Schema::dropIfExists('logs');
-            
-            // إنشاء الجدول الجديد
             Schema::create('logs', function (Blueprint $table) {
                 $table->id();
-                $table->string('action')->nullable();
-                $table->string('table_name')->nullable();
-                $table->unsignedBigInteger('record_id')->nullable();
-                $table->unsignedBigInteger('by_user_id')->nullable(); // جعله nullable
-                $table->text('details')->nullable();
+                $table->string('module_name');
+                $table->string('action');
+                $table->string('badge');
+                $table->unsignedBigInteger('affected_record_id');
+                $table->json('original_data')->nullable();
+                $table->json('updated_data')->nullable();
+                $table->unsignedBigInteger('by_user_id')->nullable();
                 $table->timestamps();
-                
-                // إضافة index بدلاً من foreign key
                 $table->index('by_user_id');
             });
-            
-            // إعادة البيانات
             foreach ($logs as $log) {
-                DB::table('logs')->insert((array) $log);
+                $row = (array) $log;
+                DB::table('logs')->insert([
+                    'id' => $row['id'] ?? null,
+                    'module_name' => $row['module_name'] ?? $row['table_name'] ?? 'Unknown',
+                    'action' => $row['action'] ?? null,
+                    'badge' => $row['badge'] ?? 'info',
+                    'affected_record_id' => $row['affected_record_id'] ?? $row['record_id'] ?? 0,
+                    'original_data' => $row['original_data'] ?? null,
+                    'updated_data' => $row['updated_data'] ?? null,
+                    'by_user_id' => $row['by_user_id'] ?? null,
+                    'created_at' => $row['created_at'] ?? null,
+                    'updated_at' => $row['updated_at'] ?? null,
+                ]);
             }
         } else {
             // لـ MySQL: استخدام الطريقة العادية
@@ -60,23 +85,20 @@ return new class extends Migration
     public function down(): void
     {
         if (DB::connection()->getDriverName() === 'sqlite') {
-            // SQLite: إعادة الجدول للوضع السابق
             $logs = DB::table('logs')->get();
-            
             Schema::dropIfExists('logs');
-            
             Schema::create('logs', function (Blueprint $table) {
                 $table->id();
-                $table->string('action')->nullable();
-                $table->string('table_name')->nullable();
-                $table->unsignedBigInteger('record_id')->nullable();
-                $table->unsignedBigInteger('by_user_id'); // بدون nullable
-                $table->text('details')->nullable();
+                $table->string('module_name');
+                $table->string('action');
+                $table->string('badge');
+                $table->unsignedBigInteger('affected_record_id');
+                $table->json('original_data')->nullable();
+                $table->json('updated_data')->nullable();
+                $table->unsignedBigInteger('by_user_id');
                 $table->timestamps();
-                
                 $table->index('by_user_id');
             });
-            
             foreach ($logs as $log) {
                 DB::table('logs')->insert((array) $log);
             }

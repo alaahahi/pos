@@ -572,8 +572,9 @@ class DatabaseSyncService
 
     /**
      * مزامنة تحديث
+     * @param int|string $recordId
      */
-    protected function syncUpdate(string $tableName, int $recordId, array $data, array $changes): bool
+    protected function syncUpdate(string $tableName, int|string $recordId, array $data, array $changes): bool
     {
         // إجبار استخدام API فقط - لا اتصال مباشر بـ MySQL
         if (!$this->useApi) {
@@ -600,8 +601,9 @@ class DatabaseSyncService
 
     /**
      * مزامنة حذف
+     * @param int|string $recordId
      */
-    protected function syncDelete(string $tableName, int $recordId): bool
+    protected function syncDelete(string $tableName, int|string $recordId): bool
     {
         // إجبار استخدام API فقط - لا اتصال مباشر بـ MySQL
         if (!$this->useApi) {

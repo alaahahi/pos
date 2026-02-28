@@ -11,6 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
+        if (Schema::hasTable('daily_closes')) {
+            return;
+        }
         Schema::create('daily_closes', function (Blueprint $table) {
             $table->id();
             $table->date('close_date')->unique();

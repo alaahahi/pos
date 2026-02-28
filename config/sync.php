@@ -45,4 +45,39 @@ return [
         'personal_access_tokens',
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | UUID tables (primary key is UUID for sync; no id mapping needed)
+    |--------------------------------------------------------------------------
+    */
+    'uuid_tables' => [
+        'users',
+        'categories',
+        'suppliers',
+        'customers',
+        'products',
+        'wallets',
+        'boxes',
+        'orders',
+        'order_items',
+        'order_product',
+        'transactions',
+        'purchase_invoices',
+        'purchase_invoice_items',
+        'decorations',
+        'decoration_teams',
+        'decoration_orders',
+        'simple_decoration_orders',
+        'expenses',
+        'daily_closes',
+        'monthly_closes',
+        'monthly_accounts',
+        'customer_balances',
+        'supplier_balances',
+        'product_price_history',
+        'employee_commissions',
+        'cashbox_transactions',
+        'transactions_images',
+    ],
+
 ];

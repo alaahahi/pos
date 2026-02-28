@@ -8,15 +8,26 @@ use Illuminate\Support\Facades\Schema;
 
 class SyncIdMappingService
 {
-    /**
-     * حفظ mapping بين local_id و server_id
-     */
-    public function saveMapping(string $tableName, int $localId, int $serverId, string $direction = 'up'): bool
+    protected function isUuidTable(string $tableName): bool
     {
+        $uuidTables = config('sync.uuid_tables', []);
+        return in_array($tableName, $uuidTables, true);
+    }
+
+    /**
+     * حفظ mapping بين local_id و server_id (لجداول integer فقط؛ جداول UUID لا تحتاج mapping)
+     */
+    public function saveMapping(string $tableName, int|string $localId, int|string $serverId, string $direction = 'up'): bool
+    {
+        if ($this->isUuidTable($tableName)) {
+            return true;
+        }
         try {
             if (!Schema::hasTable('sync_id_mapping')) {
                 return false;
             }
+            $localId = (string) $localId;
+            $serverId = (string) $serverId;
 
             // التحقق من وجود mapping موجود
             $existing = DB::table('sync_id_mapping')
@@ -60,22 +71,29 @@ class SyncIdMappingService
     }
 
     /**
-     * الحصول على server_id من local_id
+     * الحصول على server_id من local_id (لجداول UUID يُعيد نفس القيمة)
      */
-    public function getServerId(string $tableName, int $localId, string $direction = 'up'): ?int
+    public function getServerId(string $tableName, int|string $localId, string $direction = 'up'): int|string|null
     {
+        if ($this->isUuidTable($tableName)) {
+            return $localId;
+        }
         try {
             if (!Schema::hasTable('sync_id_mapping')) {
                 return null;
             }
-
+            $localId = (string) $localId;
             $mapping = DB::table('sync_id_mapping')
                 ->where('table_name', $tableName)
                 ->where('local_id', $localId)
                 ->where('sync_direction', $direction)
                 ->first();
 
-            return $mapping ? (int) $mapping->server_id : null;
+            if ($mapping) {
+                $sid = $mapping->server_id;
+                return is_numeric($sid) ? (int) $sid : $sid;
+            }
+            return null;
         } catch (\Exception $e) {
             Log::error('Failed to get server ID', [
                 'table' => $tableName,
@@ -87,22 +105,29 @@ class SyncIdMappingService
     }
 
     /**
-     * الحصول على local_id من server_id
+     * الحصول على local_id من server_id (لجداول UUID يُعيد نفس القيمة)
      */
-    public function getLocalId(string $tableName, int $serverId, string $direction = 'up'): ?int
+    public function getLocalId(string $tableName, int|string $serverId, string $direction = 'up'): int|string|null
     {
+        if ($this->isUuidTable($tableName)) {
+            return $serverId;
+        }
         try {
             if (!Schema::hasTable('sync_id_mapping')) {
                 return null;
             }
-
+            $serverId = (string) $serverId;
             $mapping = DB::table('sync_id_mapping')
                 ->where('table_name', $tableName)
                 ->where('server_id', $serverId)
                 ->where('sync_direction', $direction)
                 ->first();
 
-            return $mapping ? (int) $mapping->local_id : null;
+            if ($mapping) {
+                $lid = $mapping->local_id;
+                return is_numeric($lid) ? (int) $lid : $lid;
+            }
+            return null;
         } catch (\Exception $e) {
             Log::error('Failed to get local ID', [
                 'table' => $tableName,
@@ -117,7 +142,7 @@ class SyncIdMappingService
      * التحقق من وجود ID في السيرفر (للتعارضات)
      * تم إزالة الاتصال المباشر بـ MySQL - API يتعامل مع ID conflicts تلقائياً
      */
-    public function checkIdConflict(string $tableName, int $id): bool
+    public function checkIdConflict(string $tableName, int|string $id): bool
     {
         // إذا كان SYNC_VIA_API=true، لا نحتاج للتحقق من MySQL
         // API سيتعامل مع ID conflicts تلقائياً
@@ -140,40 +165,28 @@ class SyncIdMappingService
      * حل التعارض: إيجاد ID متاح جديد
      * تم إزالة الاتصال المباشر بـ MySQL - API يتعامل مع ID conflicts تلقائياً
      */
-    public function resolveConflict(string $tableName, int $preferredId): int
+    public function resolveConflict(string $tableName, int|string $preferredId): int|string
     {
-        // إذا كان SYNC_VIA_API=true، لا نحتاج للتحقق من MySQL
-        // API سيتعامل مع ID conflicts تلقائياً
+        if ($this->isUuidTable($tableName)) {
+            return is_string($preferredId) ? $preferredId : (string) $preferredId;
+        }
         $syncViaApi = filter_var(env('SYNC_VIA_API', false), FILTER_VALIDATE_BOOLEAN);
         if ($syncViaApi) {
-            // مع API Sync، نعيد الـ preferred ID (API سيتعامل مع التعارض)
             return $preferredId;
         }
-        
-        // فقط إذا كان SYNC_VIA_API=false (غير موصى به)
+        $preferredId = (int) $preferredId;
         try {
-            // إذا كان ID متاح في MySQL، استخدمه
             if (!$this->checkIdConflict($tableName, $preferredId)) {
                 return $preferredId;
             }
-
-            // البحث عن ID متاح في MySQL (ابحث بعد الـ ID المفضل)
-            $maxId = DB::connection('mysql')->table($tableName)->max('id') ?? 0;
+            $maxId = (int) (DB::connection('mysql')->table($tableName)->max('id') ?? 0);
             $newId = max($preferredId, $maxId) + 1;
-
-            // تأكد من أن الـ ID الجديد متاح في MySQL
             while ($this->checkIdConflict($tableName, $newId)) {
                 $newId++;
             }
-
             return $newId;
         } catch (\Exception $e) {
-            Log::error('Failed to resolve ID conflict', [
-                'table' => $tableName,
-                'preferred_id' => $preferredId,
-                'error' => $e->getMessage(),
-            ]);
-            // في حالة الخطأ، استخدم timestamp كـ ID مؤقت
+            Log::error('Failed to resolve ID conflict', ['table' => $tableName, 'preferred_id' => $preferredId, 'error' => $e->getMessage()]);
             return (int) (time() * 1000);
         }
     }
@@ -181,13 +194,16 @@ class SyncIdMappingService
     /**
      * حذف mapping
      */
-    public function deleteMapping(string $tableName, int $localId, string $direction = 'up'): bool
+    public function deleteMapping(string $tableName, int|string $localId, string $direction = 'up'): bool
     {
+        if ($this->isUuidTable($tableName)) {
+            return true;
+        }
         try {
             if (!Schema::hasTable('sync_id_mapping')) {
                 return false;
             }
-
+            $localId = (string) $localId;
             DB::table('sync_id_mapping')
                 ->where('table_name', $tableName)
                 ->where('local_id', $localId)
