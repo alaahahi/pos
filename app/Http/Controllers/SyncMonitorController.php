@@ -827,9 +827,9 @@ class SyncMonitorController extends Controller
                 $this->createTableInMySQL($tableName);
             }
             
-            // عدم رفع بيانات جداول "بنية فقط" من المحلي إلى السيرفر
-            $structureOnlyTables = config('sync.structure_only_tables', []);
-            if (!in_array($tableName, $structureOnlyTables)) {
+            // عدم رفع جداول "لا تُرفع" من المحلي إلى السيرفر (no_push_tables: migrations، Spatie، إلخ)
+            $noPushTables = config('sync.no_push_tables', []);
+            if (!in_array($tableName, $noPushTables)) {
                 // جلب البيانات من SQLite
                 $sqliteData = DB::connection('sync_sqlite')->table($tableName)->get();
                 
