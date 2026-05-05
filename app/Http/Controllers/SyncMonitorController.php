@@ -17,6 +17,41 @@ use App\Services\SyncIdMappingService;
 class SyncMonitorController extends Controller
 {
     /**
+     * تهيئة SQLite من السيرفر (MySQL) عبر أمر artisan sqlite:init
+     */
+    public function initSQLite(Request $request)
+    {
+        try {
+            $force = filter_var($request->input('force', false), FILTER_VALIDATE_BOOLEAN);
+
+            $params = [];
+            if ($force) {
+                $params['--force'] = true;
+            }
+
+            Artisan::call('sqlite:init', $params);
+            $output = trim((string) Artisan::output());
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تنفيذ تهيئة SQLite بنجاح',
+                'force' => $force,
+                'output' => $output,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('initSQLite failed', [
+                'error' => $e->getMessage(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل تهيئة SQLite: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * عرض صفحة Sync Monitor
      */
     public function index()

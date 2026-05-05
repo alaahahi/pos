@@ -125,7 +125,12 @@ class InitSQLite extends Command
     {
         try {
             // في حالة --force: احذف الجدول الحالي لإعادة إنشائه ببنية صحيحة
-            if ($force && Schema::connection('sync_sqlite')->hasTable($tableName)) {
+            // استثناء users: لا نحذفه لحماية حساب الأدمن المحلي من الضياع.
+            if (
+                $force &&
+                $tableName !== 'users' &&
+                Schema::connection('sync_sqlite')->hasTable($tableName)
+            ) {
                 Schema::connection('sync_sqlite')->drop($tableName);
             }
 
