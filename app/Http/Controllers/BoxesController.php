@@ -643,6 +643,70 @@ class BoxesController extends Controller
     }
 
     /**
+     * Delete daily close manually (for accidental close records)
+     */
+    public function deleteDailyClose(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+        ]);
+
+        try {
+            $close = DailyClose::find($request->id);
+            if (!$close) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الإغلاق اليومي غير موجود',
+                ], 404);
+            }
+
+            $close->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف الإغلاق اليومي يدوياً',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Delete monthly close manually (for accidental close records)
+     */
+    public function deleteMonthlyClose(Request $request)
+    {
+        $request->validate([
+            'id' => 'required|integer',
+        ]);
+
+        try {
+            $close = MonthlyClose::find($request->id);
+            if (!$close) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الإغلاق الشهري غير موجود',
+                ], 404);
+            }
+
+            $close->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم حذف الإغلاق الشهري يدوياً',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get daily close data
      */
     public function getDailyClose(Request $request)

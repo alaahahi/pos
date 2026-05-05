@@ -677,6 +677,9 @@
                   <button @click="viewCloseDetails('daily', close)" class="btn btn-sm btn-info">
                     <i class="bi bi-eye"></i> التفاصيل
                   </button>
+                  <button @click="deleteClose('daily', close)" class="btn btn-sm btn-danger ms-1">
+                    <i class="bi bi-trash"></i> حذف
+                  </button>
                 </td>
               </tr>
             </tbody>
@@ -739,6 +742,9 @@
                 <td>
                   <button @click="viewCloseDetails('monthly', close)" class="btn btn-sm btn-info">
                     <i class="bi bi-eye"></i> التفاصيل
+                  </button>
+                  <button @click="deleteClose('monthly', close)" class="btn btn-sm btn-danger ms-1">
+                    <i class="bi bi-trash"></i> حذف
                   </button>
                 </td>
               </tr>
@@ -1432,6 +1438,54 @@ const viewCloseDetails = (type, close) => {
     html: details,
     icon: 'info',
     confirmButtonText: 'إغلاق'
+  });
+};
+
+const deleteClose = (type, close) => {
+  const closeLabel = type === 'daily'
+    ? `إغلاق يوم ${formatDate(close.close_date)}`
+    : `إغلاق شهر ${getMonthName(close.month)} ${close.year}`;
+
+  Swal.fire({
+    title: 'تأكيد الحذف اليدوي',
+    html: `هل أنت متأكد من حذف <strong>${closeLabel}</strong>؟<br>هذا الإجراء لا يمكن التراجع عنه.`,
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonColor: '#d33',
+    cancelButtonColor: '#6c757d',
+    confirmButtonText: 'نعم، حذف',
+    cancelButtonText: 'إلغاء',
+  }).then(async (result) => {
+    if (!result.isConfirmed) return;
+
+    loadingCloses.value = true;
+    try {
+      const endpoint = type === 'daily' ? '/boxes/delete-daily-close' : '/boxes/delete-monthly-close';
+      const response = await axios.post(endpoint, { id: close.id });
+      if (response.data?.success) {
+        toast.success(response.data.message || 'تم الحذف بنجاح', {
+          timeout: 2500,
+          position: "bottom-right",
+          rtl: true
+        });
+        await loadClosesList();
+        router.reload({ only: ['dailyClose', 'monthlyClose', 'mainBox'] });
+      } else {
+        toast.error(response.data?.message || 'فشل الحذف', {
+          timeout: 3000,
+          position: "bottom-right",
+          rtl: true
+        });
+      }
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'حدث خطأ أثناء حذف الإغلاق', {
+        timeout: 3000,
+        position: "bottom-right",
+        rtl: true
+      });
+    } finally {
+      loadingCloses.value = false;
+    }
   });
 };
 

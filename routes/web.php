@@ -189,6 +189,8 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::post('boxes/close-monthly', [BoxesController::class, 'closeMonthly'])->name('boxes.close-monthly');
   Route::post('boxes/reopen-daily', [BoxesController::class, 'reopenDaily'])->name('boxes.reopen-daily');
   Route::post('boxes/reopen-monthly', [BoxesController::class, 'reopenMonthly'])->name('boxes.reopen-monthly');
+  Route::post('boxes/delete-daily-close', [BoxesController::class, 'deleteDailyClose'])->name('boxes.delete-daily-close');
+  Route::post('boxes/delete-monthly-close', [BoxesController::class, 'deleteMonthlyClose'])->name('boxes.delete-monthly-close');
   Route::get('boxes/daily-close', [BoxesController::class, 'getDailyClose'])->name('boxes.daily-close');
   Route::get('boxes/monthly-close', [BoxesController::class, 'getMonthlyClose'])->name('boxes.monthly-close');
   Route::get('boxes/closes-list', [BoxesController::class, 'closesList'])->name('boxes.closes-list');
