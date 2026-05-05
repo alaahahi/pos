@@ -388,6 +388,131 @@ class BoxesController extends Controller
         
         return response()->json(['message' => 'Transaction dropped successfully']);
     }
+
+    /**
+     * تحكم يدوي برصيد الصندوق الأساسي:
+     * - recalc: إعادة احتساب الرصيد المخزن من مجموع المعاملات
+     * - zero: تصفير الرصيد فعلياً بإنشاء قيود تسوية عكسية
+     */
+    public function mainBoxBalanceControl(Request $request)
+    {
+        $request->validate([
+            'action' => 'required|in:recalc,zero',
+            'note' => 'nullable|string|max:500',
+        ]);
+
+        try {
+            $mainBoxUser = User::with('wallet')
+                ->where('type_id', $this->userAccount)
+                ->where('email', 'mainBox@account.com')
+                ->first();
+
+            if (!$mainBoxUser || !$mainBoxUser->wallet) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'تعذر العثور على الصندوق الأساسي',
+                ], 404);
+            }
+
+            $walletId = $mainBoxUser->wallet->id;
+            $note = trim((string) $request->input('note', ''));
+
+            DB::beginTransaction();
+
+            // الرصيد الفعلي من المعاملات
+            $sumUsd = (float) Transactions::where('wallet_id', $walletId)
+                ->where(function ($q) {
+                    $q->where('currency', 'USD')->orWhere('currency', '$');
+                })->sum('amount');
+
+            $sumIqd = (float) Transactions::where('wallet_id', $walletId)
+                ->where('currency', 'IQD')
+                ->sum('amount');
+
+            if ($request->action === 'recalc') {
+                $mainBoxUser->wallet->update([
+                    'balance' => $sumUsd,
+                    'balance_dinar' => $sumIqd,
+                ]);
+
+                DB::commit();
+                return response()->json([
+                    'success' => true,
+                    'message' => 'تمت إعادة احتساب رصيد الصندوق من المعاملات',
+                    'data' => [
+                        'balance_usd' => $sumUsd,
+                        'balance_iqd' => $sumIqd,
+                    ],
+                ]);
+            }
+
+            // action=zero => أنشئ قيود تسوية عكسية ليصبح مجموع المعاملات = 0
+            if (abs($sumUsd) > 0.009) {
+                Transactions::create([
+                    'wallet_id' => $walletId,
+                    'amount' => -1 * $sumUsd,
+                    'type' => $sumUsd > 0 ? 'out' : 'in',
+                    'description' => 'تسوية يدوية لتصفير رصيد الصندوق (USD)' . ($note ? ' - ' . $note : ''),
+                    'is_pay' => false,
+                    'morphed_id' => $mainBoxUser->id,
+                    'morphed_type' => User::class,
+                    'currency' => 'USD',
+                    'created' => now()->toDateString(),
+                    'discount' => 0,
+                    'parent_id' => null,
+                    'details' => [
+                        'manual_balance_control' => true,
+                        'action' => 'zero',
+                        'by_user_id' => auth()->id(),
+                    ],
+                ]);
+            }
+
+            if (abs($sumIqd) > 0.009) {
+                Transactions::create([
+                    'wallet_id' => $walletId,
+                    'amount' => -1 * $sumIqd,
+                    'type' => $sumIqd > 0 ? 'out' : 'in',
+                    'description' => 'تسوية يدوية لتصفير رصيد الصندوق (IQD)' . ($note ? ' - ' . $note : ''),
+                    'is_pay' => false,
+                    'morphed_id' => $mainBoxUser->id,
+                    'morphed_type' => User::class,
+                    'currency' => 'IQD',
+                    'created' => now()->toDateString(),
+                    'discount' => 0,
+                    'parent_id' => null,
+                    'details' => [
+                        'manual_balance_control' => true,
+                        'action' => 'zero',
+                        'by_user_id' => auth()->id(),
+                    ],
+                ]);
+            }
+
+            // بعد إدخال القيود، الرصيد النهائي يجب أن يصبح صفراً
+            $mainBoxUser->wallet->update([
+                'balance' => 0,
+                'balance_dinar' => 0,
+            ]);
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تصفير رصيد الصندوق بإنشاء قيود تسوية يدوية',
+                'data' => [
+                    'balance_usd' => 0,
+                    'balance_iqd' => 0,
+                ],
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
     public function transactions(Request $request)
     {
         $filters = [

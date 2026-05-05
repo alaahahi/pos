@@ -158,6 +158,24 @@
                 <i class="bi bi-arrow-clockwise" :class="{ 'spin': loading }"></i>
                 <span>تحديث</span>
                 </button>
+              <button
+                class="action-btn danger"
+                @click="zeroMainBoxBalance"
+                :disabled="loading"
+                title="تصفير فعلي مع إنشاء قيود تسوية"
+              >
+                <i class="bi bi-eraser-fill"></i>
+                <span>تصفير الصندوق</span>
+              </button>
+              <button
+                class="action-btn warning"
+                @click="recalcMainBoxBalance"
+                :disabled="loading"
+                title="إعادة احتساب الرصيد من المعاملات"
+              >
+                <i class="bi bi-calculator-fill"></i>
+                <span>إعادة احتساب الرصيد</span>
+              </button>
             </div>
             </div>
 
@@ -1371,6 +1389,67 @@ const clearClosesFilters = () => {
   closesFilters.year = '';
   closesFilters.month = '';
   loadClosesList();
+};
+
+const recalcMainBoxBalance = async () => {
+  const result = await Swal.fire({
+    title: 'إعادة احتساب الرصيد',
+    text: 'سيتم تحديث رصيد الصندوق الأساسي من مجموع المعاملات الحالية.',
+    icon: 'question',
+    showCancelButton: true,
+    confirmButtonText: 'تنفيذ',
+    cancelButtonText: 'إلغاء',
+    confirmButtonColor: '#667eea'
+  });
+  if (!result.isConfirmed) return;
+
+  loading.value = true;
+  try {
+    const response = await axios.post('/boxes/main-balance-control', { action: 'recalc' });
+    if (response.data?.success) {
+      toast.success(response.data.message || 'تمت إعادة الاحتساب', { timeout: 2500, position: "bottom-right", rtl: true });
+      router.reload({ only: ['transactions', 'mainBox', 'dailyClose', 'monthlyClose'] });
+    } else {
+      toast.error(response.data?.message || 'فشلت العملية', { timeout: 3000, position: "bottom-right", rtl: true });
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'حدث خطأ أثناء إعادة الاحتساب', { timeout: 3000, position: "bottom-right", rtl: true });
+  } finally {
+    loading.value = false;
+  }
+};
+
+const zeroMainBoxBalance = async () => {
+  const result = await Swal.fire({
+    title: 'تصفير رصيد الصندوق',
+    html: 'سيتم إنشاء قيود تسوية عكسية لتصبح الأرصدة <strong>0</strong>.<br>هل تريد المتابعة؟',
+    icon: 'warning',
+    showCancelButton: true,
+    confirmButtonText: 'نعم، تصفير',
+    cancelButtonText: 'إلغاء',
+    confirmButtonColor: '#d33',
+    input: 'text',
+    inputPlaceholder: 'سبب التصفير (اختياري)'
+  });
+  if (!result.isConfirmed) return;
+
+  loading.value = true;
+  try {
+    const response = await axios.post('/boxes/main-balance-control', {
+      action: 'zero',
+      note: result.value || ''
+    });
+    if (response.data?.success) {
+      toast.success(response.data.message || 'تم تصفير الصندوق', { timeout: 2500, position: "bottom-right", rtl: true });
+      router.reload({ only: ['transactions', 'mainBox', 'dailyClose', 'monthlyClose'] });
+    } else {
+      toast.error(response.data?.message || 'فشلت العملية', { timeout: 3000, position: "bottom-right", rtl: true });
+    }
+  } catch (error) {
+    toast.error(error.response?.data?.message || 'حدث خطأ أثناء التصفير', { timeout: 3000, position: "bottom-right", rtl: true });
+  } finally {
+    loading.value = false;
+  }
 };
 
 // View Close Details

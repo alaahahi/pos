@@ -8,7 +8,7 @@
     
     // النصوص المتعددة اللغات
     $texts = [
-        'title' => $isArabic ? 'فاتورة ضريبية' : 'TAX INVOICE',
+        'title' => $isArabic ? 'فاتورة مبيعات' : 'TAX INVOICE',
         'inv_no' => $isArabic ? 'رقم الفاتورة:' : 'INV NO:',
         'inv_date' => $isArabic ? 'تاريخ الفاتورة:' : 'INV DATE:',
         'do_no' => $isArabic ? 'رقم الطلب:' : 'DO NO:',
