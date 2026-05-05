@@ -521,6 +521,128 @@ class BoxesController extends Controller
     }
 
     /**
+     * Reopen daily close (undo accidental close)
+     */
+    public function reopenDaily(Request $request)
+    {
+        $request->validate([
+            'date' => 'nullable|date',
+            'reason' => 'required|string|min:3',
+        ]);
+
+        try {
+            $date = $request->date ? Carbon::parse($request->date) : today();
+
+            $dailyClose = DailyClose::whereDate('close_date', $date->format('Y-m-d'))->first();
+            if (!$dailyClose) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد إغلاق يومي لهذا التاريخ',
+                ], 404);
+            }
+
+            if ($dailyClose->status !== 'closed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الإغلاق اليومي مفتوح بالفعل',
+                ], 400);
+            }
+
+            $oldNotes = (string) ($dailyClose->notes ?? '');
+            $reason = trim((string) $request->reason);
+            $reopenNote = ' [REOPEN by ' . (auth()->user()->name ?? 'system') . ' at ' . now()->format('Y-m-d H:i:s') . '] ' . $reason;
+
+            $dailyClose->update([
+                'status' => 'open',
+                'closed_at' => null,
+                'closed_by' => null,
+                'notes' => trim($oldNotes . $reopenNote),
+            ]);
+
+            // عند فتح اليوم مجدداً، نفتح الشهر الحالي إن كان مغلقاً بالخطأ
+            $monthlyClose = MonthlyClose::where('year', $date->year)
+                ->where('month', $date->month)
+                ->first();
+            if ($monthlyClose && $monthlyClose->status === 'closed') {
+                $monthlyClose->update([
+                    'status' => 'open',
+                    'closed_at' => null,
+                    'closed_by' => null,
+                    'notes' => trim((string) ($monthlyClose->notes ?? '') . ' [AUTO-REOPEN بسبب فتح يوم داخل نفس الشهر]'),
+                ]);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تمت إعادة فتح الإغلاق اليومي بنجاح',
+                'data' => $dailyClose->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * Reopen monthly close (undo accidental close)
+     */
+    public function reopenMonthly(Request $request)
+    {
+        $request->validate([
+            'year' => 'nullable|integer|min:2020|max:2100',
+            'month' => 'nullable|integer|min:1|max:12',
+            'reason' => 'required|string|min:3',
+        ]);
+
+        try {
+            $year = $request->year ?? now()->year;
+            $month = $request->month ?? now()->month;
+
+            $monthlyClose = MonthlyClose::where('year', $year)
+                ->where('month', $month)
+                ->first();
+
+            if (!$monthlyClose) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'لا يوجد إغلاق شهري لهذه الفترة',
+                ], 404);
+            }
+
+            if ($monthlyClose->status !== 'closed') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'الإغلاق الشهري مفتوح بالفعل',
+                ], 400);
+            }
+
+            $oldNotes = (string) ($monthlyClose->notes ?? '');
+            $reason = trim((string) $request->reason);
+            $reopenNote = ' [REOPEN by ' . (auth()->user()->name ?? 'system') . ' at ' . now()->format('Y-m-d H:i:s') . '] ' . $reason;
+
+            $monthlyClose->update([
+                'status' => 'open',
+                'closed_at' => null,
+                'closed_by' => null,
+                'notes' => trim($oldNotes . $reopenNote),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تمت إعادة فتح الإغلاق الشهري بنجاح',
+                'data' => $monthlyClose->fresh(),
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'حدث خطأ: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * Get daily close data
      */
     public function getDailyClose(Request $request)

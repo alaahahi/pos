@@ -29,6 +29,7 @@ class InitSQLite extends Command
     public function handle()
     {
         $this->info('🚀 بدء تهيئة SQLite...');
+        $localLicensesBackup = [];
 
         // التحقق من توفر MySQL
         try {
@@ -54,6 +55,9 @@ class InitSQLite extends Command
             chmod($sqlitePath, 0666);
             $this->info("📄 تم إنشاء ملف SQLite: {$sqlitePath}");
         }
+
+        // حماية الترخيص المحلي: خذ نسخة قبل أي إعادة تهيئة حتى لا يضيع
+        $localLicensesBackup = $this->backupLocalLicenses();
 
         // جلب جميع الجداول من MySQL
         try {
@@ -108,6 +112,12 @@ class InitSQLite extends Command
                 $this->warn("⚠️  فشل {$failed} جدول");
             }
 
+            // استرجاع الترخيص المحلي بعد التهيئة (ولو كان السيرفر لا يملك license)
+            $this->restoreLocalLicenses($localLicensesBackup);
+
+            // بعد التهيئة: ضمان تهيئة رصيد الصندوق والإغلاقات الأساسية
+            $this->postInitFinancialWarmup();
+
             $this->info('🎉 تمت تهيئة SQLite بنجاح!');
 
         } catch (\Exception $e) {
@@ -116,6 +126,146 @@ class InitSQLite extends Command
         }
 
         return 0;
+    }
+
+    /**
+     * حفظ نسخة من تراخيص SQLite المحلية قبل التهيئة.
+     */
+    private function backupLocalLicenses(): array
+    {
+        try {
+            if (!Schema::connection('sync_sqlite')->hasTable('licenses')) {
+                return [];
+            }
+
+            return DB::connection('sync_sqlite')
+                ->table('licenses')
+                ->get()
+                ->map(fn ($row) => (array) $row)
+                ->toArray();
+        } catch (\Throwable $e) {
+            $this->warn('⚠️ تعذر أخذ نسخة احتياطية من الترخيص: ' . $e->getMessage());
+            Log::warning('backupLocalLicenses failed', ['error' => $e->getMessage()]);
+            return [];
+        }
+    }
+
+    /**
+     * استرجاع التراخيص المحلية بعد التهيئة.
+     */
+    private function restoreLocalLicenses(array $licenses): void
+    {
+        if (empty($licenses)) {
+            return;
+        }
+
+        try {
+            if (!Schema::connection('sync_sqlite')->hasTable('licenses')) {
+                return;
+            }
+
+            foreach ($licenses as $license) {
+                $data = $license;
+                unset($data['id']); // id قد يتغير بعد force/drop
+
+                $uniqueKey = ['domain' => $license['domain'] ?? null];
+                if (empty($uniqueKey['domain'])) {
+                    continue;
+                }
+
+                DB::connection('sync_sqlite')->table('licenses')->updateOrInsert($uniqueKey, $data);
+            }
+
+            $this->info('🔐 تم الحفاظ على الترخيص المحلي بعد التهيئة');
+        } catch (\Throwable $e) {
+            $this->warn('⚠️ تعذر استرجاع الترخيص المحلي: ' . $e->getMessage());
+            Log::warning('restoreLocalLicenses failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    /**
+     * تهيئة ما بعد النسخ:
+     * - تحديث رصيد الصندوق من المعاملات (wallet.balance / balance_dinar)
+     * - تجهيز إغلاق اليوم والشهر الحاليين (open + recalculated)
+     */
+    private function postInitFinancialWarmup(): void
+    {
+        try {
+            if (
+                !Schema::connection('sync_sqlite')->hasTable('users') ||
+                !Schema::connection('sync_sqlite')->hasTable('user_types') ||
+                !Schema::connection('sync_sqlite')->hasTable('wallets') ||
+                !Schema::connection('sync_sqlite')->hasTable('transactions')
+            ) {
+                return;
+            }
+
+            $userAccount = DB::connection('sync_sqlite')->table('user_types')->where('name', 'account')->first();
+            if (!$userAccount) {
+                return;
+            }
+
+            $mainBoxUser = DB::connection('sync_sqlite')->table('users')
+                ->where('type_id', $userAccount->id)
+                ->where('email', 'mainBox@account.com')
+                ->first();
+
+            if (!$mainBoxUser || empty($mainBoxUser->wallet_id)) {
+                return;
+            }
+
+            $walletId = $mainBoxUser->wallet_id;
+
+            $usd = (float) DB::connection('sync_sqlite')->table('transactions')
+                ->where('wallet_id', $walletId)
+                ->where(function ($q) {
+                    $q->where('currency', 'USD')->orWhere('currency', '$');
+                })
+                ->sum('amount');
+
+            $iqd = (float) DB::connection('sync_sqlite')->table('transactions')
+                ->where('wallet_id', $walletId)
+                ->where('currency', 'IQD')
+                ->sum('amount');
+
+            DB::connection('sync_sqlite')->table('wallets')
+                ->where('id', $walletId)
+                ->update([
+                    'balance' => $usd,
+                    'balance_dinar' => $iqd,
+                    'updated_at' => now(),
+                ]);
+
+            // ضمان وجود سجل إغلاق اليوم والشهر الحالي (ويُعاد احتسابهما)
+            \App\Models\DailyClose::on('sync_sqlite')->firstOrCreate(
+                ['close_date' => today()->format('Y-m-d')],
+                ['status' => 'open']
+            );
+            \App\Models\MonthlyClose::on('sync_sqlite')->firstOrCreate(
+                ['year' => now()->year, 'month' => now()->month],
+                ['status' => 'open']
+            );
+
+            $daily = \App\Models\DailyClose::on('sync_sqlite')->whereDate('close_date', today())->first();
+            if ($daily) {
+                $daily->calculateDailyData();
+                $daily->save();
+            }
+
+            $monthly = \App\Models\MonthlyClose::on('sync_sqlite')
+                ->where('year', now()->year)
+                ->where('month', now()->month)
+                ->first();
+            if ($monthly) {
+                $monthly->calculateMonthlyData();
+                $monthly->save();
+            }
+
+            $this->info('💰 تم تحديث رصيد الصندوق وتهيئة الإغلاقات (يومي/شهري)');
+        } catch (\Throwable $e) {
+            $this->warn('⚠️ تهيئة الرصيد/الإغلاقات بعد النسخ لم تكتمل: ' . $e->getMessage());
+            Log::warning('postInitFinancialWarmup failed', ['error' => $e->getMessage()]);
+        }
     }
 
     /**
