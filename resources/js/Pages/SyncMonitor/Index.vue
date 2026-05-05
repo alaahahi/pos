@@ -789,6 +789,15 @@
                   >
                     💾 تهيئة SQLite
                   </button>
+                <button
+                  type="button"
+                  class="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700 disabled:opacity-50"
+                  :disabled="resettingFinancialData"
+                  @click="resetFinancialData"
+                >
+                  <span v-if="!resettingFinancialData">🧹 تصفير الصندوق+المعاملات+الدفعات</span>
+                  <span v-else>⏳ جاري التصفير...</span>
+                </button>
                 </div>
               </div>
 
@@ -1628,6 +1637,7 @@ const errorLogTotalLines = ref(null);
 const autoSyncStatus = ref(null);
 const runningSchedule = ref(false);
 const runningWorkerOnce = ref(false);
+const resettingFinancialData = ref(false);
 const lastCommandOutput = ref(null);
 
 // System logs (مثل shipping) - آخر 50 حدث
@@ -1767,6 +1777,33 @@ const initSQLite = async () => {
     addSystemLog('error', 'فشلت تهيئة SQLite: ' + msg);
   } finally {
     isSyncing.value = false;
+  }
+};
+
+const resetFinancialData = async () => {
+  const ok = confirm('هل تريد تصفير الصندوق + المعاملات + الدفعات محلياً؟\n\nهذا الإجراء لا يمكن التراجع عنه.');
+  if (!ok || resettingFinancialData.value) return;
+
+  resettingFinancialData.value = true;
+  lastCommandOutput.value = null;
+  try {
+    addSystemLog('warning', 'بدء تصفير الصندوق/المعاملات/الدفعات...');
+    const response = await axios.post('/api/sync-monitor/reset-financial-data', {}, { withCredentials: true, timeout: 120000 });
+    lastCommandOutput.value = response.data;
+    if (response.data?.success) {
+      toast.success(response.data.message || 'تم التصفير بنجاح');
+      addSystemLog('success', 'تم تصفير الصندوق/المعاملات/الدفعات');
+      await loadAllData();
+    } else {
+      toast.error(response.data?.message || 'فشل التصفير');
+      addSystemLog('error', response.data?.message || 'فشل التصفير');
+    }
+  } catch (error) {
+    const msg = error.response?.data?.message || error.response?.data?.error || error.message;
+    toast.error('فشل التصفير: ' + msg);
+    addSystemLog('error', 'فشل التصفير: ' + msg);
+  } finally {
+    resettingFinancialData.value = false;
   }
 };
 

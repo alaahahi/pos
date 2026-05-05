@@ -183,6 +183,7 @@ Route::prefix('sync-monitor')->group(function () {
     Route::post('/smart-sync', [App\Http\Controllers\SyncMonitorController::class, 'smartSync']);
     Route::post('/run-schedule', [App\Http\Controllers\SyncMonitorController::class, 'runSchedule']); // تشغيل schedule:run مرة واحدة (مثل shipping)
     Route::post('/run-worker-once', [App\Http\Controllers\SyncMonitorController::class, 'runWorkerOnce']); // تشغيل queue worker مرة واحدة (مثل shipping)
+    Route::post('/reset-financial-data', [App\Http\Controllers\SyncMonitorController::class, 'resetFinancialData']); // تصفير الصندوق/المعاملات/الدفعات محلياً
     
     // Migration routes (تنفيذ Migrations بأمان)
     Route::get('/migrations', [App\Http\Controllers\SyncMonitorController::class, 'getMigrations']); // جلب قائمة Migrations

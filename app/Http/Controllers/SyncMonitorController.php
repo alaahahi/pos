@@ -1392,6 +1392,102 @@ class SyncMonitorController extends Controller
     }
 
     /**
+     * تصفير بيانات الصندوق/المعاملات/الدفعات محلياً (SQLite)
+     */
+    public function resetFinancialData(Request $request)
+    {
+        try {
+            if (!$this->isLocalEnvironment()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'هذا الإجراء متاح فقط في البيئة المحلية',
+                ], 403);
+            }
+
+            $connection = 'sync_sqlite';
+            if (!array_key_exists($connection, config('database.connections', []))) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'اتصال sync_sqlite غير معرّف',
+                ], 500);
+            }
+
+            $deletedCounts = [];
+
+            DB::connection($connection)->beginTransaction();
+            DB::connection($connection)->statement('PRAGMA foreign_keys = OFF');
+            try {
+                // حذف صور المعاملات أولاً لتفادي قيود FK
+                foreach (['transactions_images', 'cashbox_transactions', 'transactions'] as $table) {
+                    if (Schema::connection($connection)->hasTable($table)) {
+                        $deletedCounts[$table] = DB::connection($connection)->table($table)->delete();
+                    }
+                }
+
+                // تصفير أرصدة المحافظ
+                if (Schema::connection($connection)->hasTable('wallets')) {
+                    $updated = DB::connection($connection)->table('wallets')->update([
+                        'balance' => 0,
+                        'balance_dinar' => 0,
+                        'updated_at' => now(),
+                    ]);
+                    $deletedCounts['wallets_reset'] = $updated;
+                }
+
+                // تصفير أرصدة الصندوق
+                if (Schema::connection($connection)->hasTable('boxes')) {
+                    $payload = ['updated_at' => now()];
+                    if (Schema::connection($connection)->hasColumn('boxes', 'balance')) {
+                        $payload['balance'] = 0;
+                    }
+                    if (Schema::connection($connection)->hasColumn('boxes', 'balance_usd')) {
+                        $payload['balance_usd'] = 0;
+                    }
+                    if (Schema::connection($connection)->hasColumn('boxes', 'amount')) {
+                        $payload['amount'] = 0;
+                    }
+                    $updated = DB::connection($connection)->table('boxes')->update($payload);
+                    $deletedCounts['boxes_reset'] = $updated;
+                }
+
+                // تصفير جداول الدفعات/الأرصدة إن وجدت
+                foreach (['customer_balances', 'supplier_balances'] as $table) {
+                    if (Schema::connection($connection)->hasTable($table)) {
+                        $payload = ['updated_at' => now()];
+                        if (Schema::connection($connection)->hasColumn($table, 'balance_dollar')) {
+                            $payload['balance_dollar'] = 0;
+                        }
+                        if (Schema::connection($connection)->hasColumn($table, 'balance_dinar')) {
+                            $payload['balance_dinar'] = 0;
+                        }
+                        $updated = DB::connection($connection)->table($table)->update($payload);
+                        $deletedCounts[$table . '_reset'] = $updated;
+                    }
+                }
+
+                DB::connection($connection)->commit();
+            } catch (\Throwable $e) {
+                DB::connection($connection)->rollBack();
+                throw $e;
+            } finally {
+                DB::connection($connection)->statement('PRAGMA foreign_keys = ON');
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => 'تم تصفير الصندوق والمعاملات والدفعات محلياً بنجاح',
+                'details' => $deletedCounts,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('Reset financial data failed', ['error' => $e->getMessage()]);
+            return response()->json([
+                'success' => false,
+                'message' => 'فشل التصفير: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
      * الحصول على التغييرات المعلقة في sync_queue
      */
     public function getPendingChanges(Request $request)
