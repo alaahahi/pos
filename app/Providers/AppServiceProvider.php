@@ -31,6 +31,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // رفع مهلة التنفيذ من داخل المشروع (بدون تعديل php.ini/server config)
+        // مفيد لعمليات المزامنة/التهيئة الطويلة.
+        @ini_set('max_execution_time', '3600');
+        if (function_exists('set_time_limit')) {
+            @set_time_limit(3600);
+        }
+
         // تحديد الاتصال الافتراضي أولاً (قبل أي شيء آخر)
         $this->configureDatabaseConnection();
         
