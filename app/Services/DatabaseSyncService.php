@@ -64,7 +64,7 @@ class DatabaseSyncService
             
             // التحقق من توفر API فقط
             $apiAvailable = $this->apiSyncService->isApiAvailable();
-            Log::info('API availability check', [
+            Log::debug('API availability check', [
                 'api_available' => $apiAvailable,
                 'online_url' => env('ONLINE_URL'),
                 'api_token_set' => !empty(env('SYNC_API_TOKEN')),
@@ -83,7 +83,7 @@ class DatabaseSyncService
             // جلب التغييرات المعلقة
             $pendingChanges = $this->syncQueueService->getPendingChanges($tableName, $limit);
             
-            Log::info('Pending changes check', [
+            Log::debug('Pending changes check', [
                 'pending_count' => count($pendingChanges),
                 'table_name' => $tableName,
                 'limit' => $limit,
@@ -91,7 +91,7 @@ class DatabaseSyncService
             ]);
 
             if (empty($pendingChanges)) {
-                Log::info('No pending changes to sync', [
+                Log::debug('No pending changes to sync', [
                     'table_name' => $tableName,
                     'limit' => $limit,
                 ]);
@@ -102,7 +102,7 @@ class DatabaseSyncService
             $batchSize = min(50, count($pendingChanges)); // batch size أصغر للأداء
             $batches = array_chunk($pendingChanges, $batchSize);
             
-            Log::info('Starting sync', [
+            Log::debug('Starting sync', [
                 'total_changes' => count($pendingChanges),
                 'batch_count' => count($batches),
                 'batch_size' => $batchSize,
@@ -134,7 +134,7 @@ class DatabaseSyncService
                             try {
                                 // إذا كانت محاولة إعادة (retry > 0)، انتظر دقيقة
                                 if ($retryCount > 0) {
-                                    Log::info('Waiting 60 seconds before retry', [
+                                    Log::debug('Waiting 60 seconds before retry', [
                                         'table' => $change['table_name'],
                                         'record_id' => $change['record_id'],
                                         'retry' => $retryCount,
@@ -227,7 +227,7 @@ class DatabaseSyncService
                 }
 
                 // Log progress بعد كل batch
-                Log::info('Batch processed', [
+                Log::debug('Batch processed', [
                     'batch_index' => $batchIndex + 1,
                     'total_batches' => count($batches),
                     'synced' => $results['synced'],
@@ -240,7 +240,7 @@ class DatabaseSyncService
             $results['elapsed_time'] = round(microtime(true) - $startTime, 2);
             $results['total_processed'] = $results['synced'] + $results['failed'];
 
-            Log::info('Sync completed', [
+            Log::debug('Sync completed', [
                 'synced' => $results['synced'],
                 'failed' => $results['failed'],
                 'elapsed_time' => $results['elapsed_time'],
@@ -282,7 +282,7 @@ class DatabaseSyncService
                     DB::connection('mysql')->select('SELECT 1');
                     
                     if ($attempt > 1) {
-                        Log::info('MySQL connection succeeded after retry', [
+                        Log::debug('MySQL connection succeeded after retry', [
                             'attempt' => $attempt,
                             'host' => $host,
                             'port' => $port,
@@ -372,7 +372,7 @@ class DatabaseSyncService
                     ]);
 
                 if ($updated > 0) {
-                    Log::info("Auto-retried {$updated} failed records after MySQL became available");
+                    Log::debug("Auto-retried {$updated} failed records after MySQL became available");
                 }
             }
         } catch (\Exception $e) {

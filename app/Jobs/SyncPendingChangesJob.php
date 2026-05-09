@@ -51,7 +51,7 @@ class SyncPendingChangesJob implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info('Starting background sync job', [
+            Log::debug('Starting background sync job', [
                 'job_id' => $this->jobId,
                 'table_name' => $this->tableName,
                 'limit' => $this->limit,
@@ -96,7 +96,7 @@ class SyncPendingChangesJob implements ShouldQueue
                         'next_retry_in_seconds' => $nextRetryIn,
                     ]);
                     
-                    Log::info('API not available, job will retry', [
+                    Log::debug('API not available, job will retry', [
                         'job_id' => $this->jobId,
                         'attempt' => $attempt,
                         'max_tries' => $this->tries,
@@ -106,7 +106,7 @@ class SyncPendingChangesJob implements ShouldQueue
                     throw new \Exception($errorMsg); // لإعادة المحاولة
                 }
                 
-                Log::info('API Sync enabled, skipping MySQL check', [
+                Log::debug('API Sync enabled, skipping MySQL check', [
                     'job_id' => $this->jobId,
                 ]);
             } else {
@@ -129,7 +129,7 @@ class SyncPendingChangesJob implements ShouldQueue
                         'next_retry_in_seconds' => $nextRetryIn,
                     ]);
                     
-                    Log::info('MySQL not available, job will retry', [
+                    Log::debug('MySQL not available, job will retry', [
                         'job_id' => $this->jobId,
                         'attempt' => $attempt,
                         'max_tries' => $this->tries,
@@ -141,7 +141,7 @@ class SyncPendingChangesJob implements ShouldQueue
                 }
             }
             
-            Log::info('Calling syncPendingChanges', [
+            Log::debug('Calling syncPendingChanges', [
                 'job_id' => $this->jobId,
                 'table_name' => $this->tableName,
                 'limit' => $this->limit,
@@ -149,7 +149,7 @@ class SyncPendingChangesJob implements ShouldQueue
             
             $results = $syncService->syncPendingChanges($this->tableName, $this->limit, 300);
             
-            Log::info('syncPendingChanges returned', [
+            Log::debug('syncPendingChanges returned', [
                 'job_id' => $this->jobId,
                 'synced' => $results['synced'] ?? 0,
                 'failed' => $results['failed'] ?? 0,
@@ -168,7 +168,7 @@ class SyncPendingChangesJob implements ShouldQueue
                 'total_processed' => $results['total_processed'] ?? 0,
             ]);
 
-            Log::info('Background sync job completed', [
+            Log::debug('Background sync job completed', [
                 'job_id' => $this->jobId,
                 'synced' => $results['synced'] ?? 0,
                 'failed' => $results['failed'] ?? 0,

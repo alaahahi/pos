@@ -9,6 +9,7 @@ use App\Observers\PermissionObserver;
 use App\Observers\RoleObserver;
 use App\Observers\UserObserver;
 use App\Observers\OrderObserver;
+use App\Observers\SyncQueueModelObserver;
 use Spatie\Permission\Models\Role;
 use Spatie\Permission\Models\Permission;
 use Illuminate\Support\Facades\App;
@@ -45,6 +46,14 @@ class AppServiceProvider extends ServiceProvider
         Role::observe(RoleObserver::class);
         Permission::observe(PermissionObserver::class);
         Order::observe(OrderObserver::class);
+
+        foreach (config('sync.sync_queue_observer_models', []) as $modelClass) {
+            if (! is_string($modelClass) || ! class_exists($modelClass)) {
+                continue;
+            }
+            $modelClass::observe(SyncQueueModelObserver::class);
+        }
+
         App::setLocale(Session::get('locale', config('app.locale')));
     }
     

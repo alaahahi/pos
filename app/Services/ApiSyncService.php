@@ -180,7 +180,7 @@ class ApiSyncService
         try {
             $recordId = $data['id'] ?? 0;
             
-            Log::info('API sync insert attempt', [
+            Log::debug('API sync insert attempt', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'api_url' => $this->apiUrl,
@@ -203,7 +203,7 @@ class ApiSyncService
             $statusCode = $response->status();
             $responseBody = $response->json();
             
-            Log::info('API sync insert response', [
+            Log::debug('API sync insert response', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'status_code' => $statusCode,
@@ -229,7 +229,7 @@ class ApiSyncService
                     ];
                 }
                 
-                Log::info('API sync insert succeeded', [
+                Log::debug('API sync insert succeeded', [
                     'table' => $tableName,
                     'record_id' => $recordId,
                     'response' => $responseBody,
@@ -287,7 +287,7 @@ class ApiSyncService
     public function syncUpdate(string $tableName, int|string $recordId, array $data): array
     {
         try {
-            Log::info('API sync update attempt', [
+            Log::debug('API sync update attempt', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'api_url' => $this->apiUrl,
@@ -310,7 +310,7 @@ class ApiSyncService
             $statusCode = $response->status();
             $responseBody = $response->json();
             
-            Log::info('API sync update response', [
+            Log::debug('API sync update response', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'status_code' => $statusCode,
@@ -336,7 +336,7 @@ class ApiSyncService
                     ];
                 }
                 
-                Log::info('API sync update succeeded', [
+                Log::debug('API sync update succeeded', [
                     'table' => $tableName,
                     'record_id' => $recordId,
                     'response' => $responseBody,
@@ -394,7 +394,7 @@ class ApiSyncService
     public function syncDelete(string $tableName, int|string $recordId): array
     {
         try {
-            Log::info('API sync delete attempt', [
+            Log::debug('API sync delete attempt', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'api_url' => $this->apiUrl,
@@ -424,7 +424,7 @@ class ApiSyncService
             $statusCode = $response->status();
             $responseBody = $response->json();
             
-            Log::info('API sync delete response', [
+            Log::debug('API sync delete response', [
                 'table' => $tableName,
                 'record_id' => $recordId,
                 'status_code' => $statusCode,
@@ -450,7 +450,7 @@ class ApiSyncService
                     ];
                 }
                 
-                Log::info('API sync delete succeeded', [
+                Log::debug('API sync delete succeeded', [
                     'table' => $tableName,
                     'record_id' => $recordId,
                     'response' => $responseBody,

@@ -55,7 +55,7 @@ class Kernel extends ConsoleKernel
                     return;
                 }
                 
-                \Log::info('Dispatching scheduled sync job', [
+                \Log::debug('Dispatching scheduled sync job', [
                     'pending_count' => $pendingCount,
                 ]);
                 
@@ -64,7 +64,7 @@ class Kernel extends ConsoleKernel
                 $job = new \App\Jobs\SyncPendingChangesJob(null, 100); // مزامنة حتى 100 سجل كل 5 دقائق
                 dispatch($job)->onQueue('sync');
                 
-                \Log::info('Scheduled sync job dispatched successfully', [
+                \Log::debug('Scheduled sync job dispatched successfully', [
                     'job_id' => $job->getJobId(),
                 ]);
             } catch (\Exception $e) {
@@ -78,8 +78,8 @@ class Kernel extends ConsoleKernel
           ->withoutOverlapping(10); // منع التداخل - انتظر 10 دقائق إذا كان job آخر يعمل
         
         // مزامنة تلقائية من السيرفر إلى المحلي كل 10 دقائق (إذا كان هناك إنترنت)
-        // يعمل فقط في النظام المحلي
-        if (config('app.env') === 'local' || str_contains(config('app.url'), 'local') || str_contains(config('app.url'), '127.0.0.1')) {
+        // يعمل عندما الاتصال الافتراضي SQLite (وضع المحل الفعلي)، وليس فقط عندما URL يحتوي local
+        if (in_array(config('database.default'), ['sync_sqlite', 'sqlite'], true)) {
             $schedule->call(function () {
                 try {
                     // التحقق من أن API Sync مفعّل
@@ -95,7 +95,7 @@ class Kernel extends ConsoleKernel
                         return;
                     }
                     
-                    \Log::info('Starting scheduled sync from server to local');
+                    \Log::debug('Starting scheduled sync from server to local');
                     
                     // مزامنة جدول orders من السيرفر إلى المحلي
                     $controller = new \App\Http\Controllers\SyncMonitorController();
@@ -103,7 +103,7 @@ class Kernel extends ConsoleKernel
                     $response = $controller->syncFromServer($request);
                     
                     $responseData = json_decode($response->getContent(), true);
-                    \Log::info('Scheduled sync from server completed', [
+                    \Log::debug('Scheduled sync from server completed', [
                         'synced' => $responseData['synced'] ?? 0,
                         'failed' => $responseData['failed'] ?? 0,
                     ]);
@@ -116,20 +116,20 @@ class Kernel extends ConsoleKernel
             })->everyTenMinutes()
               ->name('auto-sync-from-server')
               ->withoutOverlapping(15); // منع التداخل - انتظر 15 دقيقة إذا كان job آخر يعمل
-        
+        }
+
         // نسخة احتياطية تلقائية كل 24 ساعة (للقاعدة المحلية فقط)
         $schedule->job(new \App\Jobs\DatabaseBackupJob())
             ->daily()
             ->at('03:00') // الساعة 3 صباحاً
             ->name('daily-database-backup')
             ->withoutOverlapping();
-        
+
         // إغلاق تلقائي للصناديق قبل نهاية اليوم
         $schedule->job(new \App\Jobs\AutoCloseDailyBoxJob())
             ->dailyAt('23:30') // الساعة 11:30 مساءً
             ->name('auto-close-daily-boxes')
             ->withoutOverlapping();
-        }
     }
 
     /**

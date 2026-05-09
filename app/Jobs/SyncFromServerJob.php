@@ -51,7 +51,7 @@ class SyncFromServerJob implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info('Starting sync from server job', [
+            Log::debug('Starting sync from server job', [
                 'job_id' => $this->jobId,
                 'table_name' => $this->tableName,
                 'record_id' => $this->recordId,
@@ -91,7 +91,7 @@ class SyncFromServerJob implements ShouldQueue
                     'failed' => $responseData['failed'] ?? 0,
                 ]);
 
-                Log::info('Sync from server job completed', [
+                Log::debug('Sync from server job completed', [
                     'job_id' => $this->jobId,
                     'synced' => $responseData['synced'] ?? 0,
                 ]);

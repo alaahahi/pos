@@ -156,3 +156,35 @@ php artisan serve
 npm run dev 
 
 
+---
+
+## Sync (SQLite local ↔ MySQL server)
+
+### Commands
+
+- **`php artisan sync:diagnose`** — Prints `database.default`, `SYNC_VIA_API`, `ONLINE_URL`, token presence, `sync_queue` counts (pending/failed), and API reachability.
+
+### Push (local → server)
+
+1. Local default connection must be **`sync_sqlite`** (or `sqlite`).
+2. **`SYNC_VIA_API=true`** and **`ONLINE_URL`** must point at the production app root (same routes as `/api/sync-monitor/...`).
+3. Editing models listed in **`config/sync.php` → `sync_queue_observer_models`** enqueues rows in **`sync_queue`** (generic **`SyncQueueModelObserver`**). **`User`**, **`Order`**, and Spatie **`Role`/`Permission`** still use their dedicated observers.
+4. Run Smart Sync / worker / scheduler so **`DatabaseSyncService`** pushes **`sync_queue`** via **`ApiSyncService`**.
+
+Tables in **`sync.no_push_tables`** are never pushed from local.
+
+### Pull (server → local)
+
+1. After changing data on the server MySQL, run a **down sync / pull** from the Sync Monitor UI (or equivalent API), or rely on the scheduler when **`database.default`** is SQLite: **`Kernel`** runs a periodic **`syncFromServer`** pull for **`orders`** (every 10 minutes when online). Broader tables should use the UI full/pull sync as needed.
+
+### Conflict policy
+
+Documented in **`config/sync.php`** as **`conflict_policy`** (`server_authoritative_api`): treat server-applied API writes as authoritative; keep **`uuid_tables`** schemas aligned on both sides.
+
+### Manual E2E check
+
+1. Edit a **product** locally → run **`php artisan sync:diagnose`** → **pending** on **`sync_queue`** should increase.
+2. Run push (smart sync / worker) → verify row on server DB.
+3. Edit on server → run pull / scheduled sync → verify SQLite row.
+
+

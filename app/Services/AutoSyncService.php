@@ -180,7 +180,7 @@ class AutoSyncService
             }
             
             // 3. تنفيذ المزامنة
-            Log::info('Auto sync started', ['time' => $result['timestamp']]);
+            Log::debug('Auto sync started', ['time' => $result['timestamp']]);
             
             $syncService = new DatabaseSyncService();
             
@@ -230,7 +230,7 @@ class AutoSyncService
             $result['message'] = 'تمت المزامنة بنجاح';
             $result['next_sync'] = $this->getNextSyncTime();
             
-            Log::info('Auto sync completed successfully', $result);
+            Log::debug('Auto sync completed successfully', $result);
             
         } catch (\Exception $e) {
             $result['message'] = 'خطأ في المزامنة: ' . $e->getMessage();

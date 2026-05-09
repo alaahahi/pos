@@ -223,7 +223,7 @@ class SyncQueueService
                 ->where('synced_at', '<', now()->subHours($hoursOld))
                 ->delete();
 
-            Log::info('Cleaned synced records from sync_queue', [
+            Log::debug('Cleaned synced records from sync_queue', [
                 'deleted_count' => $deleted,
                 'hours_old' => $hoursOld
             ]);
@@ -282,7 +282,7 @@ class SyncQueueService
                     'updated_at' => now()
                 ]);
 
-            Log::info('Reset failed sync records to pending', [
+            Log::debug('Reset failed sync records to pending', [
                 'count' => $updated
             ]);
 

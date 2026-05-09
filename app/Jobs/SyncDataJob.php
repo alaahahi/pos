@@ -41,7 +41,7 @@ class SyncDataJob implements ShouldQueue
     public function handle()
     {
         try {
-            Log::info("معالجة مزامنة البيانات من نوع: {$this->type}");
+            Log::debug("معالجة مزامنة البيانات من نوع: {$this->type}");
 
             switch ($this->type) {
                 case 'car':
@@ -57,7 +57,7 @@ class SyncDataJob implements ShouldQueue
                     Log::warning("نوع غير معروف: {$this->type}");
             }
 
-            Log::info("تمت مزامنة {$this->type} بنجاح");
+            Log::debug("تمت مزامنة {$this->type} بنجاح");
         } catch (\Exception $e) {
             Log::error("فشل مزامنة {$this->type}: " . $e->getMessage());
             throw $e; // لإعادة المحاولة

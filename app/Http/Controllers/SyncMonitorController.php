@@ -583,7 +583,7 @@ class SyncMonitorController extends Controller
             $job = new \App\Jobs\FullSyncJob($direction, $tables, $safeMode, $createBackup);
             $jobId = $job->getJobId();
             dispatch($job)->onQueue('sync');
-            Log::info('Full sync dispatched (async)', ['job_id' => $jobId, 'direction' => $direction]);
+            Log::debug('Full sync dispatched (async)', ['job_id' => $jobId, 'direction' => $direction]);
             return response()->json([
                 'success' => true,
                 'message' => 'تم بدء المزامنة في الخلفية - تابع الحالة عبر job_id',
@@ -1221,7 +1221,7 @@ class SyncMonitorController extends Controller
             // تأكد من أن QUEUE_CONNECTION=database في .env
             dispatch($job)->onQueue('sync'); // استخدام queue مخصص للمزامنة
             
-            Log::info('Sync job dispatched', [
+            Log::debug('Sync job dispatched', [
                 'job_id' => $jobId,
                 'table_name' => $tableName,
                 'limit' => $limit,
@@ -2099,7 +2099,7 @@ class SyncMonitorController extends Controller
                         }
                         // تخطي أخطاء المفاتيح المكررة
                         if (stripos($e->getMessage(), 'Duplicate entry') !== false || stripos($e->getMessage(), '1062') !== false) {
-                            Log::info('Skipped duplicate entry', [
+                            Log::debug('Skipped duplicate entry', [
                                 'statement' => substr($statement, 0, 100),
                             ]);
                             continue;
@@ -2200,7 +2200,7 @@ class SyncMonitorController extends Controller
                             }
                             // تخطي أخطاء المفاتيح المكررة إذا كان INSERT IGNORE موجود
                             if (stripos($statement, 'INSERT IGNORE') !== false && stripos($e->getMessage(), 'Duplicate entry') !== false) {
-                                Log::info('Skipped duplicate entry for table', [
+                                Log::debug('Skipped duplicate entry for table', [
                                     'table' => $tableName,
                                     'statement' => substr($statement, 0, 100),
                                 ]);
@@ -2787,7 +2787,7 @@ class SyncMonitorController extends Controller
                 ], 404);
             }
 
-            Log::info('API sync request received', [
+            Log::debug('API sync request received', [
                 'table' => $tableName,
                 'action' => $action,
                 'record_id' => $recordId,
@@ -2825,7 +2825,7 @@ class SyncMonitorController extends Controller
                     }
                     $result = DB::connection('mysql')->table($tableName)->where('id', $insertedId)->first();
 
-                    Log::info('API sync insert succeeded', [
+                    Log::debug('API sync insert succeeded', [
                         'table' => $tableName,
                         'inserted_id' => $insertedId,
                     ]);
@@ -2866,7 +2866,7 @@ class SyncMonitorController extends Controller
                     DB::connection('mysql')->table($tableName)->where('id', $recordId)->update($data);
                     $result = DB::connection('mysql')->table($tableName)->where('id', $recordId)->first();
                     
-                    Log::info('API sync update succeeded', [
+                    Log::debug('API sync update succeeded', [
                         'table' => $tableName,
                         'record_id' => $recordId,
                     ]);
@@ -2896,7 +2896,7 @@ class SyncMonitorController extends Controller
                     
                     DB::connection('mysql')->table($tableName)->where('id', $recordId)->delete();
                     
-                    Log::info('API sync delete succeeded', [
+                    Log::debug('API sync delete succeeded', [
                         'table' => $tableName,
                         'record_id' => $recordId,
                     ]);
@@ -2952,7 +2952,7 @@ class SyncMonitorController extends Controller
                 ], 404);
             }
 
-            Log::info('Starting table comparison', [
+            Log::debug('Starting table comparison', [
                 'table' => $tableName,
                 'limit' => $limit,
             ]);
@@ -3071,7 +3071,7 @@ class SyncMonitorController extends Controller
             $onlyLocalSample = array_slice($onlyLocal, 0, 10);
             $onlyServerSample = array_slice($onlyServer, 0, 10);
 
-            Log::info('Table comparison completed', [
+            Log::debug('Table comparison completed', [
                 'table' => $tableName,
                 'summary' => $summary,
             ]);
@@ -3188,7 +3188,7 @@ class SyncMonitorController extends Controller
                 ], 404);
             }
 
-            Log::info('Starting sync from server', [
+            Log::debug('Starting sync from server', [
                 'table' => $tableName,
                 'limit' => $limit,
             ]);
@@ -3320,7 +3320,7 @@ class SyncMonitorController extends Controller
                 ], 404);
             }
 
-            Log::info('Starting sync missing records', [
+            Log::debug('Starting sync missing records', [
                 'table' => $tableName,
                 'limit' => $limit,
             ]);
@@ -3375,7 +3375,7 @@ class SyncMonitorController extends Controller
                 ]);
             }
 
-            Log::info('Found missing records to sync', [
+            Log::debug('Found missing records to sync', [
                 'table' => $tableName,
                 'missing_count' => count($missingRecords),
                 'total_checked' => count($localRecords),
@@ -3602,7 +3602,7 @@ class SyncMonitorController extends Controller
                 ->delete();
 
             if ($deleted) {
-                Log::info('Deleted sync from server job', ['job_id' => $jobId]);
+                Log::debug('Deleted sync from server job', ['job_id' => $jobId]);
                 return response()->json([
                     'success' => true,
                     'message' => 'تم حذف Job بنجاح',
@@ -3653,7 +3653,7 @@ class SyncMonitorController extends Controller
 
             $deleted = $query->delete();
 
-            Log::info('Cleared sync from server jobs', [
+            Log::debug('Cleared sync from server jobs', [
                 'deleted_count' => $deleted,
                 'status' => $status,
             ]);
@@ -3687,7 +3687,7 @@ class SyncMonitorController extends Controller
             $recordId = is_numeric($recordId) ? (int) $recordId : $recordId;
             $action = $request->input('action', 'insert');
 
-            Log::info('Testing dispatch sync from server job', [
+            Log::debug('Testing dispatch sync from server job', [
                 'table_name' => $tableName,
                 'record_id' => $recordId,
                 'action' => $action,
@@ -3701,7 +3701,7 @@ class SyncMonitorController extends Controller
                 
                 dispatch($job)->onQueue('sync-from-server');
                 
-                Log::info('Job dispatched successfully', [
+                Log::debug('Job dispatched successfully', [
                     'job_id' => $jobId,
                     'table_name' => $tableName,
                     'record_id' => $recordId,
