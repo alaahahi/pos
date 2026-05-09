@@ -210,11 +210,12 @@ class AutoSyncService
             // 4. تحديث وقت آخر مزامنة
             Cache::put($this->lastSyncKey, $result['timestamp'], 86400); // 24 ساعة
             
-            // تسجيل في sync_metadata
+            // تسجيل في sync_metadata (المفتاح الفريد: table_name + direction)
             try {
                 \DB::connection('sync_sqlite')->table('sync_metadata')->updateOrInsert(
-                    ['table_name' => 'auto_sync'],
+                    ['table_name' => 'auto_sync', 'direction' => 'up'],
                     [
+                        'direction' => 'up',
                         'synced_at' => $result['timestamp'],
                         'records_synced' => ($result['data']['push']['synced'] ?? 0) + ($result['data']['pull']['synced'] ?? 0),
                         'status' => 'completed',

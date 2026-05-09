@@ -43,73 +43,82 @@ return new class extends Migration
             }
         }
 
-        $childTables = [
-            ['table' => 'purchase_invoices', 'fk' => 'supplier_id'],
-            ['table' => 'supplier_balances', 'fk' => 'supplier_id'],
-        ];
-        foreach ($childTables as $child) {
-            if (!Schema::hasTable($child['table']) || !Schema::hasColumn($child['table'], $child['fk'])) {
-                continue;
-            }
-            if (!Schema::hasColumn($child['table'], $child['fk'] . '_uuid')) {
+        // SQLite: تعطيل FK مؤقتاً لتجنب "unknown column in foreign key" عند DROP COLUMN
+        if ($driver === 'sqlite') {
+            DB::statement('PRAGMA foreign_keys = OFF');
+        }
+
+        try {
+            $childTables = [
+                ['table' => 'purchase_invoices', 'fk' => 'supplier_id'],
+                ['table' => 'supplier_balances', 'fk' => 'supplier_id'],
+            ];
+            foreach ($childTables as $child) {
+                if (! Schema::hasTable($child['table']) || ! Schema::hasColumn($child['table'], $child['fk'])) {
+                    continue;
+                }
+                if (! Schema::hasColumn($child['table'], $child['fk'].'_uuid')) {
+                    Schema::table($child['table'], function (Blueprint $table) use ($child) {
+                        $table->string($child['fk'].'_uuid', 36)->nullable()->after($child['fk']);
+                    });
+                }
+                $map = DB::table('suppliers')->pluck('uuid', 'id');
+                foreach (DB::table($child['table'])->whereNotNull($child['fk'])->get() as $row) {
+                    $uuid = $map[$row->{$child['fk']}] ?? null;
+                    if ($uuid) {
+                        DB::table($child['table'])->where('id', $row->id)->update([$child['fk'].'_uuid' => $uuid]);
+                    }
+                }
+                if ($driver === 'mysql') {
+                    Schema::table($child['table'], function (Blueprint $table) use ($child) {
+                        $table->dropForeign([$child['fk']]);
+                    });
+                }
                 Schema::table($child['table'], function (Blueprint $table) use ($child) {
-                    $table->string($child['fk'] . '_uuid', 36)->nullable()->after($child['fk']);
+                    $table->dropColumn($child['fk']);
                 });
             }
-            $map = DB::table('suppliers')->pluck('uuid', 'id');
-            foreach (DB::table($child['table'])->whereNotNull($child['fk'])->get() as $row) {
-                $uuid = $map[$row->{$child['fk']}] ?? null;
-                if ($uuid) {
-                    DB::table($child['table'])->where('id', $row->id)->update([$child['fk'] . '_uuid' => $uuid]);
+
+            if ($driver === 'mysql') {
+                DB::statement('ALTER TABLE suppliers DROP PRIMARY KEY');
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->dropColumn('id');
+                });
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->renameColumn('uuid', 'id');
+                });
+                DB::statement('ALTER TABLE suppliers ADD PRIMARY KEY (id)');
+            } else {
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->dropPrimary();
+                });
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->dropColumn('id');
+                });
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->renameColumn('uuid', 'id');
+                });
+                Schema::table('suppliers', function (Blueprint $table) {
+                    $table->primary('id');
+                });
+            }
+
+            foreach ($childTables as $child) {
+                if (! Schema::hasTable($child['table']) || ! Schema::hasColumn($child['table'], $child['fk'].'_uuid')) {
+                    continue;
+                }
+                Schema::table($child['table'], function (Blueprint $table) use ($child) {
+                    $table->renameColumn($child['fk'].'_uuid', $child['fk']);
+                });
+                if ($driver === 'mysql') {
+                    Schema::table($child['table'], function (Blueprint $table) use ($child) {
+                        $table->foreign($child['fk'])->references('id')->on('suppliers')->onDelete($child['table'] === 'purchase_invoices' ? 'set null' : 'cascade');
+                    });
                 }
             }
-            // SQLite لا يدعم dropForeign؛ نُسقِط العمود فقط (إعادة إنشاء الجدول عند الحاجة)
-            if ($driver === 'mysql') {
-                Schema::table($child['table'], function (Blueprint $table) use ($child) {
-                    $table->dropForeign([$child['fk']]);
-                });
-            }
-            Schema::table($child['table'], function (Blueprint $table) use ($child) {
-                $table->dropColumn($child['fk']);
-            });
-        }
-
-        if ($driver === 'mysql') {
-            DB::statement('ALTER TABLE suppliers DROP PRIMARY KEY');
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->dropColumn('id');
-            });
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->renameColumn('uuid', 'id');
-            });
-            DB::statement('ALTER TABLE suppliers ADD PRIMARY KEY (id)');
-        } else {
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->dropPrimary();
-            });
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->dropColumn('id');
-            });
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->renameColumn('uuid', 'id');
-            });
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->primary('id');
-            });
-        }
-
-        foreach ($childTables as $child) {
-            if (!Schema::hasTable($child['table']) || !Schema::hasColumn($child['table'], $child['fk'] . '_uuid')) {
-                continue;
-            }
-            Schema::table($child['table'], function (Blueprint $table) use ($child) {
-                $table->renameColumn($child['fk'] . '_uuid', $child['fk']);
-            });
-            // SQLite لا يدعم إضافة foreign key لجدول موجود بسهولة
-            if ($driver === 'mysql') {
-                Schema::table($child['table'], function (Blueprint $table) use ($child) {
-                    $table->foreign($child['fk'])->references('id')->on('suppliers')->onDelete($child['table'] === 'purchase_invoices' ? 'set null' : 'cascade');
-                });
+        } finally {
+            if ($driver === 'sqlite') {
+                DB::statement('PRAGMA foreign_keys = ON');
             }
         }
     }
