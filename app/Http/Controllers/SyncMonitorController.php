@@ -2807,6 +2807,97 @@ class SyncMonitorController extends Controller
 
                     $this->normalizeMysqlDateColumnsForApiSync($data);
 
+                    $mysqlIns = DB::connection('mysql');
+
+                    // إن وُجد صف بنفس المفتاح الطبيعي، حدّثه بدل insert (يصل بعد فشل update بـ 404 ثم إعادة المحاولة كـ insert)
+                    if ($tableName === 'daily_closes' && isset($data['close_date'])) {
+                        try {
+                            $ymd = \Carbon\Carbon::parse($data['close_date'])->format('Y-m-d');
+                            $existingRow = $mysqlIns->table($tableName)->whereDate('close_date', $ymd)->first();
+                            if ($existingRow) {
+                                $upd = $data;
+                                unset($upd['id']);
+                                $mysqlIns->table($tableName)->where('id', $existingRow->id)->update($upd);
+                                $mergeResult = $mysqlIns->table($tableName)->where('id', $existingRow->id)->first();
+                                $localRecordId = $request->input('local_record_id');
+
+                                return response()->json([
+                                    'success' => true,
+                                    'message' => 'تم دمج البيانات مع سجل يوم الإغلاق الموجود على السيرفر',
+                                    'data' => $mergeResult,
+                                    'inserted_id' => $existingRow->id,
+                                    'server_id' => $existingRow->id,
+                                    'local_id' => $localRecordId,
+                                    'local_record_id' => $localRecordId,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::debug('API sync insert: daily_closes natural-key merge skipped', [
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    if ($tableName === 'monthly_closes' && isset($data['year'], $data['month'])) {
+                        try {
+                            $existingRow = $mysqlIns->table($tableName)
+                                ->where('year', $data['year'])
+                                ->where('month', $data['month'])
+                                ->first();
+                            if ($existingRow) {
+                                $upd = $data;
+                                unset($upd['id']);
+                                $mysqlIns->table($tableName)->where('id', $existingRow->id)->update($upd);
+                                $mergeResult = $mysqlIns->table($tableName)->where('id', $existingRow->id)->first();
+                                $localRecordId = $request->input('local_record_id');
+
+                                return response()->json([
+                                    'success' => true,
+                                    'message' => 'تم دمج البيانات مع إغلاق شهري موجود على السيرفر',
+                                    'data' => $mergeResult,
+                                    'inserted_id' => $existingRow->id,
+                                    'server_id' => $existingRow->id,
+                                    'local_id' => $localRecordId,
+                                    'local_record_id' => $localRecordId,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::debug('API sync insert: monthly_closes natural-key merge skipped', [
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
+                    if ($tableName === 'monthly_accounts' && isset($data['year'], $data['month'])) {
+                        try {
+                            $existingRow = $mysqlIns->table($tableName)
+                                ->where('year', $data['year'])
+                                ->where('month', $data['month'])
+                                ->first();
+                            if ($existingRow) {
+                                $upd = $data;
+                                unset($upd['id']);
+                                $mysqlIns->table($tableName)->where('id', $existingRow->id)->update($upd);
+                                $mergeResult = $mysqlIns->table($tableName)->where('id', $existingRow->id)->first();
+                                $localRecordId = $request->input('local_record_id');
+
+                                return response()->json([
+                                    'success' => true,
+                                    'message' => 'تم دمج البيانات مع حساب شهري موجود على السيرفر',
+                                    'data' => $mergeResult,
+                                    'inserted_id' => $existingRow->id,
+                                    'server_id' => $existingRow->id,
+                                    'local_id' => $localRecordId,
+                                    'local_record_id' => $localRecordId,
+                                ]);
+                            }
+                        } catch (\Throwable $e) {
+                            Log::debug('API sync insert: monthly_accounts natural-key merge skipped', [
+                                'error' => $e->getMessage(),
+                            ]);
+                        }
+                    }
+
                     $uuidTables = config('sync.uuid_tables', []);
                     $isUuidTable = in_array($tableName, $uuidTables, true);
 

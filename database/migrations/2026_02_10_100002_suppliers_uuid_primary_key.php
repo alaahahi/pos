@@ -91,18 +91,8 @@ return new class extends Migration
                 });
                 DB::statement('ALTER TABLE suppliers ADD PRIMARY KEY (id)');
             } else {
-                Schema::table('suppliers', function (Blueprint $table) {
-                    $table->dropPrimary();
-                });
-                Schema::table('suppliers', function (Blueprint $table) {
-                    $table->dropColumn('id');
-                });
-                Schema::table('suppliers', function (Blueprint $table) {
-                    $table->renameColumn('uuid', 'id');
-                });
-                Schema::table('suppliers', function (Blueprint $table) {
-                    $table->primary('id');
-                });
+                // SQLite لا يدعم إسقاط عمود المفتاح الأساسي عبر ALTER؛ نعيد بناء الجدول بـ id نصي من عمود uuid
+                $this->sqliteRebuildSuppliersUuidAsPrimaryKey();
             }
 
             foreach ($childTables as $child) {
@@ -232,6 +222,48 @@ return new class extends Migration
     protected function sqliteQuoteIdent(string $name): string
     {
         return '"'.str_replace('"', '""', $name).'"';
+    }
+
+    /**
+     * استبدال suppliers.id الصحيحي بـ UUID نصي: id الجديد = قيمة عمود uuid، حذف الأعمدة id السابق وuuid.
+     */
+    protected function sqliteRebuildSuppliersUuidAsPrimaryKey(): void
+    {
+        $qTable = $this->sqliteQuoteIdent('suppliers');
+        $rows = DB::select("PRAGMA table_info({$qTable})");
+
+        $defs = [];
+        $selectParts = [];
+
+        $defs[] = $this->sqliteQuoteIdent('id').' TEXT NOT NULL PRIMARY KEY';
+        $selectParts[] = $this->sqliteQuoteIdent('uuid');
+
+        foreach ($rows as $col) {
+            if (in_array($col->name, ['id', 'uuid'], true)) {
+                continue;
+            }
+            $cn = $this->sqliteQuoteIdent($col->name);
+            $selectParts[] = $cn;
+
+            $type = $col->type !== '' && $col->type !== null ? $col->type : 'TEXT';
+            $line = $cn.' '.$type;
+            if ((int) $col->notnull === 1) {
+                $line .= ' NOT NULL';
+            }
+            if ($col->dflt_value !== null && $col->dflt_value !== '') {
+                $line .= ' DEFAULT '.$col->dflt_value;
+            }
+            $defs[] = $line;
+        }
+
+        $tmp = 'suppliers__uuid_pk_'.substr(sha1('suppliers'), 0, 8);
+        $qTmp = $this->sqliteQuoteIdent($tmp);
+
+        DB::statement('DROP TABLE IF EXISTS '.$qTmp);
+        DB::statement('CREATE TABLE '.$qTmp.' ('.implode(', ', $defs).')');
+        DB::statement('INSERT INTO '.$qTmp.' SELECT '.implode(', ', $selectParts).' FROM '.$qTable);
+        DB::statement('DROP TABLE '.$qTable);
+        DB::statement('ALTER TABLE '.$qTmp.' RENAME TO '.$qTable);
     }
 
     public function down(): void

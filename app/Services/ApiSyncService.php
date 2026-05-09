@@ -386,11 +386,12 @@ class ApiSyncService
                         'error' => $errorMsg,
                         'response' => $responseBody,
                     ]);
-                    
+
                     return [
                         'success' => false,
                         'error' => $errorMsg,
                         'data' => $responseBody,
+                        'status' => $response->status(),
                     ];
                 }
                 
