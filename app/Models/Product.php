@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -84,6 +85,46 @@ class Product extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(Category::class);
+    }
+
+    /**
+     * Filters used on the products index / export (same rules as list).
+     *
+     * @param  array{search?: string|null, status?: string|null, stock?: string|null}  $filters
+     */
+    public function scopeIndexFilters(Builder $query, array $filters): Builder
+    {
+        return $query
+            ->when($filters['search'] ?? null, function (Builder $q, string $search) {
+                return $q->where(function (Builder $sub) use ($search) {
+                    $sub->where('products.name', 'LIKE', "%{$search}%")
+                        ->orWhere('products.barcode', 'LIKE', "%{$search}%")
+                        ->orWhere('products.model', 'LIKE', "%{$search}%");
+                });
+            })
+            ->when($filters['status'] ?? null, function (Builder $q, string $status) {
+                if ($status === 'active') {
+                    return $q->where('products.is_active', 1);
+                }
+                if ($status === 'inactive') {
+                    return $q->where('products.is_active', 0);
+                }
+
+                return $q;
+            })
+            ->when($filters['stock'] ?? null, function (Builder $q, string $stock) {
+                if ($stock === 'low') {
+                    return $q->where('products.quantity', '<=', 5)->where('products.quantity', '>', 0);
+                }
+                if ($stock === 'out') {
+                    return $q->where('products.quantity', 0);
+                }
+                if ($stock === 'available') {
+                    return $q->where('products.quantity', '>', 5);
+                }
+
+                return $q;
+            });
     }
 
     /**

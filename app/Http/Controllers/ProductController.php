@@ -13,13 +13,16 @@ use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use App\Exports\ProductsExport;
 use App\Services\LogService;
+use Maatwebsite\Excel\Facades\Excel;
+
 class ProductController extends Controller
 {
 
     public function __construct()
     {
-        $this->middleware('permission:read product', ['only' => ['index']]);
+        $this->middleware('permission:read product', ['only' => ['index', 'export']]);
         $this->middleware('permission:create product', ['only' => ['create']]);
         $this->middleware('permission:update product', ['only' => ['update','edit']]);
         $this->middleware('permission:delete product', ['only' => ['destroy']]);
@@ -45,36 +48,7 @@ class ProductController extends Controller
                 'products.id', '=', 'order_items.product_id')
             ->select('products.*', \DB::raw('COALESCE(order_items.total_quantity, 0) as total_sales'));
 
-        // Apply search filter
-        $ProductQuery->when($filters['search'], function ($query, $search) {
-            return $query->where(function ($q) use ($search) {
-                $q->where('name', 'LIKE', "%{$search}%")
-                  ->orWhere('barcode', 'LIKE', "%{$search}%")
-                  ->orWhere('model', 'LIKE', "%{$search}%");
-            });
-        });
-
-        // Apply status filter
-        $ProductQuery->when($filters['status'], function ($query, $status) {
-            if ($status === 'active') {
-                return $query->where('is_active', 1);
-            } elseif ($status === 'inactive') {
-                return $query->where('is_active', 0);
-            }
-            return $query;
-        });
-
-        // Apply stock filter
-        $ProductQuery->when($filters['stock'], function ($query, $stock) {
-            if ($stock === 'low') {
-                return $query->where('products.quantity', '<=', 5)->where('products.quantity', '>', 0);
-            } elseif ($stock === 'out') {
-                return $query->where('products.quantity', 0);
-            } elseif ($stock === 'available') {
-                return $query->where('products.quantity', '>', 5);
-            }
-            return $query;
-        });
+        $ProductQuery->indexFilters($filters);
 
         // Apply sorting
         switch ($filters['sort']) {
@@ -99,12 +73,40 @@ class ProductController extends Controller
         // Paginate the filtered product
         $product = $ProductQuery->paginate(10);
 
+        // Totals across all rows matching filters (not only current page)
+        $statsBase = Product::query()->indexFilters($filters);
+        $totalValueUsd = (float) ((clone $statsBase)->where('currency', 'USD')->sum(DB::raw('products.price * products.quantity')) ?? 0);
+        $totalValueIqd = (float) ((clone $statsBase)->where('currency', 'IQD')->sum(DB::raw('products.price * products.quantity')) ?? 0);
+        $activeCount = (clone $statsBase)->where('is_active', 1)->count();
+
         return Inertia('Products/index', [
             'translations' => __('messages'),
             'filters' => $filters,
             'products' => $product,
+            'productStats' => [
+                'total_value_usd' => $totalValueUsd,
+                'total_value_iqd' => $totalValueIqd,
+                'active_count' => $activeCount,
+            ],
         ]);
 
+    }
+
+    /**
+     * Export filtered products to Excel (all matching rows).
+     */
+    public function export(Request $request)
+    {
+        $filters = [
+            'search' => $request->search,
+            'status' => $request->status,
+            'stock' => $request->stock,
+            'sort' => $request->sort ?? 'created',
+        ];
+
+        $fileName = 'products_'.date('Y-m-d_H-i-s').'.xlsx';
+
+        return Excel::download(new ProductsExport($filters), $fileName);
     }
 
     /**

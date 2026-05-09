@@ -113,7 +113,8 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::post('api/permissions/add-category-permissions', [App\Http\Controllers\PermissionSeederController::class, 'addCategoryPermissions'])->name('api.permissions.add-category');
   Route::post('api/permissions/run-category-seeder', [App\Http\Controllers\PermissionSeederController::class, 'runCategoryPermissionSeeder'])->name('api.permissions.run-category-seeder');
 
-  // Products routes
+  // Products routes (export must be registered before resource to avoid {product} = "export")
+  Route::get('products/export', [ProductController::class, 'export'])->name('products.export');
   Route::resource('products', ProductController::class);
   Route::post('products/{product}/activate', [ProductController::class, 'activate'])->name('activate');
   Route::post('products/{product}/toggle-featured', [ProductController::class, 'toggleFeatured'])->name('toggle-featured');

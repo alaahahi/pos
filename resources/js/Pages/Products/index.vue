@@ -32,7 +32,7 @@
                   <i class="bi bi-check-circle"></i>
                 </div>
                 <div class="ps-3">
-                  <h6>{{ getActiveCount() }}</h6>
+                  <h6>{{ activeCountDisplay }}</h6>
                   <span class="text-success small pt-1 fw-bold">{{ translations.active }}</span>
                 </div>
               </div>
@@ -49,8 +49,9 @@
                   <i class="bi bi-currency-dollar"></i>
                 </div>
                 <div class="ps-3">
-                  <h6>{{ getTotalValueDollar() }} $</h6>
+                  <h6>{{ formatStatTotal(productStats.total_value_usd) }} $</h6>
                   <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
+                  <small class="text-muted d-block">{{ translations.products_inventory_totals_hint }}</small>
                 </div>
               </div>
             </div>
@@ -66,8 +67,9 @@
                   <i class="bi bi-currency-exchange"></i>
                 </div>
                 <div class="ps-3">
-                  <h6>{{ getTotalValueDinar() }} IQD</h6>
+                  <h6>{{ formatStatTotal(productStats.total_value_iqd) }} IQD</h6>
                   <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
+                  <small class="text-muted d-block">{{ translations.products_inventory_totals_hint }}</small>
                 </div>
               </div>
             </div>
@@ -82,7 +84,17 @@
             <i class="bi bi-box-seam me-2"></i>
             {{ translations.products_management }}
           </h5>
-          <div class="d-flex gap-2">
+          <div class="d-flex gap-2 flex-wrap">
+            <a
+              v-if="hasPermission('read product')"
+              class="btn btn-outline-success"
+              :href="productsExportHref"
+              target="_blank"
+              rel="noopener"
+            >
+              <i class="bi bi-file-earmark-excel"></i>
+              {{ translations.export_excel_products }}
+            </a>
             <button class="btn btn-outline-primary" @click="toggleViewMode">
               <i :class="viewMode === 'grid' ? 'bi bi-list' : 'bi bi-grid'"></i>
               {{ viewMode === 'grid' ? translations.list_view : translations.grid_view }}
@@ -697,16 +709,27 @@ import BarcodePrinter from '@/Components/BarcodePrinter.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { router } from '@inertiajs/vue3';
-import { reactive } from 'vue';
-import { ref } from 'vue';
+import { reactive, ref, computed } from 'vue';
 import ModalPurchasesProduct from '@/Components/ModalPurchasesProduct.vue';
 import JsBarcode from 'jsbarcode';
 import { useToast } from 'vue-toastification';
 import { debounce } from 'lodash';
 
 const props = defineProps({
-  products: Object, 
-  translations: Array 
+  products: Object,
+  translations: Object,
+  filters: {
+    type: Object,
+    default: () => ({}),
+  },
+  productStats: {
+    type: Object,
+    default: () => ({
+      total_value_usd: 0,
+      total_value_iqd: 0,
+      active_count: 0,
+    }),
+  },
 });
 
 const page = usePage();
@@ -746,10 +769,23 @@ const barcodeValidation = ref({
 });
 
 const filterForm = reactive({
-  search: '',
-  status: '',
-  stock: '',
-  sort: 'created'
+  search: props.filters?.search ?? '',
+  status: props.filters?.status ?? '',
+  stock: props.filters?.stock ?? '',
+  sort: props.filters?.sort ?? 'created',
+});
+
+const activeCountDisplay = computed(() => props.productStats?.active_count ?? 0);
+
+const productsExportHref = computed(() => {
+  const params = new URLSearchParams();
+  if (filterForm.search) params.set('search', filterForm.search);
+  if (filterForm.status) params.set('status', filterForm.status);
+  if (filterForm.stock) params.set('stock', filterForm.stock);
+  if (filterForm.sort) params.set('sort', filterForm.sort);
+  const query = params.toString();
+  const base = route('products.export');
+  return query ? `${base}?${query}` : base;
 });
 
 // View mode (table or grid)
@@ -865,38 +901,11 @@ const getLowStockCount = () => {
   return props.products.data.filter(product => product.quantity <= 5).length;
 };
 
-// Get active count
-const getActiveCount = () => {
-  if (!props.products?.data) return 0;
-  return props.products.data.filter(product => product.is_active).length;
-};
-
-// Get total value in Dollar (only products with USD currency)
-const getTotalValueDollar = () => {
-  if (!props.products?.data) return '0';
-  const total = props.products.data
-    .filter(product => product.currency === 'USD')
-    .reduce((sum, product) => {
-      return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
-    }, 0);
-  const formatted = total.toLocaleString('en-US', {
+/** Formatted totals from server (all rows matching filters, not current page). */
+const formatStatTotal = (value) => {
+  const formatted = Number(value ?? 0).toLocaleString('en-US', {
     minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  });
-  return formatted.replace(/\.00$/, '');
-};
-
-// Get total value in Dinar (only products with IQD currency)
-const getTotalValueDinar = () => {
-  if (!props.products?.data) return '0';
-  const total = props.products.data
-    .filter(product => product.currency === 'IQD')
-    .reduce((sum, product) => {
-      return sum + (parseFloat(product.price || 0) * parseInt(product.quantity || 0));
-    }, 0);
-  const formatted = total.toLocaleString('en-US', {
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
+    maximumFractionDigits: 2,
   });
   return formatted.replace(/\.00$/, '');
 };

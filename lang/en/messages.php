@@ -381,6 +381,8 @@ return [
 'enabled' => 'Enabled',
 'inventory' => 'Inventory',
 'value' => 'Value',
+'products_inventory_totals_hint' => 'Per current filters · all matching rows (not only this page)',
+'export_excel_products' => 'Export Excel',
 'list_view' => 'List View',
 'grid_view' => 'Grid View',
 'items' => 'Items',

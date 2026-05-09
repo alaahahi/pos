@@ -473,6 +473,8 @@ return [
     'enabled' => 'مفعل',
     'inventory' => 'المخزون',
     'value' => 'القيمة',
+    'products_inventory_totals_hint' => 'بحسب الفلاتر الحالية · جميع النتائج (وليس الصفحة الحالية)',
+    'export_excel_products' => 'تصدير Excel',
     'list_view' => 'عرض القائمة',
     'grid_view' => 'عرض الشبكة',
     'items' => 'عناصر',
