@@ -28,6 +28,13 @@ class RouteServiceProvider extends ServiceProvider
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
         });
 
+        // مزامنة POS: طلبات كثيرة من نفس الـ IP؛ الحد الافتراضي api (60/د) يسبب 429
+        RateLimiter::for('sync-monitor', function (Request $request) {
+            $perMinute = (int) config('sync.monitor_api_rate_per_minute', 1200);
+
+            return Limit::perMinute(max(60, $perMinute))->by($request->ip());
+        });
+
         $this->routes(function () {
             Route::middleware('api')
                 ->prefix('api')

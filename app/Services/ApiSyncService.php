@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Cache;
@@ -17,6 +18,55 @@ class ApiSyncService
         $this->apiUrl = env('ONLINE_URL', 'https://nissan.intellij-app.com');
         $this->apiToken = env('SYNC_API_TOKEN', '');
         $this->timeout = (int) env('SYNC_API_TIMEOUT', 10); // 10 ثواني timeout للـ health check (أقل من 30)
+    }
+
+    /**
+     * POST إلى api-sync مع إعادة المحاولة عند HTTP 429 (احترام Retry-After عند وجوده).
+     *
+     * @param  callable(): Response  $send
+     */
+    protected function postApiSyncWith429Retries(callable $send, string $tableForLog, int|string|null $recordIdForLog, string $operation): Response
+    {
+        $maxAttempts = (int) config('sync.api_429_max_attempts', 10);
+        $response = null;
+
+        for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+            $response = $send();
+
+            if ($response->status() !== 429) {
+                return $response;
+            }
+
+            if ($attempt >= $maxAttempts) {
+                Log::warning('API sync: Rate limit (429), max retries exhausted', [
+                    'table' => $tableForLog,
+                    'record_id' => $recordIdForLog,
+                    'operation' => $operation,
+                    'attempts' => $maxAttempts,
+                ]);
+
+                return $response;
+            }
+
+            $retryAfter = $response->header('Retry-After');
+            if ($retryAfter !== null && $retryAfter !== '' && is_numeric($retryAfter)) {
+                $sleepSeconds = min(120, max(1, (int) $retryAfter));
+            } else {
+                $sleepSeconds = min(60, (int) pow(2, $attempt - 1));
+            }
+
+            Log::warning('API sync: Rate limit (429), backing off before retry', [
+                'table' => $tableForLog,
+                'record_id' => $recordIdForLog,
+                'operation' => $operation,
+                'attempt' => $attempt,
+                'sleep_seconds' => $sleepSeconds,
+            ]);
+
+            sleep($sleepSeconds);
+        }
+
+        return $response;
     }
 
     /**
@@ -193,12 +243,17 @@ class ApiSyncService
                 $httpRequest->withToken($this->apiToken);
             }
             
-            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+            $response = $this->postApiSyncWith429Retries(
+                fn () => $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'insert',
                     'data' => $data,
-                ]);
+                ]),
+                $tableName,
+                $recordId,
+                'insert'
+            );
 
             $statusCode = $response->status();
             $responseBody = $response->json();
@@ -241,16 +296,6 @@ class ApiSyncService
                 ];
             }
 
-            // إذا كان 429 (Too Many Requests)، رفع Exception لإيقاف المحاولات
-            if ($statusCode === 429) {
-                $errorMsg = 'HTTP 429 - Too Many Requests. Server rate limit exceeded.';
-                Log::warning('API sync: Rate limit exceeded (429)', [
-                    'table' => $tableName,
-                    'record_id' => $recordId,
-                ]);
-                throw new \Exception($errorMsg);
-            }
-            
             $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
             Log::warning('API sync insert failed (HTTP error)', [
                 'table' => $tableName,
@@ -300,12 +345,17 @@ class ApiSyncService
                 $httpRequest->withToken($this->apiToken);
             }
             
-            $response = $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
+            $response = $this->postApiSyncWith429Retries(
+                fn () => $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'update',
                     'data' => $data,
-                ]);
+                ]),
+                $tableName,
+                $recordId,
+                'update'
+            );
 
             $statusCode = $response->status();
             $responseBody = $response->json();
@@ -348,16 +398,6 @@ class ApiSyncService
                 ];
             }
 
-            // إذا كان 429 (Too Many Requests)، رفع Exception لإيقاف المحاولات
-            if ($statusCode === 429) {
-                $errorMsg = 'HTTP 429 - Too Many Requests. Server rate limit exceeded.';
-                Log::warning('API sync: Rate limit exceeded (429)', [
-                    'table' => $tableName,
-                    'record_id' => $recordId,
-                ]);
-                throw new \Exception($errorMsg);
-            }
-            
             $errorMsg = $responseBody['message'] ?? 'HTTP ' . $statusCode;
             Log::warning('API sync update failed (HTTP error)', [
                 'table' => $tableName,
@@ -419,7 +459,12 @@ class ApiSyncService
                 'payload' => $payload,
             ]);
             
-            $response = $httpRequest->post($url, $payload);
+            $response = $this->postApiSyncWith429Retries(
+                fn () => $httpRequest->post($url, $payload),
+                $tableName,
+                $recordId,
+                'delete'
+            );
 
             $statusCode = $response->status();
             $responseBody = $response->json();

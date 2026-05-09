@@ -62,6 +62,20 @@ return [
     */
     'queue_in_console' => env('SYNC_QUEUE_IN_CONSOLE', false),
 
+    /*
+    |--------------------------------------------------------------------------
+    | حدود طلبات المزامنة عبر HTTP (429)
+    |--------------------------------------------------------------------------
+    |
+    | monitor_api_rate_per_minute: على السيرفر، مسار api/sync-monitor/* كان يخضع لـ
+    | throttle:api (60/د) فيسبب 429 عند رفع الطابور. يُستبدل بـ throttle:sync-monitor.
+    |
+    | api_429_max_attempts: على العميل، عدد إعادات POST بعد استلام 429 مع تأخير متزايد.
+    |
+    */
+    'monitor_api_rate_per_minute' => (int) env('SYNC_MONITOR_API_RATE_PER_MINUTE', 1200),
+    'api_429_max_attempts' => max(1, (int) env('SYNC_API_429_MAX_ATTEMPTS', 10)),
+
     'sync_queue_observer_models' => [
         \App\Models\Product::class,
         \App\Models\Category::class,

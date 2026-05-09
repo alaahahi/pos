@@ -165,6 +165,7 @@ class DatabaseSyncService
                                         'record_id' => $change['record_id'],
                                         'action' => $change['action'],
                                     ]);
+                                    $retryCount++;
                                 }
                             } catch (\Exception $e) {
                                 Log::error('Sync change exception', [

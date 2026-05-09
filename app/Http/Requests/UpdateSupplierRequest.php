@@ -23,11 +23,20 @@ class UpdateSupplierRequest extends FormRequest
     {
         return [
             'name' => 'required|string|max:255',
-            'phone' => 'nullable',
-            'address' => 'nullable',
-            'notes' => 'nullable',
+            'phone' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'notes' => 'nullable|string|max:2000',
             'avatar' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->has('phone') && $this->phone !== null && $this->phone !== '') {
+            $this->merge([
+                'phone' => (string) $this->phone,
+            ]);
+        }
     }
 
     public function messages()

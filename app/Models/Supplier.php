@@ -57,6 +57,7 @@ class Supplier extends Model
      * @var array
      */
     protected $casts = [
+        'phone'              => 'string',
         'last_purchase_date' => 'datetime',
         'created_at'         => 'date:Y-m-d',
         'updated_at'         => 'date:Y-m-d',

@@ -163,8 +163,11 @@ Route::get('/check-database-connection', function () {
 // License API Routes
 require __DIR__.'/api_license.php';
 
-// Sync Monitor API Routes
-Route::prefix('sync-monitor')->group(function () {
+// Sync Monitor API Routes — لا تستخدم throttle:api (60/د) إذ تُصيب المزامنة بـ 429
+Route::prefix('sync-monitor')
+    ->withoutMiddleware([\Illuminate\Routing\Middleware\ThrottleRequests::class])
+    ->middleware('throttle:sync-monitor')
+    ->group(function () {
     // جلب جميع البيانات في request واحد
     Route::get('/all-data', [App\Http\Controllers\SyncMonitorController::class, 'getAllData']);
     
