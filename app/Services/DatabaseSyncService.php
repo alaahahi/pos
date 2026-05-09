@@ -550,17 +550,22 @@ class DatabaseSyncService
             throw new \Exception("SYNC_VIA_API غير مفعّل - يجب تفعيل API Sync. لا يمكن استخدام MySQL مباشرة.");
         }
         
+        $localId = $data['id'] ?? null;
+
         // تنظيف البيانات قبل الإرسال (تحويل timestamps، إزالة deleted_at و id)
         $cleanedData = $this->cleanDataForSync($data, 'insert');
-        
-        // استخدام API فقط
-        $result = $this->apiSyncService->syncInsert($tableName, $cleanedData);
-        
+
+        // استخدام API فقط — تمرير المفتاح المحلي لحفظ التخطيط local → server على MySQL
+        $result = $this->apiSyncService->syncInsert($tableName, $cleanedData, $localId);
+
         if ($result['success'] ?? false) {
-            // حفظ ID mapping من استجابة API إذا كان متوفراً
-            if (isset($result['data']['local_id']) && isset($result['data']['server_id'])) {
-                $this->idMappingService->saveMapping($tableName, $result['data']['local_id'], $result['data']['server_id'], 'up');
+            $body = $result['data'] ?? [];
+            $serverId = $body['server_id'] ?? $body['inserted_id'] ?? null;
+            $lid = $body['local_id'] ?? $body['local_record_id'] ?? $localId;
+            if ($lid !== null && $serverId !== null) {
+                $this->idMappingService->saveMapping($tableName, $lid, $serverId, 'up');
             }
+
             return true;
         }
         
@@ -584,20 +589,80 @@ class DatabaseSyncService
         
         // تنظيف البيانات قبل الإرسال (تحويل timestamps)
         $cleanedData = $this->cleanDataForSync($data, 'update');
-        
-        // استخدام API فقط
-        $result = $this->apiSyncService->syncUpdate($tableName, $recordId, $cleanedData);
-        
+
+        $localId = $recordId;
+        $serverId = $this->idMappingService->getServerId($tableName, $localId, 'up');
+        if ($serverId === null) {
+            $serverId = $localId;
+        }
+
+        // استخدام API فقط — record_id على السيرفر هو MySQL id بعد التخطيط
+        $result = $this->apiSyncService->syncUpdate($tableName, $serverId, $cleanedData, $localId);
+
         if ($result['success'] ?? false) {
+            $body = $result['data'] ?? [];
+            $req = $body['requested_record_id'] ?? null;
+            $upd = $body['updated_row_id'] ?? null;
+            if ($req !== null && $upd !== null && (string) $req !== (string) $upd) {
+                $this->idMappingService->saveMapping($tableName, $req, $upd, 'up');
+            }
+
             return true;
         }
-        
+
+        // السيرفر لا يملك الصف بعد (أو كود السيرفر قديم): إدراج كصف جديد + تخطيط
+        if ($this->attemptInsertWhenUpdateMissingOnServer($tableName, $localId, $data, $result)) {
+            return true;
+        }
+
         Log::error("Failed to sync update via API for {$tableName}", [
             'record_id' => $recordId,
             'data' => $data,
             'error' => $result['error'] ?? 'Unknown error',
         ]);
         return false;
+    }
+
+    /**
+     * عند update → 404 لأن id السيرفر غير موجود: أعد المحاولة كـ insert (جداول محددة فقط).
+     */
+    protected function attemptInsertWhenUpdateMissingOnServer(
+        string $tableName,
+        int|string $localId,
+        array $originalRowData,
+        array $failedUpdateResult
+    ): bool {
+        $status = $failedUpdateResult['status'] ?? null;
+        $err = (string) ($failedUpdateResult['error'] ?? '');
+        $errAsciiLower = strtolower($err);
+
+        $isNotFound = ($status === 404)
+            || str_contains($err, 'غير موجود')
+            || str_contains($errAsciiLower, 'not found');
+
+        if (! $isNotFound) {
+            return false;
+        }
+
+        $allowed = config('sync.upsert_on_update_404_tables', [
+            'daily_closes',
+            'monthly_closes',
+            'monthly_accounts',
+        ]);
+
+        if (! in_array($tableName, $allowed, true)) {
+            return false;
+        }
+
+        Log::warning('Sync: update missing on server; retrying as insert', [
+            'table' => $tableName,
+            'local_record_id' => $localId,
+        ]);
+
+        $payload = $originalRowData;
+        $payload['id'] = $localId;
+
+        return $this->syncInsert($tableName, $payload);
     }
 
     /**
@@ -611,8 +676,11 @@ class DatabaseSyncService
             throw new \Exception("SYNC_VIA_API غير مفعّل - يجب تفعيل API Sync. لا يمكن استخدام MySQL مباشرة.");
         }
         
+        $localId = $recordId;
+        $serverId = $this->idMappingService->getServerId($tableName, $localId, 'up') ?? $localId;
+
         // استخدام API فقط
-        $result = $this->apiSyncService->syncDelete($tableName, $recordId);
+        $result = $this->apiSyncService->syncDelete($tableName, $serverId);
         
         if ($result['success'] ?? false) {
             // حذف mapping إذا كان متوفراً

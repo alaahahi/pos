@@ -224,31 +224,35 @@ class ApiSyncService
 
     /**
      * مزامنة insert عبر API
+     *
+     * @param  int|string|null  $localRecordId  المفتاح المحلي قبل الإرسال (لحفظ sync_id_mapping على السيرفر)
      */
-    public function syncInsert(string $tableName, array $data): array
+    public function syncInsert(string $tableName, array $data, int|string|null $localRecordId = null): array
     {
         try {
-            $recordId = $data['id'] ?? 0;
-            
+            $recordId = $localRecordId ?? ($data['id'] ?? 0);
+
             Log::debug('API sync insert attempt', [
                 'table' => $tableName,
                 'record_id' => $recordId,
+                'local_record_id' => $localRecordId,
                 'api_url' => $this->apiUrl,
                 'has_token' => !empty($this->apiToken),
             ]);
-            
+
             // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
             $httpRequest = Http::timeout($this->timeout);
             if (!empty($this->apiToken)) {
                 $httpRequest->withToken($this->apiToken);
             }
-            
+
             $response = $this->postApiSyncWith429Retries(
                 fn () => $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'insert',
                     'data' => $data,
+                    'local_record_id' => $localRecordId,
                 ]),
                 $tableName,
                 $recordId,
@@ -327,30 +331,34 @@ class ApiSyncService
 
     /**
      * مزامنة update عبر API
-     * @param int|string $recordId
+     *
+     * @param  int|string  $recordId  مفتاح الصف على MySQL (بعد تخطيط sync_id_mapping إن وُجد)
+     * @param  int|string|null  $localRecordId  المفتاح المحلي في SQLite (للتخطيط واستجابة السيرفر)
      */
-    public function syncUpdate(string $tableName, int|string $recordId, array $data): array
+    public function syncUpdate(string $tableName, int|string $recordId, array $data, int|string|null $localRecordId = null): array
     {
         try {
             Log::debug('API sync update attempt', [
                 'table' => $tableName,
                 'record_id' => $recordId,
+                'local_record_id' => $localRecordId,
                 'api_url' => $this->apiUrl,
                 'has_token' => !empty($this->apiToken),
             ]);
-            
+
             // TODO: إزالة هذا التعديل بعد التجريب - إعادة تفعيل التوكن
             $httpRequest = Http::timeout($this->timeout);
             if (!empty($this->apiToken)) {
                 $httpRequest->withToken($this->apiToken);
             }
-            
+
             $response = $this->postApiSyncWith429Retries(
                 fn () => $httpRequest->post("{$this->apiUrl}/api/sync-monitor/api-sync", [
                     'table_name' => $tableName,
                     'record_id' => $recordId,
                     'action' => 'update',
                     'data' => $data,
+                    'local_record_id' => $localRecordId,
                 ]),
                 $tableName,
                 $recordId,

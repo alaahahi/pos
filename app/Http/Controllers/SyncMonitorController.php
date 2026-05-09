@@ -2830,11 +2830,16 @@ class SyncMonitorController extends Controller
                         'inserted_id' => $insertedId,
                     ]);
 
+                    $localRecordId = $request->input('local_record_id');
+
                     return response()->json([
                         'success' => true,
                         'message' => 'تم إدراج السجل بنجاح',
                         'data' => $result,
                         'inserted_id' => $insertedId,
+                        'local_id' => $localRecordId,
+                        'server_id' => $insertedId,
+                        'local_record_id' => $localRecordId,
                     ]);
 
                 case 'update':
@@ -2844,37 +2849,79 @@ class SyncMonitorController extends Controller
                             'message' => 'data مطلوب للـ update',
                         ], 400);
                     }
-                    
-                    // على السيرفر: استخدام MySQL فقط
-                    // التحقق من وجود السجل
-                    $exists = DB::connection('mysql')->table($tableName)->where('id', $recordId)->exists();
-                    if (!$exists) {
+
+                    $mysql = DB::connection('mysql');
+                    $targetId = $recordId;
+                    $exists = $mysql->table($tableName)->where('id', $targetId)->exists();
+
+                    // إدراج MySQL قد يكون أنشأ id مختلفًا عن SQLite؛ جرب مطابقة المفتاح الطبيعي
+                    if (! $exists) {
+                        $resolvedId = null;
+                        if ($tableName === 'daily_closes' && isset($data['close_date'])) {
+                            try {
+                                $ymd = \Carbon\Carbon::parse($data['close_date'])->format('Y-m-d');
+                                $found = $mysql->table($tableName)->whereDate('close_date', $ymd)->first();
+                                $resolvedId = $found->id ?? null;
+                            } catch (\Throwable $e) {
+                                Log::debug('API sync update: daily_closes alternate key lookup failed', [
+                                    'error' => $e->getMessage(),
+                                ]);
+                            }
+                        } elseif ($tableName === 'monthly_closes' && isset($data['year'], $data['month'])) {
+                            $found = $mysql->table($tableName)
+                                ->where('year', $data['year'])
+                                ->where('month', $data['month'])
+                                ->first();
+                            $resolvedId = $found->id ?? null;
+                        } elseif ($tableName === 'monthly_accounts' && isset($data['year'], $data['month'])) {
+                            $found = $mysql->table($tableName)
+                                ->where('year', $data['year'])
+                                ->where('month', $data['month'])
+                                ->first();
+                            $resolvedId = $found->id ?? null;
+                        }
+
+                        if ($resolvedId !== null) {
+                            $targetId = $resolvedId;
+                            $exists = true;
+                            Log::info('API sync update: resolved row by alternate key', [
+                                'table' => $tableName,
+                                'requested_id' => $recordId,
+                                'resolved_id' => $targetId,
+                            ]);
+                        }
+                    }
+
+                    if (! $exists) {
                         Log::warning('Record not found for API sync update', [
                             'table' => $tableName,
                             'record_id' => $recordId,
                         ]);
-                        
+
                         return response()->json([
                             'success' => false,
                             'message' => "السجل {$recordId} غير موجود في الجدول {$tableName}",
                         ], 404);
                     }
-                    
-                    // إزالة id من البيانات (لا يمكن تحديث id)
+
                     unset($data['id']);
-                    
-                    DB::connection('mysql')->table($tableName)->where('id', $recordId)->update($data);
-                    $result = DB::connection('mysql')->table($tableName)->where('id', $recordId)->first();
-                    
+
+                    $mysql->table($tableName)->where('id', $targetId)->update($data);
+                    $result = $mysql->table($tableName)->where('id', $targetId)->first();
+
+                    $localRef = $request->input('local_record_id');
+
                     Log::debug('API sync update succeeded', [
                         'table' => $tableName,
-                        'record_id' => $recordId,
+                        'record_id' => $targetId,
                     ]);
-                    
+
                     return response()->json([
                         'success' => true,
                         'message' => 'تم تحديث السجل بنجاح',
                         'data' => $result,
+                        'requested_record_id' => $localRef ?? $recordId,
+                        'updated_row_id' => $targetId,
                     ]);
 
                 case 'delete':

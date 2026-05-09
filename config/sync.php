@@ -132,16 +132,21 @@ return [
         'decoration_teams',
         'decoration_orders',
         'simple_decoration_orders',
-        'expenses',
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | إدراج عند فشل التحديث 404 (الصف غير موجود على MySQL)
+    |--------------------------------------------------------------------------
+    |
+    | يصل اللوكل بطلب update بـ id محلي بينما السيرفر لم يستقبل insert بعد أو
+    | تختلف المفاتيح؛ نُعيد المحاولة كـ insert لإنشاء الصف ثم يُحفظ التخطيط.
+    |
+    */
+    'upsert_on_update_404_tables' => [
         'daily_closes',
         'monthly_closes',
         'monthly_accounts',
-        'customer_balances',
-        'supplier_balances',
-        'product_price_history',
-        'employee_commissions',
-        'cashbox_transactions',
-        'transactions_images',
     ],
 
 ];
