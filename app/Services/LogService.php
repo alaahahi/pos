@@ -10,13 +10,13 @@ class LogService
     /**
      * Create a log entry
      */
-    public static function createLog(string $moduleName, string $action, int $recordId, array $originalData = [], array $updatedData = [], string $badge = 'info'): void
+    public static function createLog(string $moduleName, string $action, int|string $recordId, array $originalData = [], array $updatedData = [], string $badge = 'info'): void
     {
         Log::create([
             'module_name' => $moduleName,
             'action' => $action,
             'badge' => $badge,
-            'affected_record_id' => $recordId,
+            'affected_record_id' => $recordId === '' ? null : $recordId,
             'original_data' => json_encode($originalData),
             'updated_data' => json_encode($updatedData),
             'by_user_id' => Auth::id(),
