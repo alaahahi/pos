@@ -75,8 +75,10 @@ class ProductController extends Controller
 
         // Totals across all rows matching filters (not only current page)
         $statsBase = Product::query()->indexFilters($filters);
-        $totalValueUsd = (float) ((clone $statsBase)->where('currency', 'USD')->sum(DB::raw('products.price * products.quantity')) ?? 0);
-        $totalValueIqd = (float) ((clone $statsBase)->where('currency', 'IQD')->sum(DB::raw('products.price * products.quantity')) ?? 0);
+        // قيمة المخزون برأس المال (تكلفة الشراء × الكمية)
+        $costExpr = 'COALESCE(products.price_cost, 0) * products.quantity';
+        $totalValueUsd = (float) ((clone $statsBase)->where('currency', 'USD')->sum(DB::raw($costExpr)) ?? 0);
+        $totalValueIqd = (float) ((clone $statsBase)->where('currency', 'IQD')->sum(DB::raw($costExpr)) ?? 0);
         $activeCount = (clone $statsBase)->where('is_active', 1)->count();
 
         return Inertia('Products/index', [
@@ -137,12 +139,14 @@ class ProductController extends Controller
             'model' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'oe_number' => 'nullable|string|max:100',
-            'price_cost' => 'nullable|numeric|min:0',
+            'price_cost' => 'required|numeric|min:0',
             'quantity' => 'nullable|integer|min:0',
             'price' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode',
             'category_id' => 'nullable|exists:categories,id',
+        ], [
+            'price_cost.required' => __('rules.Price_cost_is_required'),
         ]);
         
         // توليد barcode تلقائي إذا لم يتم إرساله
@@ -246,12 +250,14 @@ class ProductController extends Controller
             'model' => 'nullable|string|max:100',
             'notes' => 'nullable|string',
             'oe_number' => 'nullable|string|max:100',
-            'price_cost' => 'nullable|numeric|min:0',
+            'price_cost' => 'required|numeric|min:0',
             'quantity' => 'nullable|integer|min:0',
             'price' => 'nullable|numeric|min:0',
             'image' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
             'barcode' => 'nullable|integer|unique:products,barcode,' . $product->id,
             'category_id' => 'nullable|exists:categories,id',
+        ], [
+            'price_cost.required' => __('rules.Price_cost_is_required'),
         ]);
         
         // توليد barcode تلقائي إذا لم يتم إرساله ولم يكن موجودًا

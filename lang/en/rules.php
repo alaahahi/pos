@@ -18,4 +18,10 @@ return [
     'Permission_name_is_required' => 'The permission name is required',
     'Permission_name_must_be_a_string' => 'The permission name must be a string',
     'Permission_name_must_not_exceed_255_characters' => 'The permission name must not exceed 255 characters',
+    'Price_cost_is_required' => 'Cost price is required',
+    'Quantity_is_required' => 'Quantity is required',
+    'Quantity_must_be_an_integer' => 'Quantity must be an integer',
+    'The_image_must_be_an_image_file' => 'The image must be an image file',
+    'The_image_must_be_a_file_of_type_jpg_jpeg_png' => 'The image must be a file of type: jpg, jpeg, png',
+    'The_image_must_not_exceed_2MB' => 'The image must not exceed 2MB',
 ];

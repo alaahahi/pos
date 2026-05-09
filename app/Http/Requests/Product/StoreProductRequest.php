@@ -26,7 +26,7 @@ class StoreProductRequest extends FormRequest
             'model' => 'nullable|string|max:255',
             'oe_number' => 'nullable|string|max:50',
             'situation' => 'nullable|string|max:50',
-            'price_cost' => 'nullable|numeric|min:0',
+            'price_cost' => 'required|numeric|min:0',
             'quantity' => 'nullable|integer|min:0',
             'transport' => 'nullable|numeric|min:0',
             'price' => 'required|numeric|min:0',
@@ -41,6 +41,7 @@ class StoreProductRequest extends FormRequest
     {
         return [
             'name.required' => __('rules.Name_is_required'),
+            'price_cost.required' => __('rules.Price_cost_is_required'),
             // 'email.required' => __('rules.Email_is_required'),
             // 'email.email' => __('rules.Email_must_be_a_valid_email_address'),
             // 'email.unique' => __('rules.This_email_has_already_been_taken'),

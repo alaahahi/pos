@@ -201,7 +201,7 @@
                   
                   <!-- Cost Price -->
                   <div class="row mb-3">
-                    <label for="inputPriceCost" class="col-sm-2 col-form-label">{{ translations.price_cost }}</label>
+                    <label for="inputPriceCost" class="col-sm-2 col-form-label required">{{ translations.price_cost }}</label>
                     <div class="col-sm-10">
                       <div class="input-group">
                         <span class="input-group-text">
@@ -216,6 +216,7 @@
                           :class="{ 'is-invalid': form.errors.price_cost }"
                           :placeholder="translations.enter_cost_price"
                           v-model="form.price_cost"
+                          required
                           @input="calculateProfit"
                         />
                         <span class="input-group-text">{{ translations.dinar }}</span>
@@ -497,7 +498,16 @@ const form = useForm({
 
 // Form validation
 const isFormValid = computed(() => {
-  return form.name && form.price && form.quantity;
+  const cost = parseFloat(form.price_cost);
+  return Boolean(
+    form.name &&
+    form.price_cost !== null &&
+    form.price_cost !== '' &&
+    !Number.isNaN(cost) &&
+    cost >= 0 &&
+    form.price &&
+    form.quantity,
+  );
 });
 
 // Step navigation
@@ -531,9 +541,11 @@ const generateBarcode = () => {
 
 // Profit calculation
 const calculateProfit = () => {
-  if (form.price_cost && form.price) {
-    profitMargin.value = parseFloat(form.price) - parseFloat(form.price_cost);
-    profitPercentage.value = (profitMargin.value / parseFloat(form.price_cost)) * 100;
+  const cost = parseFloat(form.price_cost);
+  const sell = parseFloat(form.price);
+  if (!Number.isNaN(cost) && !Number.isNaN(sell)) {
+    profitMargin.value = sell - cost;
+    profitPercentage.value = cost !== 0 ? (profitMargin.value / cost) * 100 : null;
   } else {
     profitMargin.value = null;
     profitPercentage.value = null;

@@ -452,6 +452,8 @@ return [
     'low_stock' => 'مخزون منخفض',
     'active_products' => 'المنتجات النشطة',
     'total_value' => 'القيمة الإجمالية',
+    'total_inventory_cost' => 'قيمة المخزون (تكلفة)',
+    'products_inventory_cost_hint' => 'سعر الشراء × الكمية · بحسب الفلاتر · جميع النتائج',
     'products_management' => 'إدارة المنتجات',
     'search_by_name_or_barcode' => 'البحث بالاسم أو الباركود',
     'all_stock' => 'جميع المخزون',

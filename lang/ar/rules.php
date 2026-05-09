@@ -18,4 +18,10 @@ return [
     'Permission_name_must_be_a_string' => 'يجب أن يكون اسم الصلاحية نصًا',
     'Permission_name_must_not_exceed_255_characters' => 'يجب ألا يتجاوز اسم الصلاحية 255 حرفًا',
     'This_permission_name_has_already_been_taken' => 'هذه الصلاحية موجودة بالفعل',
+    'Price_cost_is_required' => 'حقل سعر الكلفة مطلوب',
+    'Quantity_is_required' => 'حقل الكمية مطلوب',
+    'Quantity_must_be_an_integer' => 'يجب أن تكون الكمية عدداً صحيحاً',
+    'The_image_must_be_an_image_file' => 'يجب أن تكون الصورة ملف صورة صالحاً',
+    'The_image_must_be_a_file_of_type_jpg_jpeg_png' => 'يجب أن تكون الصورة من النوع: jpg, jpeg, png',
+    'The_image_must_not_exceed_2MB' => 'يجب ألا تتجاوز الصورة 2 ميغابايت',
 ];

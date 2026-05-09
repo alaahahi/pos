@@ -43,7 +43,7 @@
         <div class="col-xl-3 col-md-6">
           <div class="card info-card revenue-card">
             <div class="card-body">
-              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.dollar }}</span></h5>
+              <h5 class="card-title">{{ translations.total_inventory_cost }} <span>| {{ translations.dollar }}</span></h5>
               <div class="d-flex align-items-center">
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
                   <i class="bi bi-currency-dollar"></i>
@@ -51,7 +51,7 @@
                 <div class="ps-3">
                   <h6>{{ formatStatTotal(productStats.total_value_usd) }} $</h6>
                   <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
-                  <small class="text-muted d-block">{{ translations.products_inventory_totals_hint }}</small>
+                  <small class="text-muted d-block">{{ translations.products_inventory_cost_hint }}</small>
                 </div>
               </div>
             </div>
@@ -61,7 +61,7 @@
         <div class="col-xl-3 col-md-6">
           <div class="card info-card revenue-card">
             <div class="card-body">
-              <h5 class="card-title">{{ translations.total_value }} <span>| {{ translations.dinar }}</span></h5>
+              <h5 class="card-title">{{ translations.total_inventory_cost }} <span>| {{ translations.dinar }}</span></h5>
               <div class="d-flex align-items-center">
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
                   <i class="bi bi-currency-exchange"></i>
@@ -69,7 +69,7 @@
                 <div class="ps-3">
                   <h6>{{ formatStatTotal(productStats.total_value_iqd) }} IQD</h6>
                   <span class="text-primary small pt-1 fw-bold">{{ translations.value }}</span>
-                  <small class="text-muted d-block">{{ translations.products_inventory_totals_hint }}</small>
+                  <small class="text-muted d-block">{{ translations.products_inventory_cost_hint }}</small>
                 </div>
               </div>
             </div>

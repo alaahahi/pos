@@ -62,9 +62,10 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping
             'OE',
             'الباركود',
             'الكمية',
-            'سعر الوحدة',
+            'سعر الشراء (تكلفة)',
+            'سعر البيع',
             'العملة',
-            'القيمة الإجمالية (كمية × سعر)',
+            'قيمة المخزون بالتكلفة (كمية × سعر الشراء)',
             'التصنيف',
             'نشط',
             'تاريخ الإنشاء',
@@ -77,8 +78,9 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping
     public function map($product): array
     {
         $qty = (int) ($product->quantity ?? 0);
-        $price = (float) ($product->price ?? 0);
-        $line = $qty * $price;
+        $cost = (float) ($product->price_cost ?? 0);
+        $sell = (float) ($product->price ?? 0);
+        $line = $qty * $cost;
 
         return [
             $product->id,
@@ -87,7 +89,8 @@ class ProductsExport implements FromCollection, WithHeadings, WithMapping
             $product->oe_number ?? '',
             $product->barcode ?? '',
             $qty,
-            $price,
+            $cost,
+            $sell,
             $product->currency ?? 'IQD',
             round($line, 2),
             $product->category?->name ?? '',

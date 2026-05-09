@@ -360,6 +360,8 @@ return [
 'low_stock' => 'Low Stock',
 'active_products' => 'Active Products',
 'total_value' => 'Total Value',
+'total_inventory_cost' => 'Inventory value (at cost)',
+'products_inventory_cost_hint' => 'Purchase cost × quantity · per filters · all matching rows',
 'products_management' => 'Products Management',
 'search_by_name_or_barcode' => 'Search by name or barcode',
 'all_stock' => 'All Stock',
