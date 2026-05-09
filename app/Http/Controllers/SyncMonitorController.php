@@ -2805,6 +2805,8 @@ class SyncMonitorController extends Controller
                         ], 400);
                     }
 
+                    $this->normalizeMysqlDateColumnsForApiSync($data);
+
                     $uuidTables = config('sync.uuid_tables', []);
                     $isUuidTable = in_array($tableName, $uuidTables, true);
 
@@ -2849,6 +2851,8 @@ class SyncMonitorController extends Controller
                             'message' => 'data مطلوب للـ update',
                         ], 400);
                     }
+
+                    $this->normalizeMysqlDateColumnsForApiSync($data);
 
                     $mysql = DB::connection('mysql');
                     $targetId = $recordId;
@@ -2972,6 +2976,29 @@ class SyncMonitorController extends Controller
                 'success' => false,
                 'message' => 'حدث خطأ أثناء تنفيذ المزامنة: ' . $e->getMessage(),
             ], 500);
+        }
+    }
+
+    /**
+     * تحويل حقول DATE من ISO إلى Y-m-d قبل الإدراج/التحديث على MySQL.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    protected function normalizeMysqlDateColumnsForApiSync(array &$data): void
+    {
+        foreach (config('sync.date_only_sync_columns', ['close_date']) as $field) {
+            if (! isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
+                continue;
+            }
+            try {
+                $data[$field] = \Carbon\Carbon::parse($data[$field])->format('Y-m-d');
+            } catch (\Throwable $e) {
+                Log::warning('API sync: failed to normalize date column', [
+                    'field' => $field,
+                    'value' => $data[$field],
+                    'error' => $e->getMessage(),
+                ]);
+            }
         }
     }
 

@@ -536,7 +536,42 @@ class DatabaseSyncService
                 }
             }
         }
-        
+
+        // حقول DATE في MySQL — تحويل ISO (…T…Z) إلى Y-m-d
+        foreach (config('sync.date_only_sync_columns', ['close_date']) as $field) {
+            if (! isset($data[$field]) || $data[$field] === '' || $data[$field] === null) {
+                continue;
+            }
+            $val = $data[$field];
+            if ($val instanceof \DateTimeInterface) {
+                try {
+                    $data[$field] = \Carbon\Carbon::instance($val)->format('Y-m-d');
+                } catch (\Throwable $e) {
+                    Log::warning('Failed to normalize date-only field for sync', [
+                        'field' => $field,
+                        'error' => $e->getMessage(),
+                    ]);
+                }
+
+                continue;
+            }
+            if (! is_string($val)) {
+                continue;
+            }
+            if (strpos($val, 'T') === false && strpos($val, 'Z') === false && preg_match('/^\d{4}-\d{2}-\d{2}$/', $val)) {
+                continue;
+            }
+            try {
+                $data[$field] = \Carbon\Carbon::parse($val)->format('Y-m-d');
+            } catch (\Throwable $e) {
+                Log::warning('Failed to normalize date-only field for sync', [
+                    'field' => $field,
+                    'value' => $val,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
         return $data;
     }
 

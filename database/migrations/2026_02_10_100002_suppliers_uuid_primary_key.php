@@ -36,10 +36,11 @@ return new class extends Migration
             }
         }
 
+        // بدون doctrine/dbal لا يعمل ->change()؛ نستخدم ALTER خام على MySQL (SQLite: الصفوف مكتملة والخطوات التالية كافية)
         if (Schema::hasColumn('suppliers', 'uuid')) {
-            Schema::table('suppliers', function (Blueprint $table) {
-                $table->string('uuid', 36)->nullable(false)->change();
-            });
+            if ($driver === 'mysql') {
+                DB::statement('ALTER TABLE suppliers MODIFY uuid VARCHAR(36) NOT NULL');
+            }
         }
 
         $childTables = [

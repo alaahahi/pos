@@ -41,9 +41,9 @@ return new class extends Migration
         }
 
         if (Schema::hasColumn('categories', 'uuid')) {
-            Schema::table('categories', function (Blueprint $table) {
-                $table->string('uuid', 36)->nullable(false)->change();
-            });
+            if ($driver === 'mysql') {
+                DB::statement('ALTER TABLE categories MODIFY uuid VARCHAR(36) NOT NULL');
+            }
         }
 
         if (Schema::hasTable('products') && Schema::hasColumn('products', 'category_id') && !Schema::hasColumn('products', 'category_uuid')) {
