@@ -134,6 +134,10 @@ class ShopController extends Controller
             'company_name' => $settings->company_name ?? env('COMPANY_NAME', 'المتجر'),
             'whatsapp' => $settings->whatsapp,
             'currency' => $settings->default_currency,
+            'storageBases' => [
+                rtrim(asset('storage'), '/'),
+                rtrim(asset('public/storage'), '/'),
+            ],
         ];
     }
 }

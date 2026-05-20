@@ -43,11 +43,12 @@
       >
         <div class="relative aspect-[4/3] overflow-hidden bg-slate-100">
           <img
-            v-if="cat.image_url"
-            :src="cat.image_url"
+            v-if="categoryImageSrc(cat)"
+            :src="categoryImageSrc(cat)"
             :alt="cat.name"
             class="h-full w-full object-cover transition duration-300 group-hover:scale-105"
             loading="lazy"
+            @error="(e) => onCategoryImageError(e, cat)"
           />
           <div
             v-else
@@ -69,9 +70,15 @@
 </template>
 
 <script setup>
-defineProps({
+import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
+
+const props = defineProps({
   categories: { type: Array, default: () => [] },
   selectedId: { type: [String, null], default: null },
+  storageBases: { type: Array, default: () => [] },
 });
+
 defineEmits(['select']);
+
+const { src: categoryImageSrc, onError: onCategoryImageError } = useShopStorageUrl(props.storageBases);
 </script>

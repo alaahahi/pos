@@ -25,6 +25,7 @@
         <ShopCategoryStrip
           :categories="categories"
           :selected-id="selectedCategory"
+          :storage-bases="shop.storageBases || []"
           @select="filterCategory"
         />
 

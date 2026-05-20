@@ -17,10 +17,6 @@ trait ResolvesShopMediaUrls
 
         $path = ltrim($path, '/');
 
-        if (!file_exists(storage_path('app/public/' . $path))) {
-            return null;
-        }
-
         if (file_exists(public_path('storage/' . $path))) {
             return asset('storage/' . $path);
         }
