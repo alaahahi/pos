@@ -143,6 +143,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('manage shop')">
+    <Link  class="nav-link "  :href="route('shop-settings.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/shop-settings') }" >
+            <i class="bi bi-shop"></i>
+            <span>إدارة المتجر</span>
+               </Link>
+    </li>
+
     <li class="nav-item" v-if="hasPermission('read system_config')">
     <Link  class="nav-link "  :href="route('system-config.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/system-config') }" >
             <i class="bi bi-gear-fill"></i>

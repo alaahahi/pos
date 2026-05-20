@@ -480,7 +480,6 @@ return [
     'list_view' => 'عرض القائمة',
     'grid_view' => 'عرض الشبكة',
     'items' => 'عناصر',
-    
     // Product creation form translations
     'add_new_product_description' => 'أضف منتج جديد إلى المخزون مع جميع التفاصيل المطلوبة',
     'basic_info' => 'المعلومات الأساسية',
@@ -511,4 +510,7 @@ return [
     'image_help' => 'صورة المنتج ستساعد في التعرف عليه بسهولة',
     'previous' => 'السابق',
     'next' => 'التالي',
+    'shop_management' => 'إدارة المتجر',
+    'view_shop' => 'عرض المتجر',
+    'shop_orders' => 'طلبات المتجر',
 ];

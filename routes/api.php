@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BoxesController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\ShopController;
 use App\Http\Controllers\Api\ActiveUsersController;
 
 /*
@@ -57,6 +58,12 @@ Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name(
 Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');
 Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
 Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
+
+Route::prefix('shop')->middleware('throttle:60,1')->group(function () {
+    Route::post('calculate', [ShopController::class, 'calculate']);
+    Route::post('validate-coupon', [ShopController::class, 'validateCoupon']);
+    Route::post('orders', [ShopController::class, 'storeOrder'])->middleware('throttle:10,1');
+});
 Route::get('today-sales',[OrderController::class, 'getTodaySales'])->name('today-sales');
 
 // Active Users API - استخدام web middleware للسماح بالوصول من نفس الجلسة

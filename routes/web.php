@@ -217,10 +217,33 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
     Route::get('/printer-settings', [BarcodeController::class, 'printerSettings'])->name('printer.settings');
   });
 
+  // Shop admin (separate from POS / accounting)
+  Route::get('shop-settings', [App\Http\Controllers\ShopSettingsController::class, 'index'])->name('shop-settings.index');
+  Route::put('shop-settings/general', [App\Http\Controllers\ShopSettingsController::class, 'updateGeneral'])->name('shop-settings.general.update');
+  Route::post('shop-settings/categories', [App\Http\Controllers\ShopSettingsController::class, 'storeCategory'])->name('shop-settings.categories.store');
+  Route::post('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'updateCategory'])->name('shop-settings.categories.update');
+  Route::delete('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'destroyCategory'])->name('shop-settings.categories.destroy');
+  Route::post('shop-settings/products', [App\Http\Controllers\ShopSettingsController::class, 'storeProduct'])->name('shop-settings.products.store');
+  Route::post('shop-settings/products/{shopProduct}', [App\Http\Controllers\ShopSettingsController::class, 'updateProduct'])->name('shop-settings.products.update');
+  Route::delete('shop-settings/products/{shopProduct}', [App\Http\Controllers\ShopSettingsController::class, 'destroyProduct'])->name('shop-settings.products.destroy');
+  Route::post('shop-settings/promotions', [App\Http\Controllers\ShopSettingsController::class, 'storePromotion'])->name('shop-settings.promotions.store');
+  Route::patch('shop-settings/promotions/{promotion}', [App\Http\Controllers\ShopSettingsController::class, 'updatePromotion'])->name('shop-settings.promotions.update');
+  Route::delete('shop-settings/promotions/{promotion}', [App\Http\Controllers\ShopSettingsController::class, 'destroyPromotion'])->name('shop-settings.promotions.destroy');
+  Route::post('shop-settings/coupons', [App\Http\Controllers\ShopSettingsController::class, 'storeCoupon'])->name('shop-settings.coupons.store');
+  Route::patch('shop-settings/coupons/{coupon}', [App\Http\Controllers\ShopSettingsController::class, 'updateCoupon'])->name('shop-settings.coupons.update');
+  Route::delete('shop-settings/coupons/{coupon}', [App\Http\Controllers\ShopSettingsController::class, 'destroyCoupon'])->name('shop-settings.coupons.destroy');
+  Route::get('shop-settings/orders/{shopOrder}', [App\Http\Controllers\ShopSettingsController::class, 'showOrder'])->name('shop-settings.orders.show');
+  Route::patch('shop-settings/orders/{shopOrder}/status', [App\Http\Controllers\ShopSettingsController::class, 'updateOrderStatus'])->name('shop-settings.orders.status');
+  Route::get('shop-settings/orders-export', [App\Http\Controllers\ShopSettingsController::class, 'exportOrders'])->name('shop-settings.orders.export');
+
 });
 
 Route::get('/export-users', [ExportController::class, 'export'])->name('export.users');
 Route::get('/export-customers', [ExportController::class, 'export'])->name('export.customers');
+
+// Public Shop (No Authentication Required)
+Route::get('/shop', [App\Http\Controllers\ShopController::class, 'index'])->name('shop.index');
+Route::get('/shop/products/{shopProduct}', [App\Http\Controllers\ShopController::class, 'show'])->name('shop.products.show');
 
 // Public Gallery Routes (No Authentication Required)
 Route::get('/gallery', [App\Http\Controllers\PublicGalleryController::class, 'index'])->name('public.gallery');

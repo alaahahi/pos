@@ -1,0 +1,14 @@
+@layer components {
+  .shop-card {
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-shop transition-shadow duration-200;
+  }
+  .shop-card-hover {
+    @apply shop-card hover:shadow-shop-md hover:border-slate-300/80;
+  }
+  .shop-input {
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:border-shop-500 focus:outline-none focus:ring-2 focus:ring-shop-500/20;
+  }
+  .shop-label {
+    @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+}

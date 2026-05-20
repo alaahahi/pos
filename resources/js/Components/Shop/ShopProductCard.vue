@@ -1,0 +1,66 @@
+<template>
+  <article
+    class="shop-card-hover group flex flex-col overflow-hidden animate-shop-fade-in"
+    :aria-label="product.name"
+  >
+    <button
+      type="button"
+      class="relative aspect-[4/3] w-full overflow-hidden bg-slate-100 text-right focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-shop-500"
+      @click="$emit('view', product.id)"
+    >
+      <img
+        :src="product.image_url || '/dashboard-assets/img/placeholder.jpg'"
+        :alt="product.name"
+        class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+        loading="lazy"
+      />
+      <span
+        v-if="product.category?.name"
+        class="absolute top-2 right-2 rounded-lg bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-600 backdrop-blur-sm"
+      >
+        {{ product.category.name }}
+      </span>
+    </button>
+
+    <div class="flex flex-1 flex-col p-4">
+      <button
+        type="button"
+        class="mb-1 text-right text-sm font-semibold text-slate-900 line-clamp-2 hover:text-shop-600 focus:outline-none focus-visible:text-shop-600"
+        @click="$emit('view', product.id)"
+      >
+        {{ product.name }}
+      </button>
+      <p class="mb-3 text-lg font-bold text-shop-600">
+        {{ formatPrice(product.price) }}
+        <span class="text-xs font-normal text-slate-500">{{ product.currency || currency }}</span>
+      </p>
+      <ShopButton
+        variant="primary"
+        size="sm"
+        block
+        class="mt-auto"
+        :aria-label="`أضف ${product.name} إلى السلة`"
+        @click="$emit('add', product)"
+      >
+        <i class="bi bi-cart-plus" aria-hidden="true" />
+        أضف للسلة
+      </ShopButton>
+    </div>
+  </article>
+</template>
+
+<script setup>
+import ShopButton from './ShopButton.vue';
+
+defineProps({
+  product: { type: Object, required: true },
+  currency: { type: String, default: 'USD' },
+});
+
+defineEmits(['view', 'add']);
+
+const formatPrice = (n) => {
+  const num = parseFloat(n);
+  return Number.isNaN(num) ? n : num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+</script>

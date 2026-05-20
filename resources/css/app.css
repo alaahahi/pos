@@ -4,6 +4,9 @@
 /* Import Products Enhancements */
 @import './products-enhancements.css';
 
+/* Shop storefront */
+@import './shop.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
