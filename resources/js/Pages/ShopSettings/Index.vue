@@ -57,7 +57,7 @@
             <form @submit.prevent="submitCategory" class="row g-3">
               <div class="col-md-4">
                 <label class="form-label">اسم الفئة *</label>
-                <input v-model="catForm.name" class="form-control" required />
+                <input v-model="catForm.name" type="text" class="form-control" required />
               </div>
               <div class="col-md-4">
                 <label class="form-label">صورة الفئة</label>
@@ -339,13 +339,16 @@ const onCategoryImage = (e) => {
   const file = e.target.files?.[0];
   if (file) catForm.image = file;
 };
-const submitCategory = () => catForm.post(route('shop-settings.categories.store'), {
-  forceFormData: true,
-  onSuccess: () => {
-    catForm.reset();
-    if (categoryImageInput.value) categoryImageInput.value.value = '';
-  },
-});
+const submitCategory = () => {
+  catForm
+    .transform((data) => ({ ...data, image: catForm.image }))
+    .post(route('shop-settings.categories.store'), {
+      onSuccess: () => {
+        catForm.reset();
+        if (categoryImageInput.value) categoryImageInput.value.value = '';
+      },
+    });
+};
 
 const prodForm = useForm({
   name: '', shop_category_id: '', description: '', price: 0, currency: 'USD', is_active: true, image: null,
@@ -354,13 +357,16 @@ const onProductImage = (e) => {
   const file = e.target.files?.[0];
   if (file) prodForm.image = file;
 };
-const submitProduct = () => prodForm.post(route('shop-settings.products.store'), {
-  forceFormData: true,
-  onSuccess: () => {
-    prodForm.reset();
-    if (productImageInput.value) productImageInput.value.value = '';
-  },
-});
+const submitProduct = () => {
+  prodForm
+    .transform((data) => ({ ...data, image: prodForm.image }))
+    .post(route('shop-settings.products.store'), {
+      onSuccess: () => {
+        prodForm.reset();
+        if (productImageInput.value) productImageInput.value.value = '';
+      },
+    });
+};
 
 const promoForm = useForm({
   name: '', min_cart_total: 0, discount_type: 'fixed', discount_value: 0, is_active: true, sort_order: 0,

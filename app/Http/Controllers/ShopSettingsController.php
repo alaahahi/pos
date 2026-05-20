@@ -16,11 +16,6 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class ShopSettingsController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('permission:manage shop');
-    }
-
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'general');
@@ -58,7 +53,7 @@ class ShopSettingsController extends Controller
     public function storeCategory(Request $request)
     {
         $data = $this->validateCategory($request);
-        $data['images'] = $this->collectCategoryImages($request);
+        $data = $this->applyCategoryImageUpload($request, $data);
         ShopCategory::create($data);
         return back()->with('success', 'تمت إضافة الفئة');
     }
@@ -66,13 +61,14 @@ class ShopSettingsController extends Controller
     public function updateCategory(Request $request, ShopCategory $shopCategory)
     {
         $data = $this->validateCategory($request);
-        $data['images'] = $this->collectCategoryImages($request, $shopCategory->images ?? []);
+        $data = $this->applyCategoryImageUpload($request, $data, $shopCategory);
         $shopCategory->update($data);
         return back()->with('success', 'تم تحديث الفئة');
     }
 
     public function destroyCategory(ShopCategory $shopCategory)
     {
+        $this->deleteCategoryMedia($shopCategory);
         $shopCategory->delete();
         return back()->with('success', 'تم حذف الفئة');
     }
@@ -278,13 +274,43 @@ class ShopSettingsController extends Controller
         ]);
     }
 
-    protected function collectCategoryImages(Request $request, array $existing = []): array
+    protected function applyCategoryImageUpload(Request $request, array $data, ?ShopCategory $shopCategory = null): array
     {
-        $paths = array_values(array_filter($existing));
         if ($request->hasFile('image')) {
-            array_unshift($paths, $request->file('image')->store('shop/categories', 'public'));
+            if ($shopCategory) {
+                $this->deleteCategoryMedia($shopCategory);
+            }
+            $path = $request->file('image')->store('shop/categories', 'public');
+            $data['image'] = $path;
+            $data['images'] = $this->storeUploadedImages(
+                $request,
+                'gallery',
+                array_values(array_filter([$path]))
+            );
+        } else {
+            $data['images'] = $this->storeUploadedImages(
+                $request,
+                'gallery',
+                $shopCategory?->images ?? []
+            );
+            if ($shopCategory && !isset($data['image'])) {
+                $data['image'] = $shopCategory->image;
+            }
         }
-        return $this->storeUploadedImages($request, 'gallery', $paths);
+
+        return $data;
+    }
+
+    protected function deleteCategoryMedia(ShopCategory $shopCategory): void
+    {
+        if ($shopCategory->image) {
+            Storage::disk('public')->delete($shopCategory->image);
+        }
+        foreach ($shopCategory->images ?? [] as $path) {
+            if ($path && $path !== $shopCategory->image) {
+                Storage::disk('public')->delete($path);
+            }
+        }
     }
 
     protected function storeUploadedImages(Request $request, string $key, array $existing): array

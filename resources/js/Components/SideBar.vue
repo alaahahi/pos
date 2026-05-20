@@ -143,7 +143,7 @@
                </Link>
     </li>
 
-    <li class="nav-item" v-if="hasPermission('manage shop')">
+    <li class="nav-item">
     <Link  class="nav-link "  :href="route('shop-settings.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/shop-settings') }" >
             <i class="bi bi-shop"></i>
             <span>إدارة المتجر</span>

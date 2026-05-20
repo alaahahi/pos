@@ -21,6 +21,7 @@ class ShopCategory extends Model
         'name',
         'slug',
         'description',
+        'image',
         'images',
         'sort_order',
         'is_active',
@@ -55,10 +56,15 @@ class ShopCategory extends Model
 
     public function getImageUrlAttribute(): ?string
     {
+        if ($this->image) {
+            return $this->resolveShopMediaUrl($this->image);
+        }
+
         $images = $this->images ?? [];
         if (empty($images[0])) {
             return null;
         }
+
         return $this->resolveShopMediaUrl($images[0]);
     }
 
