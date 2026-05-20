@@ -24,6 +24,10 @@ class ShopSettingsController extends Controller
             'translations' => __('messages'),
             'activeTab' => $tab,
             'settings' => ShopSetting::current(),
+            'storageBases' => [
+                rtrim(asset('storage'), '/'),
+                rtrim(asset('public/storage'), '/'),
+            ],
             'categories' => ShopCategory::orderBy('sort_order')->orderBy('name')->get(),
             'products' => ShopProduct::with('category')->orderBy('sort_order')->orderBy('name')->paginate(20)->withQueryString(),
             'promotions' => ShopCartPromotion::orderBy('sort_order')->get(),
@@ -217,11 +221,31 @@ class ShopSettingsController extends Controller
             'bundle_currency' => 'nullable|string|max:8',
             'image' => 'nullable|image|max:4096',
         ]);
-        if (empty($data['slug'])) {
-            $data['slug'] = Str::slug($data['name']) ?: Str::uuid()->toString();
-        }
+        $data['slug'] = $this->uniqueCategorySlug(
+            $data['name'],
+            $data['slug'] ?? null,
+            $request->route('shopCategory')?->id
+        );
         unset($data['image']);
+
         return $data;
+    }
+
+    protected function uniqueCategorySlug(string $name, ?string $slug = null, ?string $exceptId = null): string
+    {
+        $base = $slug ?: Str::slug($name) ?: Str::uuid()->toString();
+        $candidate = $base;
+        $suffix = 1;
+
+        while (
+            ShopCategory::where('slug', $candidate)
+                ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
+                ->exists()
+        ) {
+            $candidate = $base . '-' . $suffix++;
+        }
+
+        return $candidate;
     }
 
     protected function validateProduct(Request $request): array

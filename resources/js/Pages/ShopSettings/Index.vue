@@ -93,11 +93,11 @@
             <div class="card h-100 overflow-hidden shadow-sm">
               <div class="shop-category-thumb bg-light">
                 <img
-                  v-if="c.image_url"
-                  :src="c.image_url"
+                  v-if="categoryImageSrc(c)"
+                  :src="categoryImageSrc(c)"
                   :alt="c.name"
                   loading="lazy"
-                  @error="onCategoryImageError"
+                  @error="(e) => onCategoryImageError(e, c)"
                 />
                 <div v-else class="shop-category-thumb-placeholder text-muted">
                   <i class="bi bi-image fs-1" />
@@ -299,6 +299,10 @@ const props = defineProps({
   coupons: Array,
   orders: Object,
   orderFilters: Object,
+  storageBases: {
+    type: Array,
+    default: () => [],
+  },
 });
 
 const tabs = [
@@ -388,8 +392,30 @@ const updateStatus = (id, status) => router.patch(route('shop-settings.orders.st
 const exportUrl = computed(() => route('shop-settings.orders.export', orderFilters.value));
 const formatDate = (d) => d ? new Date(d).toLocaleString('ar') : '';
 
-const onCategoryImageError = (e) => {
-  e.target.style.display = 'none';
+const categoryImageSrc = (category) => {
+  if (category?.image_url) {
+    return category.image_url;
+  }
+  if (!category?.image) {
+    return null;
+  }
+  const path = String(category.image).replace(/^\//, '');
+  const base = props.storageBases?.[0] || '';
+  return base ? `${base}/${path}` : null;
+};
+
+const onCategoryImageError = (e, category) => {
+  const img = e.target;
+  const path = category?.image ? String(category.image).replace(/^\//, '') : '';
+  const altBase = props.storageBases?.[1];
+  if (path && altBase) {
+    const alt = `${altBase}/${path}`;
+    if (img.src !== alt) {
+      img.src = alt;
+      return;
+    }
+  }
+  img.style.display = 'none';
 };
 </script>
 
