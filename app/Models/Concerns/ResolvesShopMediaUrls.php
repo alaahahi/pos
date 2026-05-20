@@ -14,8 +14,11 @@ trait ResolvesShopMediaUrls
         }
 
         $path = ltrim($path, '/');
-        $fullPath = storage_path('app/public/' . $path);
 
-        return asset('/public/storage/' . $path);
+        if (file_exists(public_path('storage/' . $path))) {
+            return asset('storage/' . $path);
+        }
+
+        return asset('public/storage/' . $path);
     }
 }

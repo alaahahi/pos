@@ -91,15 +91,15 @@
         <div class="row g-3">
           <div v-for="c in categories" :key="c.id" class="col-md-4 col-lg-3">
             <div class="card h-100 overflow-hidden shadow-sm">
-              <div class="ratio ratio-4x3 bg-light">
+              <div class="shop-category-thumb bg-light">
                 <img
                   v-if="c.image_url"
                   :src="c.image_url"
                   :alt="c.name"
-                  class="w-100 h-100"
-                  style="object-fit: cover"
+                  loading="lazy"
+                  @error="onCategoryImageError"
                 />
-                <div v-else class="d-flex align-items-center justify-content-center h-100 text-muted">
+                <div v-else class="shop-category-thumb-placeholder text-muted">
                   <i class="bi bi-image fs-1" />
                 </div>
               </div>
@@ -387,6 +387,31 @@ const reloadOrders = () => router.get(route('shop-settings.index'), { tab: 'orde
 const updateStatus = (id, status) => router.patch(route('shop-settings.orders.status', id), { status });
 const exportUrl = computed(() => route('shop-settings.orders.export', orderFilters.value));
 const formatDate = (d) => d ? new Date(d).toLocaleString('ar') : '';
+
+const onCategoryImageError = (e) => {
+  e.target.style.display = 'none';
+};
 </script>
 
+<style scoped>
+.shop-category-thumb {
+  height: 180px;
+  overflow: hidden;
+  position: relative;
+}
+
+.shop-category-thumb img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.shop-category-thumb-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+}
+</style>
 

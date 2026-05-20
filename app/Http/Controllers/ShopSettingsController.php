@@ -55,7 +55,10 @@ class ShopSettingsController extends Controller
         $data = $this->validateCategory($request);
         $data = $this->applyCategoryImageUpload($request, $data);
         ShopCategory::create($data);
-        return back()->with('success', 'تمت إضافة الفئة');
+
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'categories'])
+            ->with('success', 'تمت إضافة الفئة');
     }
 
     public function updateCategory(Request $request, ShopCategory $shopCategory)
