@@ -224,9 +224,9 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::post('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'updateCategory'])->name('shop-settings.categories.update');
   Route::delete('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'destroyCategory'])->name('shop-settings.categories.destroy');
   Route::post('shop-settings/products', [App\Http\Controllers\ShopSettingsController::class, 'storeProduct'])->name('shop-settings.products.store');
+  Route::post('shop-settings/products/{shopProduct}/restore', [App\Http\Controllers\ShopSettingsController::class, 'restoreProduct'])->name('shop-settings.products.restore');
   Route::post('shop-settings/products/{shopProduct}', [App\Http\Controllers\ShopSettingsController::class, 'updateProduct'])->name('shop-settings.products.update');
   Route::delete('shop-settings/products/{shopProduct}', [App\Http\Controllers\ShopSettingsController::class, 'destroyProduct'])->name('shop-settings.products.destroy');
-  Route::post('shop-settings/products/{shopProduct}/restore', [App\Http\Controllers\ShopSettingsController::class, 'restoreProduct'])->name('shop-settings.products.restore');
   Route::post('shop-settings/promotions', [App\Http\Controllers\ShopSettingsController::class, 'storePromotion'])->name('shop-settings.promotions.store');
   Route::patch('shop-settings/promotions/{promotion}', [App\Http\Controllers\ShopSettingsController::class, 'updatePromotion'])->name('shop-settings.promotions.update');
   Route::delete('shop-settings/promotions/{promotion}', [App\Http\Controllers\ShopSettingsController::class, 'destroyPromotion'])->name('shop-settings.promotions.destroy');

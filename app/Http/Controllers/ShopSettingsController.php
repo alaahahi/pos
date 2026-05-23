@@ -131,16 +131,17 @@ class ShopSettingsController extends Controller
             ->with('success', 'تم حذف المنتج');
     }
 
-    public function restoreProduct(string $shopProductId)
+    public function restoreProduct(string $shopProduct)
     {
-        $product = ShopProduct::onlyTrashed()->findOrFail($shopProductId);
+        $product = ShopProduct::onlyTrashed()->findOrFail($shopProduct);
 
-        $product->slug = $this->uniqueProductSlug($product->name, null, $product->id);
-        $product->save();
         $product->restore();
+        $product->update([
+            'slug' => $this->uniqueProductSlug($product->name, null, $product->id),
+        ]);
 
         return redirect()
-            ->route('shop-settings.index', ['tab' => 'products', 'trashed' => 1])
+            ->route('shop-settings.index', ['tab' => 'products'])
             ->with('success', 'تم استعادة المنتج');
     }
 

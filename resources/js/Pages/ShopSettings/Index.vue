@@ -517,7 +517,12 @@ const deleteProduct = (id) => {
 };
 
 const restoreProduct = (id) => {
-  router.post(route('shop-settings.products.restore', id));
+  router.post(route('shop-settings.products.restore', { shopProduct: id }), {}, {
+    preserveScroll: true,
+    onSuccess: () => {
+      showTrashedProducts.value = false;
+    },
+  });
 };
 const deletePromotion = (id) => router.delete(route('shop-settings.promotions.destroy', id));
 const deleteCoupon = (id) => router.delete(route('shop-settings.coupons.destroy', id));
