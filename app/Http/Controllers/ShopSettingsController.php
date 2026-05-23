@@ -19,17 +19,24 @@ class ShopSettingsController extends Controller
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'general');
+        $showTrashedProducts = $request->boolean('trashed');
+
+        $productsQuery = ShopProduct::with('category')->orderBy('sort_order')->orderBy('name');
+        if ($showTrashedProducts) {
+            $productsQuery->onlyTrashed();
+        }
 
         return Inertia::render('ShopSettings/Index', [
             'translations' => __('messages'),
             'activeTab' => $tab,
             'settings' => ShopSetting::current(),
+            'showTrashedProducts' => $showTrashedProducts,
             'storageBases' => [
                 rtrim(asset('storage'), '/'),
                 rtrim(asset('public/storage'), '/'),
             ],
             'categories' => ShopCategory::orderBy('sort_order')->orderBy('name')->get(),
-            'products' => ShopProduct::with('category')->orderBy('sort_order')->orderBy('name')->paginate(20)->withQueryString(),
+            'products' => $productsQuery->paginate(20)->withQueryString(),
             'promotions' => ShopCartPromotion::orderBy('sort_order')->get(),
             'coupons' => ShopCoupon::orderByDesc('id')->get(),
             'orders' => $tab === 'orders'
@@ -117,17 +124,24 @@ class ShopSettingsController extends Controller
     public function destroyProduct(ShopProduct $shopProduct)
     {
         $this->releaseShopProductSlug($shopProduct);
-        if ($shopProduct->image) {
-            Storage::disk('public')->delete($shopProduct->image);
-        }
-        foreach ($shopProduct->images ?? [] as $path) {
-            if ($path && $path !== $shopProduct->image) {
-                Storage::disk('public')->delete($path);
-            }
-        }
         $shopProduct->delete();
 
-        return back()->with('success', 'تم حذف المنتج');
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'products'])
+            ->with('success', 'تم حذف المنتج');
+    }
+
+    public function restoreProduct(string $shopProductId)
+    {
+        $product = ShopProduct::onlyTrashed()->findOrFail($shopProductId);
+
+        $product->slug = $this->uniqueProductSlug($product->name, null, $product->id);
+        $product->save();
+        $product->restore();
+
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'products', 'trashed' => 1])
+            ->with('success', 'تم استعادة المنتج');
     }
 
     public function storePromotion(Request $request)

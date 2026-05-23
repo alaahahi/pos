@@ -115,7 +115,22 @@
 
       <!-- Products -->
       <div v-show="tab === 'products'">
-        <div class="card mb-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+          <div class="form-check form-switch mb-0">
+            <input
+              id="show-trashed-products"
+              v-model="showTrashedProducts"
+              type="checkbox"
+              class="form-check-input"
+              role="switch"
+              @change="toggleTrashedProducts"
+            />
+            <label class="form-check-label" for="show-trashed-products">عرض المحذوف فقط</label>
+          </div>
+          <span v-if="showTrashedProducts" class="badge bg-secondary">سلة المحذوفات</span>
+        </div>
+
+        <div v-if="!showTrashedProducts" class="card mb-3">
           <div class="card-header d-flex justify-content-between align-items-center">
             <span>{{ editingProductId ? 'تعديل منتج' : 'إضافة منتج' }}</span>
             <button
@@ -189,9 +204,27 @@
         </div>
         <div class="card">
           <table class="table mb-0 align-middle">
-            <thead><tr><th style="width:72px">صورة</th><th>الاسم</th><th>الفئة</th><th>السعر</th><th></th></tr></thead>
+            <thead>
+              <tr>
+                <th style="width:72px">صورة</th>
+                <th>الاسم</th>
+                <th>الفئة</th>
+                <th>السعر</th>
+                <th v-if="showTrashedProducts">تاريخ الحذف</th>
+                <th></th>
+              </tr>
+            </thead>
             <tbody>
-              <tr v-for="p in products.data" :key="p.id">
+              <tr v-if="!products.data?.length">
+                <td :colspan="showTrashedProducts ? 6 : 5" class="text-center text-muted py-4">
+                  {{ showTrashedProducts ? 'لا توجد منتجات محذوفة' : 'لا توجد منتجات' }}
+                </td>
+              </tr>
+              <tr
+                v-for="p in products.data"
+                :key="p.id"
+                :class="{ 'table-secondary': showTrashedProducts }"
+              >
                 <td>
                   <img
                     v-if="productImageSrc(p)"
@@ -206,9 +239,17 @@
                 <td>{{ p.name }}</td>
                 <td>{{ p.category?.name || '-' }}</td>
                 <td>{{ p.price }}</td>
+                <td v-if="showTrashedProducts" class="small text-muted">{{ formatDate(p.deleted_at) }}</td>
                 <td class="text-nowrap">
-                  <button type="button" class="btn btn-sm btn-outline-primary me-1" @click="startEditProduct(p)">تعديل</button>
-                  <button type="button" class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)">حذف</button>
+                  <template v-if="showTrashedProducts">
+                    <button type="button" class="btn btn-sm btn-outline-success" @click="restoreProduct(p.id)">
+                      <i class="bi bi-arrow-counterclockwise" /> استعادة
+                    </button>
+                  </template>
+                  <template v-else>
+                    <button type="button" class="btn btn-sm btn-outline-primary me-1" @click="startEditProduct(p)">تعديل</button>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)">حذف</button>
+                  </template>
                 </td>
               </tr>
             </tbody>
@@ -341,6 +382,10 @@ const props = defineProps({
     type: Array,
     default: () => [],
   },
+  showTrashedProducts: {
+    type: Boolean,
+    default: false,
+  },
 });
 
 const tabs = [
@@ -353,13 +398,28 @@ const tabs = [
 ];
 
 const tab = ref(props.activeTab || 'general');
+const showTrashedProducts = ref(props.showTrashedProducts ?? false);
 const orderFilters = ref({ ...props.orderFilters });
 
 const ordersList = computed(() => props.orders?.data || []);
 
 const switchTab = (id) => {
   tab.value = id;
-  router.get(route('shop-settings.index'), { tab: id }, { preserveState: true, preserveScroll: true });
+  const query = { tab: id };
+  if (id === 'products' && showTrashedProducts.value) {
+    query.trashed = 1;
+  }
+  router.get(route('shop-settings.index'), query, { preserveState: true, preserveScroll: true });
+};
+
+const toggleTrashedProducts = () => {
+  if (showTrashedProducts.value) {
+    cancelEditProduct();
+  }
+  router.get(route('shop-settings.index'), {
+    tab: 'products',
+    trashed: showTrashedProducts.value ? 1 : undefined,
+  }, { preserveState: true, preserveScroll: true });
 };
 
 const generalForm = useForm({
@@ -451,7 +511,14 @@ const couponForm = useForm({
 const submitCoupon = () => couponForm.post(route('shop-settings.coupons.store'), { onSuccess: () => couponForm.reset() });
 
 const deleteCategory = (id) => router.delete(route('shop-settings.categories.destroy', id));
-const deleteProduct = (id) => router.delete(route('shop-settings.products.destroy', id));
+const deleteProduct = (id) => {
+  if (!confirm('حذف هذا المنتج؟ يمكن استعادته لاحقاً من «عرض المحذوف فقط».')) return;
+  router.delete(route('shop-settings.products.destroy', id));
+};
+
+const restoreProduct = (id) => {
+  router.post(route('shop-settings.products.restore', id));
+};
 const deletePromotion = (id) => router.delete(route('shop-settings.promotions.destroy', id));
 const deleteCoupon = (id) => router.delete(route('shop-settings.coupons.destroy', id));
 
