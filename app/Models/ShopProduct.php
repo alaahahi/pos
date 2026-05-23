@@ -92,4 +92,9 @@ class ShopProduct extends Model
     {
         return $query->where('is_active', true);
     }
+
+    public function scopeCategorized($query)
+    {
+        return $query->whereNotNull('shop_category_id');
+    }
 }

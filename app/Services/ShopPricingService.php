@@ -46,7 +46,7 @@ class ShopPricingService
     {
         $lines = collect();
         foreach ($items as $item) {
-            $product = ShopProduct::with('category')->active()->find($item['shop_product_id'] ?? null);
+            $product = ShopProduct::with('category')->active()->categorized()->find($item['shop_product_id'] ?? null);
             if (!$product) {
                 continue;
             }

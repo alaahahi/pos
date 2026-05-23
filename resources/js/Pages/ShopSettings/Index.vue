@@ -116,7 +116,17 @@
       <!-- Products -->
       <div v-show="tab === 'products'">
         <div class="card mb-3">
-          <div class="card-header">إضافة منتج</div>
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>{{ editingProductId ? 'تعديل منتج' : 'إضافة منتج' }}</span>
+            <button
+              v-if="editingProductId"
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              @click="cancelEditProduct"
+            >
+              إلغاء التعديل
+            </button>
+          </div>
           <div class="card-body">
             <form @submit.prevent="submitProduct" class="row g-3">
               <div class="col-md-3">
@@ -124,11 +134,17 @@
                 <input v-model="prodForm.name" class="form-control" required />
               </div>
               <div class="col-md-2">
-                <label class="form-label">الفئة</label>
-                <select v-model="prodForm.shop_category_id" class="form-select">
-                  <option value="">بدون فئة</option>
+                <label class="form-label">الفئة *</label>
+                <select
+                  v-model="prodForm.shop_category_id"
+                  class="form-select"
+                  required
+                  :disabled="!categories.length"
+                >
+                  <option value="" disabled>اختر الفئة</option>
                   <option v-for="c in categories" :key="c.id" :value="c.id">{{ c.name }}</option>
                 </select>
+                <small v-if="!categories.length" class="text-danger">أضف فئة قبل إضافة منتجات</small>
               </div>
               <div class="col-md-2">
                 <label class="form-label">السعر *</label>
@@ -147,9 +163,26 @@
                   accept="image/jpeg,image/png,image/jpg,image/webp"
                   @change="onProductImage"
                 />
+                <div v-if="editingProductImageUrl" class="mt-2">
+                  <img
+                    :src="editingProductImageUrl"
+                    alt="الصورة الحالية"
+                    class="rounded"
+                    style="width:56px;height:56px;object-fit:cover"
+                  />
+                  <small class="d-block text-muted">الصورة الحالية — اترك الحقل فارغاً للإبقاء عليها</small>
+                </div>
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
+                <div class="form-check mb-2">
+                  <input v-model="prodForm.is_active" type="checkbox" class="form-check-input" id="prod-active" />
+                  <label class="form-check-label" for="prod-active">مفعّل في المتجر</label>
+                </div>
               </div>
               <div class="col-12">
-                <button type="submit" class="btn btn-primary" :disabled="prodForm.processing">إضافة منتج</button>
+                <button type="submit" class="btn btn-primary" :disabled="prodForm.processing || !categories.length">
+                  {{ editingProductId ? 'حفظ التعديلات' : 'إضافة منتج' }}
+                </button>
               </div>
             </form>
           </div>
@@ -173,7 +206,10 @@
                 <td>{{ p.name }}</td>
                 <td>{{ p.category?.name || '-' }}</td>
                 <td>{{ p.price }}</td>
-                <td><button type="button" class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)">حذف</button></td>
+                <td class="text-nowrap">
+                  <button type="button" class="btn btn-sm btn-outline-primary me-1" @click="startEditProduct(p)">تعديل</button>
+                  <button type="button" class="btn btn-sm btn-outline-danger" @click="deleteProduct(p.id)">حذف</button>
+                </td>
               </tr>
             </tbody>
           </table>
@@ -336,6 +372,8 @@ const generalForm = useForm({
 
 const categoryImageInput = ref(null);
 const productImageInput = ref(null);
+const editingProductId = ref(null);
+const editingProductImageUrl = ref(null);
 
 const catForm = useForm({
   name: '', description: '', sort_order: 0, is_active: true,
@@ -363,15 +401,43 @@ const onProductImage = (e) => {
   const file = e.target.files?.[0];
   if (file) prodForm.image = file;
 };
+
+const resetProductForm = () => {
+  editingProductId.value = null;
+  editingProductImageUrl.value = null;
+  prodForm.reset();
+  prodForm.is_active = true;
+  prodForm.currency = 'USD';
+  if (productImageInput.value) productImageInput.value.value = '';
+};
+
+const startEditProduct = (product) => {
+  editingProductId.value = product.id;
+  editingProductImageUrl.value = productImageSrc(product);
+  prodForm.name = product.name;
+  prodForm.shop_category_id = product.shop_category_id || '';
+  prodForm.description = product.description || '';
+  prodForm.price = Number(product.price);
+  prodForm.currency = product.currency || 'USD';
+  prodForm.is_active = product.is_active !== false;
+  prodForm.image = null;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const cancelEditProduct = () => resetProductForm();
+
 const submitProduct = () => {
-  prodForm
-    .transform((data) => ({ ...data, image: prodForm.image }))
-    .post(route('shop-settings.products.store'), {
-      onSuccess: () => {
-        prodForm.reset();
-        if (productImageInput.value) productImageInput.value.value = '';
-      },
-    });
+  const options = {
+    onSuccess: () => resetProductForm(),
+  };
+
+  prodForm.transform((data) => ({ ...data, image: prodForm.image }));
+
+  if (editingProductId.value) {
+    prodForm.post(route('shop-settings.products.update', editingProductId.value), options);
+  } else {
+    prodForm.post(route('shop-settings.products.store'), options);
+  }
 };
 
 const promoForm = useForm({

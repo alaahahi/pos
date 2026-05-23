@@ -21,7 +21,7 @@ class ShopController extends Controller
             ]);
         }
 
-        $query = ShopProduct::with('category')->active()->orderBy('sort_order')->orderBy('name');
+        $query = ShopProduct::with('category')->active()->categorized()->orderBy('sort_order')->orderBy('name');
 
         if ($request->category) {
             $query->where('shop_category_id', $request->category);
@@ -36,7 +36,7 @@ class ShopController extends Controller
 
         $categories = ShopCategory::where('is_active', true)
             ->withCount(['products as active_products_count' => function ($q) {
-                $q->where('is_active', true);
+                $q->where('is_active', true)->whereNotNull('shop_category_id');
             }])
             ->orderBy('sort_order')
             ->orderBy('name')
@@ -53,7 +53,7 @@ class ShopController extends Controller
     public function show(ShopProduct $shopProduct)
     {
         $settings = ShopSetting::current();
-        if (!$settings->is_enabled || !$shopProduct->is_active) {
+        if (!$settings->is_enabled || !$shopProduct->is_active || !$shopProduct->shop_category_id) {
             abort(404);
         }
 

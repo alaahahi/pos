@@ -75,6 +75,7 @@ class ShopSettingsController extends Controller
 
     public function destroyCategory(ShopCategory $shopCategory)
     {
+        $this->releaseShopCategorySlug($shopCategory);
         $this->deleteCategoryMedia($shopCategory);
         $shopCategory->delete();
         return back()->with('success', 'تم حذف الفئة');
@@ -89,12 +90,16 @@ class ShopSettingsController extends Controller
         }
         $data['images'] = $this->storeUploadedImages($request, 'gallery', $data['images'] ?? []);
         ShopProduct::create($data);
-        return back()->with('success', 'تمت إضافة المنتج');
+
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'products'])
+            ->with('success', 'تمت إضافة المنتج');
     }
 
     public function updateProduct(Request $request, ShopProduct $shopProduct)
     {
-        $data = $this->validateProduct($request);
+        $data = $this->validateProduct($request, $shopProduct->id);
+        unset($data['image']);
         if ($request->hasFile('image')) {
             if ($shopProduct->image) {
                 Storage::disk('public')->delete($shopProduct->image);
@@ -103,12 +108,25 @@ class ShopSettingsController extends Controller
         }
         $data['images'] = $this->storeUploadedImages($request, 'gallery', $data['images'] ?? $shopProduct->images ?? []);
         $shopProduct->update($data);
-        return back()->with('success', 'تم تحديث المنتج');
+
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'products'])
+            ->with('success', 'تم تحديث المنتج');
     }
 
     public function destroyProduct(ShopProduct $shopProduct)
     {
+        $this->releaseShopProductSlug($shopProduct);
+        if ($shopProduct->image) {
+            Storage::disk('public')->delete($shopProduct->image);
+        }
+        foreach ($shopProduct->images ?? [] as $path) {
+            if ($path && $path !== $shopProduct->image) {
+                Storage::disk('public')->delete($path);
+            }
+        }
         $shopProduct->delete();
+
         return back()->with('success', 'تم حذف المنتج');
     }
 
@@ -248,10 +266,10 @@ class ShopSettingsController extends Controller
         return $candidate;
     }
 
-    protected function validateProduct(Request $request): array
+    protected function validateProduct(Request $request, ?string $exceptProductId = null): array
     {
         $data = $request->validate([
-            'shop_category_id' => 'nullable|uuid|exists:shop_categories,id',
+            'shop_category_id' => 'required|uuid|exists:shop_categories,id',
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'description' => 'nullable|string',
@@ -265,11 +283,45 @@ class ShopSettingsController extends Controller
             'is_active' => 'boolean',
             'image' => 'nullable|image|max:4096',
         ]);
-        if (empty($data['slug'])) {
-            $data['slug'] = Str::slug($data['name']) ?: Str::uuid()->toString();
-        }
+        $data['slug'] = $this->uniqueProductSlug(
+            $data['name'],
+            $data['slug'] ?? null,
+            $exceptProductId
+        );
         $data['youtube_links'] = array_values(array_filter($data['youtube_links'] ?? []));
         return $data;
+    }
+
+    protected function uniqueProductSlug(string $name, ?string $slug = null, ?string $exceptId = null): string
+    {
+        $base = $slug ?: Str::slug($name) ?: Str::uuid()->toString();
+        $candidate = $base;
+        $suffix = 1;
+
+        while (
+            ShopProduct::withTrashed()
+                ->where('slug', $candidate)
+                ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
+                ->exists()
+        ) {
+            $candidate = $base . '-' . $suffix++;
+        }
+
+        return $candidate;
+    }
+
+    protected function releaseShopProductSlug(ShopProduct $product): void
+    {
+        $product->update([
+            'slug' => $product->slug . '-deleted-' . Str::random(8),
+        ]);
+    }
+
+    protected function releaseShopCategorySlug(ShopCategory $category): void
+    {
+        $category->update([
+            'slug' => $category->slug . '-deleted-' . Str::random(8),
+        ]);
     }
 
     protected function validatePromotion(Request $request): array
