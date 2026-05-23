@@ -7,29 +7,6 @@
       aria-label="تصفية حسب التصنيف"
     >
       <button
-        type="button"
-        role="tab"
-        :aria-selected="!selectedId"
-        class="group flex w-[7.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border-2 text-right transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 focus-visible:ring-offset-2"
-        :class="!selectedId
-          ? 'border-shop-600 bg-shop-50 shadow-shop-md ring-2 ring-shop-500/20'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-shop'"
-        @click="$emit('select', null)"
-      >
-        <div class="flex aspect-[4/3] items-center justify-center bg-gradient-to-br from-shop-100 to-shop-200">
-          <i
-            class="bi bi-grid-3x3-gap text-3xl transition"
-            :class="!selectedId ? 'text-shop-600' : 'text-shop-400 group-hover:text-shop-500'"
-            aria-hidden="true"
-          />
-        </div>
-        <div class="p-2.5">
-          <p class="truncate text-sm font-semibold" :class="!selectedId ? 'text-shop-700' : 'text-slate-800'">الكل</p>
-          <p class="text-xs text-slate-500">كل المنتجات</p>
-        </div>
-      </button>
-
-      <button
         v-for="cat in categories"
         :key="cat.id"
         type="button"
@@ -66,19 +43,60 @@
         </div>
       </button>
     </div>
+
+    <div
+      v-if="activeCategory && (activeCategory.description || bundleOfferLabel)"
+      class="flex flex-col gap-2"
+      role="region"
+      :aria-label="`معلومات ${activeCategory.name}`"
+    >
+      <p
+        v-if="activeCategory.description"
+        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm leading-relaxed text-slate-700"
+      >
+        {{ activeCategory.description }}
+      </p>
+      <p
+        v-if="bundleOfferLabel"
+        class="w-full rounded-lg bg-gradient-to-l from-amber-500 to-orange-600 px-4 py-2.5 text-center text-sm font-bold text-white shadow-md"
+      >
+        <i class="bi bi-tags-fill me-1.5 opacity-90" aria-hidden="true" />
+        {{ bundleOfferLabel }}
+      </p>
+    </div>
   </div>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
 
 const props = defineProps({
   categories: { type: Array, default: () => [] },
   selectedId: { type: [String, null], default: null },
   storageBases: { type: Array, default: () => [] },
+  currency: { type: String, default: 'USD' },
 });
 
 defineEmits(['select']);
 
 const { src: categoryImageSrc, onError: onCategoryImageError } = useShopStorageUrl(props.storageBases);
+
+const activeCategory = computed(() =>
+  props.categories.find((c) => c.id === props.selectedId) ?? null
+);
+
+const formatMoney = (n) => {
+  const num = parseFloat(n);
+  return Number.isNaN(num) ? n : num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 2 });
+};
+
+const bundleOfferLabel = computed(() => {
+  const cat = activeCategory.value;
+  if (!cat?.bundle_quantity || cat.bundle_price == null || cat.bundle_price === '') {
+    return null;
+  }
+  const cur = cat.bundle_currency || props.currency || 'USD';
+  return `استأجر ${cat.bundle_quantity} بسعر ${formatMoney(cat.bundle_price)} ${cur}`;
+});
 </script>

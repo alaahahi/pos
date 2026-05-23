@@ -21,10 +21,26 @@ class ShopController extends Controller
             ]);
         }
 
+        $categories = ShopCategory::where('is_active', true)
+            ->withCount(['products as active_products_count' => function ($q) {
+                $q->where('is_active', true)->whereNotNull('shop_category_id');
+            }])
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $categoryId = $request->category;
+        if ($categories->isNotEmpty()) {
+            $validIds = $categories->pluck('id');
+            if (!$categoryId || !$validIds->contains($categoryId)) {
+                $categoryId = $categories->first()->id;
+            }
+        }
+
         $query = ShopProduct::with('category')->active()->categorized()->orderBy('sort_order')->orderBy('name');
 
-        if ($request->category) {
-            $query->where('shop_category_id', $request->category);
+        if ($categoryId) {
+            $query->where('shop_category_id', $categoryId);
         }
         if ($request->search) {
             $q = $request->search;
@@ -34,18 +50,13 @@ class ShopController extends Controller
             });
         }
 
-        $categories = ShopCategory::where('is_active', true)
-            ->withCount(['products as active_products_count' => function ($q) {
-                $q->where('is_active', true)->whereNotNull('shop_category_id');
-            }])
-            ->orderBy('sort_order')
-            ->orderBy('name')
-            ->get();
-
         return Inertia::render('Shop/Index', [
             'products' => $query->paginate(24)->withQueryString(),
             'categories' => $categories,
-            'filters' => $request->only(['category', 'search']),
+            'filters' => [
+                'category' => $categoryId,
+                'search' => $request->search,
+            ],
             'shop' => $this->shopMeta($settings),
         ]);
     }

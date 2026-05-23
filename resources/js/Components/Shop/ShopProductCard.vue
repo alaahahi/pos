@@ -22,12 +22,6 @@
       >
         <i class="bi bi-image text-4xl" aria-hidden="true" />
       </div>
-      <span
-        v-if="product.category?.name"
-        class="absolute top-2 right-2 rounded-lg bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-600 backdrop-blur-sm"
-      >
-        {{ product.category.name }}
-      </span>
     </button>
 
     <div class="flex flex-1 flex-col p-4">

@@ -52,7 +52,17 @@
       <!-- Categories -->
       <div v-show="tab === 'categories'">
         <div class="card mb-3">
-          <div class="card-header">إضافة فئة</div>
+          <div class="card-header d-flex justify-content-between align-items-center">
+            <span>{{ editingCategoryId ? 'تعديل فئة' : 'إضافة فئة' }}</span>
+            <button
+              v-if="editingCategoryId"
+              type="button"
+              class="btn btn-sm btn-outline-secondary"
+              @click="cancelEditCategory"
+            >
+              إلغاء التعديل
+            </button>
+          </div>
           <div class="card-body">
             <form @submit.prevent="submitCategory" class="row g-3">
               <div class="col-md-4">
@@ -68,7 +78,16 @@
                   accept="image/jpeg,image/png,image/jpg,image/webp"
                   @change="onCategoryImage"
                 />
-                <small class="text-muted">تظهر في صفحة المتجر</small>
+                <div v-if="editingCategoryImageUrl" class="mt-2">
+                  <img
+                    :src="editingCategoryImageUrl"
+                    alt="الصورة الحالية"
+                    class="rounded"
+                    style="width:56px;height:56px;object-fit:cover"
+                  />
+                  <small class="d-block text-muted">الصورة الحالية — اترك الحقل فارغاً للإبقاء عليها</small>
+                </div>
+                <small v-else class="text-muted">تظهر في صفحة المتجر</small>
               </div>
               <div class="col-md-4">
                 <label class="form-label">الوصف</label>
@@ -82,8 +101,16 @@
                 <label class="form-label">سعر الحزمة</label>
                 <input v-model.number="catForm.bundle_price" type="number" step="0.01" class="form-control" />
               </div>
+              <div class="col-md-3 d-flex align-items-end">
+                <div class="form-check mb-2">
+                  <input v-model="catForm.is_active" type="checkbox" class="form-check-input" id="cat-active" />
+                  <label class="form-check-label" for="cat-active">مفعّلة في المتجر</label>
+                </div>
+              </div>
               <div class="col-12">
-                <button type="submit" class="btn btn-primary" :disabled="catForm.processing">إضافة الفئة</button>
+                <button type="submit" class="btn btn-primary" :disabled="catForm.processing">
+                  {{ editingCategoryId ? 'حفظ التعديلات' : 'إضافة الفئة' }}
+                </button>
               </div>
             </form>
           </div>
@@ -104,9 +131,28 @@
                 </div>
               </div>
               <div class="card-body p-3">
-                <h6 class="mb-1">{{ c.name }}</h6>
+                <div class="d-flex justify-content-between align-items-start gap-2 mb-1">
+                  <h6 class="mb-0">{{ c.name }}</h6>
+                  <span class="badge bg-secondary shrink-0">{{ c.products_count ?? 0 }} منتج</span>
+                </div>
+                <p v-if="c.description" class="small text-muted mb-1 line-clamp-2">{{ c.description }}</p>
                 <p v-if="c.bundle_quantity" class="small text-muted mb-2">{{ c.bundle_quantity }} بـ {{ c.bundle_price }}</p>
-                <button type="button" class="btn btn-sm btn-outline-danger w-100" @click="deleteCategory(c.id)">حذف</button>
+                <div class="d-flex gap-2">
+                  <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" @click="startEditCategory(c)">
+                    تعديل
+                  </button>
+                  <button
+                    v-if="!(c.products_count > 0)"
+                    type="button"
+                    class="btn btn-sm btn-outline-danger"
+                    @click="deleteCategory(c.id)"
+                  >
+                    حذف
+                  </button>
+                </div>
+                <p v-if="c.products_count > 0" class="small text-muted mb-0 mt-2">
+                  لا يمكن الحذف — يوجد {{ c.products_count }} منتج مرتبط
+                </p>
               </div>
             </div>
           </div>
@@ -432,6 +478,8 @@ const generalForm = useForm({
 
 const categoryImageInput = ref(null);
 const productImageInput = ref(null);
+const editingCategoryId = ref(null);
+const editingCategoryImageUrl = ref(null);
 const editingProductId = ref(null);
 const editingProductImageUrl = ref(null);
 
@@ -443,15 +491,44 @@ const onCategoryImage = (e) => {
   const file = e.target.files?.[0];
   if (file) catForm.image = file;
 };
+
+const resetCategoryForm = () => {
+  editingCategoryId.value = null;
+  editingCategoryImageUrl.value = null;
+  catForm.reset();
+  catForm.is_active = true;
+  catForm.sort_order = 0;
+  if (categoryImageInput.value) categoryImageInput.value.value = '';
+};
+
+const startEditCategory = (category) => {
+  editingCategoryId.value = category.id;
+  editingCategoryImageUrl.value = categoryImageSrc(category);
+  catForm.name = category.name;
+  catForm.description = category.description || '';
+  catForm.sort_order = category.sort_order ?? 0;
+  catForm.is_active = category.is_active !== false;
+  catForm.bundle_quantity = category.bundle_quantity ?? null;
+  catForm.bundle_price = category.bundle_price != null ? Number(category.bundle_price) : null;
+  catForm.bundle_currency = category.bundle_currency || null;
+  catForm.image = null;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+};
+
+const cancelEditCategory = () => resetCategoryForm();
+
 const submitCategory = () => {
-  catForm
-    .transform((data) => ({ ...data, image: catForm.image }))
-    .post(route('shop-settings.categories.store'), {
-      onSuccess: () => {
-        catForm.reset();
-        if (categoryImageInput.value) categoryImageInput.value.value = '';
-      },
-    });
+  const options = {
+    onSuccess: () => resetCategoryForm(),
+  };
+
+  catForm.transform((data) => ({ ...data, image: catForm.image }));
+
+  if (editingCategoryId.value) {
+    catForm.post(route('shop-settings.categories.update', editingCategoryId.value), options);
+  } else {
+    catForm.post(route('shop-settings.categories.store'), options);
+  }
 };
 
 const prodForm = useForm({
@@ -510,7 +587,10 @@ const couponForm = useForm({
 });
 const submitCoupon = () => couponForm.post(route('shop-settings.coupons.store'), { onSuccess: () => couponForm.reset() });
 
-const deleteCategory = (id) => router.delete(route('shop-settings.categories.destroy', id));
+const deleteCategory = (id) => {
+  if (!confirm('حذف هذه الفئة؟')) return;
+  router.delete(route('shop-settings.categories.destroy', id));
+};
 const deleteProduct = (id) => {
   if (!confirm('حذف هذا المنتج؟ يمكن استعادته لاحقاً من «عرض المحذوف فقط».')) return;
   router.delete(route('shop-settings.products.destroy', id));

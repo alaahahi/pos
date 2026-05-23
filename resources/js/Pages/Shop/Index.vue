@@ -26,6 +26,7 @@
           :categories="categories"
           :selected-id="selectedCategory"
           :storage-bases="shop.storageBases || []"
+          :currency="shop.currency"
           @select="filterCategory"
         />
 
@@ -145,7 +146,7 @@
 </template>
 
 <script setup>
-import { ref, onMounted } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import ShopLayout from '@/Components/Shop/ShopLayout.vue';
@@ -187,6 +188,13 @@ const isNavigating = ref(false);
 
 router.on('start', () => { isNavigating.value = true; });
 router.on('finish', () => { isNavigating.value = false; });
+
+watch(
+  () => props.filters?.category,
+  (id) => {
+    if (id) selectedCategory.value = id;
+  }
+);
 
 const filterCategory = (id) => {
   selectedCategory.value = id;

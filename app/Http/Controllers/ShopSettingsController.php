@@ -35,7 +35,10 @@ class ShopSettingsController extends Controller
                 rtrim(asset('storage'), '/'),
                 rtrim(asset('public/storage'), '/'),
             ],
-            'categories' => ShopCategory::orderBy('sort_order')->orderBy('name')->get(),
+            'categories' => ShopCategory::withCount('products')
+                ->orderBy('sort_order')
+                ->orderBy('name')
+                ->get(),
             'products' => $productsQuery->paginate(20)->withQueryString(),
             'promotions' => ShopCartPromotion::orderBy('sort_order')->get(),
             'coupons' => ShopCoupon::orderByDesc('id')->get(),
@@ -82,9 +85,16 @@ class ShopSettingsController extends Controller
 
     public function destroyCategory(ShopCategory $shopCategory)
     {
+        if ($shopCategory->products()->exists()) {
+            return back()->withErrors([
+                'category' => 'لا يمكن حذف الفئة لوجود منتجات مرتبطة بها.',
+            ]);
+        }
+
         $this->releaseShopCategorySlug($shopCategory);
         $this->deleteCategoryMedia($shopCategory);
         $shopCategory->delete();
+
         return back()->with('success', 'تم حذف الفئة');
     }
 
