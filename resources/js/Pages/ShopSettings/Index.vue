@@ -232,6 +232,16 @@
                 <label class="form-label">الوصف</label>
                 <textarea v-model="prodForm.description" class="form-control" rows="2" />
               </div>
+              <div class="col-md-2">
+                <label class="form-label">مدة الإيجار</label>
+                <input
+                  v-model="prodForm.rental_duration"
+                  type="text"
+                  class="form-control"
+                  placeholder="مثال: ساعتين"
+                />
+                <small class="text-muted">اختياري — لا يظهر إن تُرك فارغاً</small>
+              </div>
               <div class="col-md-4">
                 <label class="form-label">الصورة الرئيسية</label>
                 <input
@@ -643,6 +653,7 @@ const prodForm = useForm({
   name: '',
   shop_category_id: '',
   description: '',
+  rental_duration: '',
   price: 0,
   currency: 'USD',
   is_active: true,
@@ -689,6 +700,7 @@ const startEditProduct = (product) => {
   prodForm.name = product.name;
   prodForm.shop_category_id = product.shop_category_id || '';
   prodForm.description = product.description || '';
+  prodForm.rental_duration = product.rental_duration || '';
   prodForm.price = Number(product.price);
   prodForm.currency = product.currency || 'USD';
   prodForm.is_active = product.is_active !== false;

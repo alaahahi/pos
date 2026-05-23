@@ -52,18 +52,18 @@
     >
       <p
         v-if="activeCategory.description"
-        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-3 text-start text-sm leading-relaxed text-slate-700"
+        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right text-sm leading-relaxed text-slate-700"
       >
         {{ activeCategory.description }}
       </p>
-      <div
+      <p
         v-if="bundleOfferLabel"
-        class="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-l from-amber-500 to-orange-600 px-4 py-3 text-sm font-bold leading-normal text-white shadow-md"
+        class="flex w-full items-center justify-center gap-2 rounded-lg bg-gradient-to-l from-amber-500 to-orange-600 px-4 py-2.5 text-center text-sm font-bold leading-snug text-white shadow-md"
         role="status"
       >
+        <i class="bi bi-tags-fill shrink-0 text-base opacity-90" aria-hidden="true" />
         <span>{{ bundleOfferLabel }}</span>
-        <i class="bi bi-tags-fill shrink-0 text-base leading-none opacity-90" aria-hidden="true" />
-      </div>
+      </p>
     </div>
   </div>
 </template>

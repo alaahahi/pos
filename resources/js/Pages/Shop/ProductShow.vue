@@ -19,6 +19,8 @@
         <div class="space-y-3">
           <ShopProductImageCarousel
             :urls="galleryUrls"
+            :paths="galleryPaths"
+            :storage-bases="shop.storageBases || []"
             :alt="product.name"
           />
           <div v-if="product.video_url" class="shop-card overflow-hidden p-2">
@@ -53,6 +55,13 @@
             <span class="text-slate-500">خدمة اختيارية:</span>
             {{ product.addon_name }}
             <span class="text-shop-600">(+{{ formatPrice(product.addon_price) }} {{ product.currency || shop.currency }})</span>
+          </p>
+          <p
+            v-if="product.rental_duration"
+            class="mt-2 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+          >
+            <i class="bi bi-clock text-shop-600" aria-hidden="true" />
+            <span><span class="text-slate-500">مدة الإيجار:</span> {{ product.rental_duration }}</span>
           </p>
 
           <div
@@ -109,12 +118,25 @@ const onAddonConfirm = (withAddon) => {
 
 const { src: productImageSrc } = useShopStorageUrl(props.shop?.storageBases || []);
 
+const galleryPaths = computed(() => {
+  const paths = [];
+  const add = (p) => {
+    if (!p) return;
+    const s = String(p).replace(/^\//, '');
+    if (!paths.includes(s)) paths.push(s);
+  };
+  add(props.product.image);
+  (props.product.images || []).forEach(add);
+  return paths;
+});
+
 const galleryUrls = computed(() => {
   if (props.product.images_urls?.length) {
     return [...props.product.images_urls];
   }
-  const single = productImageSrc(props.product);
-  return single ? [single] : [];
+  return galleryPaths.value
+    .map((path) => productImageSrc({ image: path }))
+    .filter(Boolean);
 });
 
 const descriptionHtml = computed(() => (props.product.description || '').replace(/\n/g, '<br>'));

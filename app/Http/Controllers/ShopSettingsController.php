@@ -304,6 +304,7 @@ class ShopSettingsController extends Controller
             'name' => 'required|string|max:255',
             'slug' => 'nullable|string|max:255',
             'description' => 'nullable|string',
+            'rental_duration' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0',
             'currency' => 'nullable|string|max:8',
             'video_url' => 'nullable|string|max:500',
@@ -330,6 +331,9 @@ class ShopSettingsController extends Controller
         if (empty($data['addon_name'])) {
             $data['addon_name'] = null;
             $data['addon_price'] = null;
+        }
+        if (empty(trim((string) ($data['rental_duration'] ?? '')))) {
+            $data['rental_duration'] = null;
         }
 
         return $data;

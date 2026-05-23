@@ -2,8 +2,6 @@
 
 namespace App\Models\Concerns;
 
-use Illuminate\Support\Facades\Storage;
-
 trait ResolvesShopMediaUrls
 {
     protected function resolveShopMediaUrl(?string $path): ?string
@@ -17,14 +15,12 @@ trait ResolvesShopMediaUrls
 
         $path = ltrim($path, '/');
 
-        if (file_exists(public_path('storage/' . $path))) {
-            return asset('storage/' . $path);
+        foreach (['storage/', 'public/storage/'] as $prefix) {
+            if (file_exists(public_path($prefix . $path))) {
+                return asset($prefix . $path);
+            }
         }
 
-        if (file_exists(public_path('public/storage/' . $path))) {
-            return asset('public/storage/' . $path);
-        }
-
-        return Storage::disk('public')->url($path);
+        return asset('storage/' . $path);
     }
 }

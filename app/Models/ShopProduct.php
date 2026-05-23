@@ -22,6 +22,7 @@ class ShopProduct extends Model
         'name',
         'slug',
         'description',
+        'rental_duration',
         'price',
         'addon_name',
         'addon_price',

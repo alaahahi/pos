@@ -32,9 +32,12 @@
       >
         {{ product.name }}
       </button>
-      <p class="mb-3 text-lg font-bold text-shop-600">
+      <p class="text-lg font-bold text-shop-600" :class="product.rental_duration ? 'mb-1' : 'mb-3'">
         {{ formatPrice(product.price) }}
         <span class="text-xs font-normal text-slate-500">{{ product.currency || currency }}</span>
+      </p>
+      <p v-if="product.rental_duration" class="mb-3 text-xs text-slate-500">
+        مدة الإيجار: {{ product.rental_duration }}
       </p>
       <ShopButton
         variant="primary"
