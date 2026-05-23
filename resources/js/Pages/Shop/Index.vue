@@ -46,6 +46,7 @@
             :key="p.id"
             :product="p"
             :currency="shop.currency"
+            :storage-bases="shop.storageBases || []"
             @view="goProduct"
             @add="onAddToCart"
           />
@@ -80,6 +81,7 @@
             :pricing="pricing"
             :pricing-loading="pricingLoading"
             :currency="shop.currency"
+            :storage-bases="shop.storageBases || []"
             :coupon-code="couponCode"
             :phone="phone"
             :notes="notes"
@@ -120,6 +122,7 @@
               :pricing="pricing"
               :pricing-loading="pricingLoading"
               :currency="shop.currency"
+              :storage-bases="shop.storageBases || []"
               :coupon-code="couponCode"
               :phone="phone"
               :notes="notes"

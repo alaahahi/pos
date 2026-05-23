@@ -27,6 +27,8 @@ export function useShopCart() {
         name: product.name,
         price: parseFloat(product.price),
         image_url: product.image_url,
+        image: product.image,
+        images: product.images,
         quantity: qty,
       });
     }

@@ -25,22 +25,24 @@ export function useShopStorageUrl(storageBases = []) {
     return `${bases[0].replace(/\/$/, '')}/${path}`;
   };
 
-  const onError = (event, item) => {
+  const onError = (event, item, placeholder = null) => {
     const img = event?.target;
     if (!img) return;
 
     const path = pathFrom(item);
-    if (!path) {
-      img.style.display = 'none';
-      return;
+    if (path && bases.length) {
+      for (const base of bases) {
+        const alt = `${base.replace(/\/$/, '')}/${path}`;
+        if (img.src !== alt) {
+          img.src = alt;
+          return;
+        }
+      }
     }
 
-    for (let i = 1; i < bases.length; i++) {
-      const alt = `${bases[i].replace(/\/$/, '')}/${path}`;
-      if (img.src !== alt) {
-        img.src = alt;
-        return;
-      }
+    if (placeholder && img.src !== placeholder) {
+      img.src = placeholder;
+      return;
     }
 
     img.style.display = 'none';

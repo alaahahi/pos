@@ -19,9 +19,11 @@
         <div class="space-y-3">
           <div class="shop-card overflow-hidden">
             <img
+              v-if="currentImage"
               :src="currentImage"
               :alt="product.name"
               class="aspect-square w-full object-cover"
+              @error="onMainImageError"
             />
           </div>
           <div
@@ -39,7 +41,12 @@
               :class="currentImage === img ? 'border-shop-600 ring-2 ring-shop-500/30' : 'border-transparent opacity-70 hover:opacity-100'"
               @click="currentImage = img"
             >
-              <img :src="img" :alt="`صورة ${i + 1}`" class="h-16 w-16 object-cover sm:h-20 sm:w-20" />
+              <img
+                :src="img"
+                :alt="`صورة ${i + 1}`"
+                class="h-16 w-16 object-cover sm:h-20 sm:w-20"
+                @error="(e) => onThumbImageError(e, i)"
+              />
             </button>
           </div>
           <div v-if="product.video_url" class="shop-card overflow-hidden p-2">
@@ -96,16 +103,36 @@ import { router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import ShopButton from '@/Components/Shop/ShopButton.vue';
 import { useShopCart } from '@/composables/useShopCart';
+import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
+
+const PLACEHOLDER = '/dashboard-assets/img/placeholder.jpg';
 
 const props = defineProps({ product: Object, shop: Object });
 const toast = useToast();
 const { addItem } = useShopCart();
 
-const currentImage = ref(
-  props.product.image_url ||
-    props.product.images_urls?.[0] ||
-    '/dashboard-assets/img/placeholder.jpg'
+const { src: productImageSrc, onError: handleImageError } = useShopStorageUrl(
+  props.shop?.storageBases || []
 );
+
+const resolveProductImage = () =>
+  productImageSrc(props.product) ||
+  props.product.images_urls?.[0] ||
+  PLACEHOLDER;
+
+const currentImage = ref(resolveProductImage());
+
+const onMainImageError = (e) => {
+  handleImageError(e, props.product, PLACEHOLDER);
+  currentImage.value = e.target?.src || PLACEHOLDER;
+};
+
+const onThumbImageError = (e, index) => {
+  handleImageError(e, props.product, PLACEHOLDER);
+  if (props.product.images_urls?.[index]) {
+    e.target.src = productImageSrc(props.product) || PLACEHOLDER;
+  }
+};
 
 const descriptionHtml = computed(() => (props.product.description || '').replace(/\n/g, '<br>'));
 

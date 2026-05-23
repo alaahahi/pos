@@ -37,6 +37,7 @@
           v-for="item in items"
           :key="item.shop_product_id"
           :item="item"
+          :storage-bases="storageBases"
           @update-quantity="(id, q) => $emit('update-quantity', id, q)"
           @remove="(id) => $emit('remove', id)"
         />
@@ -119,6 +120,7 @@ defineProps({
   phoneError: String,
   submitting: Boolean,
   showClose: { type: Boolean, default: false },
+  storageBases: { type: Array, default: () => [] },
 });
 
 defineEmits([

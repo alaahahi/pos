@@ -9,11 +9,19 @@
       @click="$emit('view', product.id)"
     >
       <img
-        :src="product.image_url || '/dashboard-assets/img/placeholder.jpg'"
+        v-if="productImageSrc(product)"
+        :src="productImageSrc(product)"
         :alt="product.name"
         class="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
         loading="lazy"
+        @error="(e) => onProductImageError(e, product)"
       />
+      <div
+        v-else
+        class="flex h-full w-full items-center justify-center bg-slate-200 text-slate-400"
+      >
+        <i class="bi bi-image text-4xl" aria-hidden="true" />
+      </div>
       <span
         v-if="product.category?.name"
         class="absolute top-2 right-2 rounded-lg bg-white/90 px-2 py-0.5 text-xs font-medium text-slate-600 backdrop-blur-sm"
@@ -51,13 +59,21 @@
 
 <script setup>
 import ShopButton from './ShopButton.vue';
+import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
 
-defineProps({
+const PLACEHOLDER = '/dashboard-assets/img/placeholder.jpg';
+
+const props = defineProps({
   product: { type: Object, required: true },
   currency: { type: String, default: 'USD' },
+  storageBases: { type: Array, default: () => [] },
 });
 
 defineEmits(['view', 'add']);
+
+const { src: productImageSrc, onError: handleImageError } = useShopStorageUrl(props.storageBases);
+
+const onProductImageError = (e, product) => handleImageError(e, product, PLACEHOLDER);
 
 const formatPrice = (n) => {
   const num = parseFloat(n);

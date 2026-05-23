@@ -61,7 +61,16 @@ class ShopProduct extends Model
 
     public function getImageUrlAttribute(): ?string
     {
-        return $this->resolveMediaUrl($this->image);
+        if ($this->image) {
+            return $this->resolveMediaUrl($this->image);
+        }
+
+        $images = $this->images ?? [];
+        if (!empty($images[0])) {
+            return $this->resolveMediaUrl($images[0]);
+        }
+
+        return null;
     }
 
     public function getImagesUrlsAttribute(): array

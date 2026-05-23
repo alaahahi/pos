@@ -1,10 +1,11 @@
 <template>
   <li class="flex gap-3 border-b border-slate-100 py-3 last:border-0">
     <img
-      v-if="item.image_url"
-      :src="item.image_url"
+      v-if="itemImageSrc(item)"
+      :src="itemImageSrc(item)"
       :alt="item.name"
       class="h-14 w-14 shrink-0 rounded-lg object-cover bg-slate-100"
+      @error="(e) => onItemImageError(e, item)"
     />
     <div
       v-else
@@ -33,9 +34,16 @@
 <script setup>
 import ShopButton from './ShopButton.vue';
 import ShopQuantityStepper from './ShopQuantityStepper.vue';
+import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
 
-defineProps({ item: { type: Object, required: true } });
+const props = defineProps({
+  item: { type: Object, required: true },
+  storageBases: { type: Array, default: () => [] },
+});
+
 defineEmits(['update-quantity', 'remove']);
+
+const { src: itemImageSrc, onError: onItemImageError } = useShopStorageUrl(props.storageBases);
 
 const formatPrice = (n) => parseFloat(n).toLocaleString('en-US', { maximumFractionDigits: 2 });
 </script>

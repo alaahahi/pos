@@ -161,11 +161,12 @@
               <tr v-for="p in products.data" :key="p.id">
                 <td>
                   <img
-                    v-if="p.image_url"
-                    :src="p.image_url"
+                    v-if="productImageSrc(p)"
+                    :src="productImageSrc(p)"
                     :alt="p.name"
                     class="rounded"
                     style="width:56px;height:56px;object-fit:cover"
+                    @error="(e) => onProductImageError(e, p)"
                   />
                   <span v-else class="text-muted small">—</span>
                 </td>
@@ -288,6 +289,7 @@
 import { computed, ref } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
+import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
 
 const props = defineProps({
   translations: Object,
@@ -392,31 +394,8 @@ const updateStatus = (id, status) => router.patch(route('shop-settings.orders.st
 const exportUrl = computed(() => route('shop-settings.orders.export', orderFilters.value));
 const formatDate = (d) => d ? new Date(d).toLocaleString('ar') : '';
 
-const categoryImageSrc = (category) => {
-  if (category?.image_url) {
-    return category.image_url;
-  }
-  if (!category?.image) {
-    return null;
-  }
-  const path = String(category.image).replace(/^\//, '');
-  const base = props.storageBases?.[0] || '';
-  return base ? `${base}/${path}` : null;
-};
-
-const onCategoryImageError = (e, category) => {
-  const img = e.target;
-  const path = category?.image ? String(category.image).replace(/^\//, '') : '';
-  const altBase = props.storageBases?.[1];
-  if (path && altBase) {
-    const alt = `${altBase}/${path}`;
-    if (img.src !== alt) {
-      img.src = alt;
-      return;
-    }
-  }
-  img.style.display = 'none';
-};
+const { src: categoryImageSrc, onError: onCategoryImageError } = useShopStorageUrl(props.storageBases);
+const { src: productImageSrc, onError: onProductImageError } = useShopStorageUrl(props.storageBases);
 </script>
 
 <style scoped>
