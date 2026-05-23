@@ -35,7 +35,7 @@
       <ul v-else class="list-none p-0 m-0">
         <ShopCartItem
           v-for="item in items"
-          :key="item.shop_product_id"
+          :key="item.cart_key || item.shop_product_id"
           :item="item"
           :storage-bases="storageBases"
           @update-quantity="(id, q) => $emit('update-quantity', id, q)"

@@ -51,14 +51,22 @@ class ShopPricingService
                 continue;
             }
             $qty = max(1, (int) ($item['quantity'] ?? 1));
+            $withAddon = !empty($item['with_addon']);
+            if ($withAddon && !$product->has_addon) {
+                $withAddon = false;
+            }
+            $unitPrice = $product->unitPriceWithAddon($withAddon);
             $lines->push([
                 'shop_product_id' => $product->id,
                 'shop_category_id' => $product->shop_category_id,
                 'product_name' => $product->name,
                 'category_name' => $product->category?->name,
-                'unit_price' => (float) $product->price,
+                'with_addon' => $withAddon,
+                'addon_name' => $withAddon ? $product->addon_name : null,
+                'addon_price' => $withAddon ? (float) $product->addon_price : null,
+                'unit_price' => $unitPrice,
                 'quantity' => $qty,
-                'line_total' => round((float) $product->price * $qty, 2),
+                'line_total' => round($unitPrice * $qty, 2),
             ]);
         }
         return $lines;

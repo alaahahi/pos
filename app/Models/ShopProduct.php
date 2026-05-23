@@ -23,6 +23,8 @@ class ShopProduct extends Model
         'slug',
         'description',
         'price',
+        'addon_name',
+        'addon_price',
         'currency',
         'image',
         'images',
@@ -38,11 +40,13 @@ class ShopProduct extends Model
         'is_active' => 'boolean',
         'sort_order' => 'integer',
         'price' => 'decimal:2',
+        'addon_price' => 'decimal:2',
     ];
 
     protected $appends = [
         'image_url',
         'images_urls',
+        'has_addon',
     ];
 
     protected static function booted(): void
@@ -57,6 +61,21 @@ class ShopProduct extends Model
     public function category(): BelongsTo
     {
         return $this->belongsTo(ShopCategory::class, 'shop_category_id');
+    }
+
+    public function getHasAddonAttribute(): bool
+    {
+        return filled($this->addon_name) && $this->addon_price !== null;
+    }
+
+    public function unitPriceWithAddon(bool $withAddon = false): float
+    {
+        $price = (float) $this->price;
+        if ($withAddon && $this->has_addon) {
+            $price += (float) $this->addon_price;
+        }
+
+        return $price;
     }
 
     public function getImageUrlAttribute(): ?string

@@ -21,9 +21,27 @@ class ShopSettingsController extends Controller
         $tab = $request->get('tab', 'general');
         $showTrashedProducts = $request->boolean('trashed');
 
+        $categories = ShopCategory::withCount('products')
+            ->orderBy('sort_order')
+            ->orderBy('name')
+            ->get();
+
+        $productCategoryId = $request->get('category');
+        if ($productCategoryId && !$categories->pluck('id')->contains($productCategoryId)) {
+            $productCategoryId = null;
+        }
+
         $productsQuery = ShopProduct::with('category')->orderBy('sort_order')->orderBy('name');
         if ($showTrashedProducts) {
             $productsQuery->onlyTrashed();
+        }
+        if ($tab === 'products' && $categories->isNotEmpty()) {
+            if (!$productCategoryId && !$showTrashedProducts) {
+                $productCategoryId = $categories->first()->id;
+            }
+            if ($productCategoryId) {
+                $productsQuery->where('shop_category_id', $productCategoryId);
+            }
         }
 
         return Inertia::render('ShopSettings/Index', [
@@ -35,11 +53,11 @@ class ShopSettingsController extends Controller
                 rtrim(asset('storage'), '/'),
                 rtrim(asset('public/storage'), '/'),
             ],
-            'categories' => ShopCategory::withCount('products')
-                ->orderBy('sort_order')
-                ->orderBy('name')
-                ->get(),
+            'categories' => $categories,
             'products' => $productsQuery->paginate(20)->withQueryString(),
+            'productFilters' => [
+                'category' => $productCategoryId,
+            ],
             'promotions' => ShopCartPromotion::orderBy('sort_order')->get(),
             'coupons' => ShopCoupon::orderByDesc('id')->get(),
             'orders' => $tab === 'orders'
@@ -80,68 +98,58 @@ class ShopSettingsController extends Controller
         $data = $this->validateCategory($request);
         $data = $this->applyCategoryImageUpload($request, $data, $shopCategory);
         $shopCategory->update($data);
-        return back()->with('success', 'تم تحديث الفئة');
+
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'categories'])
+            ->with('success', 'تم تحديث الفئة');
     }
 
     public function destroyCategory(ShopCategory $shopCategory)
     {
         if ($shopCategory->products()->exists()) {
-            return back()->withErrors([
-                'category' => 'لا يمكن حذف الفئة لوجود منتجات مرتبطة بها.',
-            ]);
+            return redirect()
+                ->route('shop-settings.index', ['tab' => 'categories'])
+                ->withErrors([
+                    'category' => 'لا يمكن حذف الفئة لوجود منتجات مرتبطة بها.',
+                ]);
         }
 
         $this->releaseShopCategorySlug($shopCategory);
         $this->deleteCategoryMedia($shopCategory);
         $shopCategory->delete();
 
-        return back()->with('success', 'تم حذف الفئة');
+        return redirect()
+            ->route('shop-settings.index', ['tab' => 'categories'])
+            ->with('success', 'تم حذف الفئة');
     }
 
     public function storeProduct(Request $request)
     {
         $data = $this->validateProduct($request);
-        unset($data['image']);
-        if ($request->hasFile('image')) {
-            $data['image'] = $request->file('image')->store('shop/products', 'public');
-        }
-        $data['images'] = $this->storeUploadedImages($request, 'gallery', $data['images'] ?? []);
+        $data = array_merge($data, $this->applyProductImages($request));
         ShopProduct::create($data);
 
-        return redirect()
-            ->route('shop-settings.index', ['tab' => 'products'])
-            ->with('success', 'تمت إضافة المنتج');
+        return $this->productsTabRedirect($request, 'تمت إضافة المنتج');
     }
 
     public function updateProduct(Request $request, ShopProduct $shopProduct)
     {
         $data = $this->validateProduct($request, $shopProduct->id);
-        unset($data['image']);
-        if ($request->hasFile('image')) {
-            if ($shopProduct->image) {
-                Storage::disk('public')->delete($shopProduct->image);
-            }
-            $data['image'] = $request->file('image')->store('shop/products', 'public');
-        }
-        $data['images'] = $this->storeUploadedImages($request, 'gallery', $data['images'] ?? $shopProduct->images ?? []);
+        $data = array_merge($data, $this->applyProductImages($request, $shopProduct));
         $shopProduct->update($data);
 
-        return redirect()
-            ->route('shop-settings.index', ['tab' => 'products'])
-            ->with('success', 'تم تحديث المنتج');
+        return $this->productsTabRedirect($request, 'تم تحديث المنتج');
     }
 
-    public function destroyProduct(ShopProduct $shopProduct)
+    public function destroyProduct(Request $request, ShopProduct $shopProduct)
     {
         $this->releaseShopProductSlug($shopProduct);
         $shopProduct->delete();
 
-        return redirect()
-            ->route('shop-settings.index', ['tab' => 'products'])
-            ->with('success', 'تم حذف المنتج');
+        return $this->productsTabRedirect($request, 'تم حذف المنتج');
     }
 
-    public function restoreProduct(string $shopProduct)
+    public function restoreProduct(Request $request, string $shopProduct)
     {
         $product = ShopProduct::onlyTrashed()->findOrFail($shopProduct);
 
@@ -150,9 +158,7 @@ class ShopSettingsController extends Controller
             'slug' => $this->uniqueProductSlug($product->name, null, $product->id),
         ]);
 
-        return redirect()
-            ->route('shop-settings.index', ['tab' => 'products'])
-            ->with('success', 'تم استعادة المنتج');
+        return $this->productsTabRedirect($request, 'تم استعادة المنتج');
     }
 
     public function storePromotion(Request $request)
@@ -304,9 +310,15 @@ class ShopSettingsController extends Controller
             'youtube_links' => 'nullable|array',
             'youtube_links.*' => 'nullable|string|max:500',
             'images' => 'nullable|array',
+            'keep_images' => 'nullable|array',
+            'keep_images.*' => 'string|max:500',
             'sort_order' => 'nullable|integer|min:0',
             'is_active' => 'boolean',
             'image' => 'nullable|image|max:4096',
+            'gallery' => 'nullable',
+            'gallery.*' => 'image|max:4096',
+            'addon_name' => 'nullable|string|max:255|required_with:addon_price',
+            'addon_price' => 'nullable|numeric|min:0|required_with:addon_name',
         ]);
         $data['slug'] = $this->uniqueProductSlug(
             $data['name'],
@@ -314,7 +326,56 @@ class ShopSettingsController extends Controller
             $exceptProductId
         );
         $data['youtube_links'] = array_values(array_filter($data['youtube_links'] ?? []));
+        unset($data['keep_images'], $data['gallery']);
+        if (empty($data['addon_name'])) {
+            $data['addon_name'] = null;
+            $data['addon_price'] = null;
+        }
+
         return $data;
+    }
+
+    protected function applyProductImages(Request $request, ?ShopProduct $product = null): array
+    {
+        $keep = array_values(array_filter($request->input('keep_images', [])));
+        $images = $keep;
+
+        if ($request->hasFile('image')) {
+            $main = $request->file('image')->store('shop/products', 'public');
+            array_unshift($images, $main);
+        } elseif ($product?->image && in_array($product->image, $keep, true)) {
+            $images = array_values(array_unique(array_merge([$product->image], $images)));
+        }
+
+        $newGallery = [];
+        if ($request->hasFile('gallery')) {
+            $files = $request->file('gallery');
+            foreach (is_array($files) ? $files : [$files] as $file) {
+                if ($file && $file->isValid()) {
+                    $newGallery[] = $file->store('shop/products', 'public');
+                }
+            }
+        }
+        $images = array_values(array_unique(array_merge($images, $newGallery)));
+
+        if ($product) {
+            $oldPaths = array_values(array_unique(array_filter(array_merge(
+                $product->image ? [$product->image] : [],
+                $product->images ?? []
+            ))));
+            foreach ($oldPaths as $path) {
+                if (!in_array($path, $images, true)) {
+                    Storage::disk('public')->delete($path);
+                }
+            }
+        }
+
+        $image = $images[0] ?? ($product->image ?? null);
+
+        return [
+            'image' => $image,
+            'images' => $images,
+        ];
     }
 
     protected function uniqueProductSlug(string $name, ?string $slug = null, ?string $exceptId = null): string
@@ -429,5 +490,20 @@ class ShopSettingsController extends Controller
             }
         }
         return array_values(array_filter($paths));
+    }
+
+    protected function productsTabRedirect(Request $request, string $message)
+    {
+        $category = $request->input('return_category') ?: $request->query('category');
+
+        $params = array_filter([
+            'tab' => 'products',
+            'category' => $category,
+            'trashed' => $request->boolean('trashed') ? 1 : null,
+        ], fn ($value) => $value !== null && $value !== '');
+
+        return redirect()
+            ->route('shop-settings.index', $params)
+            ->with('success', $message);
     }
 }

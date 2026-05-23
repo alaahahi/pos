@@ -23,7 +23,11 @@ class ShopWhatsAppService
     {
         $lines = ["طلب متجر #{$order->order_number}", "الهاتف: {$order->customer_phone}", ''];
         foreach ($order->items as $item) {
-            $lines[] = "• {$item->product_name} × {$item->quantity} = {$item->line_total} {$order->currency}";
+            $label = $item->product_name;
+            if ($item->with_addon && $item->addon_name) {
+                $label .= " (+ {$item->addon_name})";
+            }
+            $lines[] = "• {$label} × {$item->quantity} = {$item->line_total} {$order->currency}";
         }
         $lines[] = '';
         $lines[] = "المجموع: {$pricing['subtotal']} {$order->currency}";

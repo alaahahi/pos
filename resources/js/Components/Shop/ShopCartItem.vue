@@ -16,14 +16,17 @@
     </div>
     <div class="min-w-0 flex-1">
       <p class="truncate text-sm font-medium text-slate-900">{{ item.name }}</p>
+      <p v-if="item.with_addon && item.addon_name" class="text-xs text-shop-600">
+        + {{ item.addon_name }}
+      </p>
       <p class="text-xs text-slate-500">{{ formatPrice(item.price) }} × {{ item.quantity }}</p>
       <div class="mt-2 flex items-center justify-between gap-2">
         <ShopQuantityStepper
           :quantity="item.quantity"
           :aria-label="`كمية ${item.name}`"
-          @update:quantity="$emit('update-quantity', item.shop_product_id, $event)"
+          @update:quantity="$emit('update-quantity', item.cart_key, $event)"
         />
-        <ShopButton variant="danger" size="sm" :aria-label="`حذف ${item.name}`" @click="$emit('remove', item.shop_product_id)">
+        <ShopButton variant="danger" size="sm" :aria-label="`حذف ${item.name}`" @click="$emit('remove', item.cart_key)">
           <i class="bi bi-trash" aria-hidden="true" />
         </ShopButton>
       </div>

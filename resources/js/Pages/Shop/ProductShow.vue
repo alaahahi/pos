@@ -27,13 +27,13 @@
             />
           </div>
           <div
-            v-if="product.images_urls?.length > 1"
+            v-if="galleryUrls.length > 1"
             class="flex flex-wrap gap-2"
             role="list"
             aria-label="صور المنتج"
           >
             <button
-              v-for="(img, i) in product.images_urls"
+              v-for="(img, i) in galleryUrls"
               :key="i"
               type="button"
               role="listitem"
@@ -74,9 +74,42 @@
             {{ product.name }}
           </h1>
           <p class="mt-4 text-3xl font-bold text-shop-600">
-            {{ formatPrice(product.price) }}
+            {{ formatPrice(displayUnitPrice) }}
             <span class="text-base font-normal text-slate-500">{{ product.currency || shop.currency }}</span>
           </p>
+          <p v-if="product.has_addon && !withAddon" class="mt-1 text-sm text-slate-500">
+            سعر المنتج فقط — يمكن إضافة {{ product.addon_name }} (+{{ formatPrice(product.addon_price) }})
+          </p>
+
+          <div
+            v-if="product.has_addon"
+            class="mt-6 space-y-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm"
+          >
+            <p class="text-sm font-semibold text-slate-800">خدمة إضافية (اختياري)</p>
+            <label class="flex cursor-pointer items-start gap-3 rounded-xl border p-3 transition"
+              :class="withAddon ? 'border-shop-500 bg-shop-50' : 'border-slate-200 hover:border-slate-300'">
+              <input
+                v-model="withAddon"
+                type="checkbox"
+                class="mt-1 h-4 w-4 rounded border-slate-300 text-shop-600 focus:ring-shop-500"
+              />
+              <div class="min-w-0 flex-1">
+                <span class="font-medium text-slate-900">{{ product.addon_name }}</span>
+                <span class="mr-2 text-shop-600">+{{ formatPrice(product.addon_price) }} {{ product.currency || shop.currency }}</span>
+                <p class="mt-1 text-xs text-slate-500">أزل التحديد للشراء بدون الخدمة</p>
+              </div>
+            </label>
+            <p class="text-sm text-slate-600">
+              <span class="text-slate-500">المنتج:</span> {{ formatPrice(product.price) }}
+              <template v-if="withAddon">
+                <span class="mx-1">+</span>
+                <span class="text-slate-500">{{ product.addon_name }}:</span> {{ formatPrice(product.addon_price) }}
+                <span class="mx-2">=</span>
+                <strong class="text-shop-700">{{ formatPrice(displayUnitPrice) }} {{ product.currency || shop.currency }}</strong>
+              </template>
+            </p>
+          </div>
+
           <div
             v-if="product.description"
             class="prose prose-slate mt-6 max-w-none text-sm leading-relaxed text-slate-600"
@@ -85,7 +118,7 @@
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
             <ShopButton variant="primary" size="lg" class="flex-1" @click="addAndOpenCart">
               <i class="bi bi-cart-plus" aria-hidden="true" />
-              أضف للسلة
+              {{ withAddon && product.has_addon ? 'أضف مع الخدمة' : 'أضف للسلة' }}
             </ShopButton>
             <ShopButton variant="secondary" size="lg" @click="router.visit(route('shop.index'))">
               متابعة التسوّق
@@ -110,17 +143,30 @@ const PLACEHOLDER = '/dashboard-assets/img/placeholder.jpg';
 const props = defineProps({ product: Object, shop: Object });
 const toast = useToast();
 const { addItem } = useShopCart();
+const withAddon = ref(false);
 
 const { src: productImageSrc, onError: handleImageError } = useShopStorageUrl(
   props.shop?.storageBases || []
 );
 
-const resolveProductImage = () =>
-  productImageSrc(props.product) ||
-  props.product.images_urls?.[0] ||
-  PLACEHOLDER;
+const galleryUrls = computed(() => {
+  const urls = props.product.images_urls?.length
+    ? [...props.product.images_urls]
+    : [productImageSrc(props.product)].filter(Boolean);
+  return urls.length ? urls : [PLACEHOLDER];
+});
+
+const resolveProductImage = () => galleryUrls.value[0] || PLACEHOLDER;
 
 const currentImage = ref(resolveProductImage());
+
+const displayUnitPrice = computed(() => {
+  const base = parseFloat(props.product.price) || 0;
+  if (withAddon.value && props.product.has_addon) {
+    return base + (parseFloat(props.product.addon_price) || 0);
+  }
+  return base;
+});
 
 const onMainImageError = (e) => {
   handleImageError(e, props.product, PLACEHOLDER);
@@ -129,8 +175,8 @@ const onMainImageError = (e) => {
 
 const onThumbImageError = (e, index) => {
   handleImageError(e, props.product, PLACEHOLDER);
-  if (props.product.images_urls?.[index]) {
-    e.target.src = productImageSrc(props.product) || PLACEHOLDER;
+  if (galleryUrls.value[index]) {
+    e.target.src = galleryUrls.value[index] || PLACEHOLDER;
   }
 };
 
@@ -146,8 +192,8 @@ const youtubeEmbed = (url) => {
 };
 
 const addAndOpenCart = () => {
-  addItem(props.product);
-  toast.success('أُضيف إلى السلة');
+  addItem(props.product, 1, { withAddon: withAddon.value });
+  toast.success(withAddon.value && props.product.has_addon ? 'أُضيف مع الخدمة' : 'أُضيف إلى السلة');
   router.visit(route('shop.index'));
 };
 </script>

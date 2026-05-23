@@ -162,18 +162,35 @@
       <!-- Products -->
       <div v-show="tab === 'products'">
         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
-          <div class="form-check form-switch mb-0">
-            <input
-              id="show-trashed-products"
-              v-model="showTrashedProducts"
-              type="checkbox"
-              class="form-check-input"
-              role="switch"
-              @change="toggleTrashedProducts"
-            />
-            <label class="form-check-label" for="show-trashed-products">عرض المحذوف فقط</label>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <label for="product-category-filter" class="form-label mb-0 text-nowrap">فلتر الفئة</label>
+            <select
+              id="product-category-filter"
+              v-model="productCategoryFilter"
+              class="form-select"
+              style="min-width: 14rem"
+              :disabled="!categories.length"
+              @change="applyProductCategoryFilter(productCategoryFilter)"
+            >
+              <option v-for="c in categories" :key="c.id" :value="c.id">
+                {{ c.name }} ({{ c.products_count ?? 0 }})
+              </option>
+            </select>
           </div>
-          <span v-if="showTrashedProducts" class="badge bg-secondary">سلة المحذوفات</span>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <div class="form-check form-switch mb-0">
+              <input
+                id="show-trashed-products"
+                v-model="showTrashedProducts"
+                type="checkbox"
+                class="form-check-input"
+                role="switch"
+                @change="toggleTrashedProducts"
+              />
+              <label class="form-check-label" for="show-trashed-products">عرض المحذوف فقط</label>
+            </div>
+            <span v-if="showTrashedProducts" class="badge bg-secondary">سلة المحذوفات</span>
+          </div>
         </div>
 
         <div v-if="!showTrashedProducts" class="card mb-3">
@@ -215,8 +232,8 @@
                 <label class="form-label">الوصف</label>
                 <textarea v-model="prodForm.description" class="form-control" rows="2" />
               </div>
-              <div class="col-md-2">
-                <label class="form-label">صورة المنتج</label>
+              <div class="col-md-4">
+                <label class="form-label">الصورة الرئيسية</label>
                 <input
                   ref="productImageInput"
                   type="file"
@@ -224,15 +241,53 @@
                   accept="image/jpeg,image/png,image/jpg,image/webp"
                   @change="onProductImage"
                 />
-                <div v-if="editingProductImageUrl" class="mt-2">
-                  <img
-                    :src="editingProductImageUrl"
-                    alt="الصورة الحالية"
-                    class="rounded"
-                    style="width:56px;height:56px;object-fit:cover"
-                  />
-                  <small class="d-block text-muted">الصورة الحالية — اترك الحقل فارغاً للإبقاء عليها</small>
+                <small class="text-muted">تُعرض أولاً في المتجر</small>
+              </div>
+              <div class="col-md-4">
+                <label class="form-label">صور إضافية</label>
+                <input
+                  ref="productGalleryInput"
+                  type="file"
+                  class="form-control"
+                  accept="image/jpeg,image/png,image/jpg,image/webp"
+                  multiple
+                  @change="onProductGallery"
+                />
+                <small class="text-muted">يمكن اختيار أكثر من صورة</small>
+              </div>
+              <div v-if="productKeepImages.length" class="col-12">
+                <label class="form-label">الصور الحالية</label>
+                <div class="d-flex flex-wrap gap-2">
+                  <div
+                    v-for="(path, idx) in productKeepImages"
+                    :key="path"
+                    class="position-relative"
+                  >
+                    <img
+                      :src="productKeepImageUrl(path)"
+                      alt=""
+                      class="rounded border"
+                      style="width:72px;height:72px;object-fit:cover"
+                    />
+                    <button
+                      type="button"
+                      class="btn btn-sm btn-danger position-absolute top-0 start-0 m-1 py-0 px-1"
+                      title="حذف الصورة"
+                      @click="removeKeepProductImage(idx)"
+                    >
+                      ×
+                    </button>
+                  </div>
                 </div>
+              </div>
+              <div class="col-md-3">
+                <label class="form-label">اسم الخدمة الإضافية</label>
+                <input v-model="prodForm.addon_name" type="text" class="form-control" placeholder="مثال: زينة / تصميم بوالين" />
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">سعر الخدمة</label>
+                <input v-model.number="prodForm.addon_price" type="number" step="0.01" min="0" class="form-control" placeholder="40" />
+                <small class="text-muted">يُضاف لسعر المنتج عند الاختيار</small>
               </div>
               <div class="col-md-2 d-flex align-items-end">
                 <div class="form-check mb-2">
@@ -256,13 +311,14 @@
                 <th>الاسم</th>
                 <th>الفئة</th>
                 <th>السعر</th>
+                <th>خدمة إضافية</th>
                 <th v-if="showTrashedProducts">تاريخ الحذف</th>
                 <th></th>
               </tr>
             </thead>
             <tbody>
               <tr v-if="!products.data?.length">
-                <td :colspan="showTrashedProducts ? 6 : 5" class="text-center text-muted py-4">
+                <td :colspan="showTrashedProducts ? 7 : 6" class="text-center text-muted py-4">
                   {{ showTrashedProducts ? 'لا توجد منتجات محذوفة' : 'لا توجد منتجات' }}
                 </td>
               </tr>
@@ -285,6 +341,10 @@
                 <td>{{ p.name }}</td>
                 <td>{{ p.category?.name || '-' }}</td>
                 <td>{{ p.price }}</td>
+                <td class="small">
+                  <span v-if="p.has_addon">{{ p.addon_name }} (+{{ p.addon_price }})</span>
+                  <span v-else class="text-muted">—</span>
+                </td>
                 <td v-if="showTrashedProducts" class="small text-muted">{{ formatDate(p.deleted_at) }}</td>
                 <td class="text-nowrap">
                   <template v-if="showTrashedProducts">
@@ -409,10 +469,12 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { router, useForm } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
+
+const PRODUCT_CATEGORY_FILTER_KEY = 'shop-settings-product-category';
 
 const props = defineProps({
   translations: Object,
@@ -432,6 +494,10 @@ const props = defineProps({
     type: Boolean,
     default: false,
   },
+  productFilters: {
+    type: Object,
+    default: () => ({}),
+  },
 });
 
 const tabs = [
@@ -445,27 +511,62 @@ const tabs = [
 
 const tab = ref(props.activeTab || 'general');
 const showTrashedProducts = ref(props.showTrashedProducts ?? false);
+const productCategoryFilter = ref(props.productFilters?.category ?? '');
 const orderFilters = ref({ ...props.orderFilters });
 
 const ordersList = computed(() => props.orders?.data || []);
 
+const categoryIds = computed(() => (props.categories || []).map((c) => c.id));
+
+const persistProductCategoryFilter = (id) => {
+  if (id) localStorage.setItem(PRODUCT_CATEGORY_FILTER_KEY, id);
+};
+
+const resolveProductCategoryFilter = () => {
+  const ids = categoryIds.value;
+  const fromUrl = props.productFilters?.category;
+  if (fromUrl && ids.includes(fromUrl)) return fromUrl;
+  const saved = localStorage.getItem(PRODUCT_CATEGORY_FILTER_KEY);
+  if (saved && ids.includes(saved)) return saved;
+  return ids[0] || '';
+};
+
+const buildProductsQuery = (overrides = {}) => {
+  const query = { tab: 'products' };
+  const category = overrides.category !== undefined
+    ? overrides.category
+    : productCategoryFilter.value;
+  if (category) query.category = category;
+  const trashed = overrides.trashed !== undefined
+    ? overrides.trashed
+    : (showTrashedProducts.value ? 1 : undefined);
+  if (trashed) query.trashed = 1;
+  return query;
+};
+
+watch(
+  () => props.productFilters?.category,
+  (id) => {
+    if (id && categoryIds.value.includes(id)) {
+      productCategoryFilter.value = id;
+      persistProductCategoryFilter(id);
+    }
+  }
+);
+
 const switchTab = (id) => {
   tab.value = id;
   const query = { tab: id };
-  if (id === 'products' && showTrashedProducts.value) {
-    query.trashed = 1;
+  if (id === 'products') {
+    if (showTrashedProducts.value) {
+      query.trashed = 1;
+    }
+    query.category = productCategoryFilter.value || resolveProductCategoryFilter() || undefined;
   }
-  router.get(route('shop-settings.index'), query, { preserveState: true, preserveScroll: true });
-};
-
-const toggleTrashedProducts = () => {
-  if (showTrashedProducts.value) {
-    cancelEditProduct();
-  }
-  router.get(route('shop-settings.index'), {
-    tab: 'products',
-    trashed: showTrashedProducts.value ? 1 : undefined,
-  }, { preserveState: true, preserveScroll: true });
+  router.get(route('shop-settings.index'), query, {
+    preserveState: id !== 'products',
+    preserveScroll: true,
+  });
 };
 
 const generalForm = useForm({
@@ -478,10 +579,12 @@ const generalForm = useForm({
 
 const categoryImageInput = ref(null);
 const productImageInput = ref(null);
+const productGalleryInput = ref(null);
+const productGalleryFiles = ref([]);
+const productKeepImages = ref([]);
 const editingCategoryId = ref(null);
 const editingCategoryImageUrl = ref(null);
 const editingProductId = ref(null);
-const editingProductImageUrl = ref(null);
 
 const catForm = useForm({
   name: '', description: '', sort_order: 0, is_active: true,
@@ -517,58 +620,150 @@ const startEditCategory = (category) => {
 
 const cancelEditCategory = () => resetCategoryForm();
 
-const submitCategory = () => {
-  const options = {
-    onSuccess: () => resetCategoryForm(),
-  };
+const categoryFormOptions = {
+  preserveState: false,
+  preserveScroll: true,
+  onSuccess: () => {
+    resetCategoryForm();
+    router.reload({ only: ['categories'] });
+  },
+};
 
+const submitCategory = () => {
   catForm.transform((data) => ({ ...data, image: catForm.image }));
 
   if (editingCategoryId.value) {
-    catForm.post(route('shop-settings.categories.update', editingCategoryId.value), options);
+    catForm.post(route('shop-settings.categories.update', editingCategoryId.value), categoryFormOptions);
   } else {
-    catForm.post(route('shop-settings.categories.store'), options);
+    catForm.post(route('shop-settings.categories.store'), categoryFormOptions);
   }
 };
 
 const prodForm = useForm({
-  name: '', shop_category_id: '', description: '', price: 0, currency: 'USD', is_active: true, image: null,
+  name: '',
+  shop_category_id: '',
+  description: '',
+  price: 0,
+  currency: 'USD',
+  is_active: true,
+  image: null,
+  addon_name: '',
+  addon_price: null,
 });
+
 const onProductImage = (e) => {
   const file = e.target.files?.[0];
   if (file) prodForm.image = file;
 };
 
+const onProductGallery = (e) => {
+  productGalleryFiles.value = Array.from(e.target.files || []);
+};
+
+const productKeepImageUrl = (path) => productImageSrc({ image: path, images: [path] });
+
+const removeKeepProductImage = (index) => {
+  productKeepImages.value = productKeepImages.value.filter((_, i) => i !== index);
+};
+
 const resetProductForm = () => {
   editingProductId.value = null;
-  editingProductImageUrl.value = null;
+  productKeepImages.value = [];
+  productGalleryFiles.value = [];
   prodForm.reset();
   prodForm.is_active = true;
   prodForm.currency = 'USD';
+  prodForm.addon_price = null;
   if (productImageInput.value) productImageInput.value.value = '';
+  if (productGalleryInput.value) productGalleryInput.value.value = '';
 };
 
 const startEditProduct = (product) => {
   editingProductId.value = product.id;
-  editingProductImageUrl.value = productImageSrc(product);
+  const paths = [...(product.images || [])];
+  if (product.image && !paths.includes(product.image)) {
+    paths.unshift(product.image);
+  }
+  productKeepImages.value = paths;
+  productGalleryFiles.value = [];
   prodForm.name = product.name;
   prodForm.shop_category_id = product.shop_category_id || '';
   prodForm.description = product.description || '';
   prodForm.price = Number(product.price);
   prodForm.currency = product.currency || 'USD';
   prodForm.is_active = product.is_active !== false;
+  prodForm.addon_name = product.addon_name || '';
+  prodForm.addon_price = product.addon_price != null ? Number(product.addon_price) : null;
   prodForm.image = null;
+  if (productImageInput.value) productImageInput.value.value = '';
+  if (productGalleryInput.value) productGalleryInput.value.value = '';
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
 
 const cancelEditProduct = () => resetProductForm();
 
+const applyProductCategoryFilter = (id, { replace = false } = {}) => {
+  if (!id) return;
+  productCategoryFilter.value = id;
+  persistProductCategoryFilter(id);
+  if (!editingProductId.value) {
+    prodForm.shop_category_id = id;
+  }
+  router.get(route('shop-settings.index'), buildProductsQuery({ category: id }), {
+    preserveState: false,
+    preserveScroll: true,
+    replace,
+  });
+};
+
+const toggleTrashedProducts = () => {
+  if (showTrashedProducts.value) {
+    cancelEditProduct();
+  }
+  router.get(route('shop-settings.index'), buildProductsQuery({
+    trashed: showTrashedProducts.value ? 1 : undefined,
+  }), { preserveState: false, preserveScroll: true });
+};
+
+onMounted(() => {
+  if ((props.activeTab || tab.value) !== 'products' || !categoryIds.value.length) {
+    return;
+  }
+  const resolved = resolveProductCategoryFilter();
+  const fromUrl = props.productFilters?.category;
+  if (resolved && resolved !== fromUrl) {
+    applyProductCategoryFilter(resolved, { replace: true });
+    return;
+  }
+  if (resolved) {
+    productCategoryFilter.value = resolved;
+    persistProductCategoryFilter(resolved);
+    if (!prodForm.shop_category_id) {
+      prodForm.shop_category_id = resolved;
+    }
+  }
+});
+
+const productFormOptions = {
+  preserveState: false,
+  preserveScroll: true,
+  onSuccess: () => resetProductForm(),
+};
+
 const submitProduct = () => {
+  const hasFiles = prodForm.image || productGalleryFiles.value.length > 0;
   const options = {
-    onSuccess: () => resetProductForm(),
+    ...productFormOptions,
+    forceFormData: hasFiles,
   };
 
-  prodForm.transform((data) => ({ ...data, image: prodForm.image }));
+  prodForm.transform((data) => ({
+    ...data,
+    image: prodForm.image,
+    gallery: productGalleryFiles.value,
+    keep_images: productKeepImages.value,
+    return_category: productCategoryFilter.value || prodForm.shop_category_id,
+  }));
 
   if (editingProductId.value) {
     prodForm.post(route('shop-settings.products.update', editingProductId.value), options);
@@ -589,15 +784,26 @@ const submitCoupon = () => couponForm.post(route('shop-settings.coupons.store'),
 
 const deleteCategory = (id) => {
   if (!confirm('حذف هذه الفئة؟')) return;
-  router.delete(route('shop-settings.categories.destroy', id));
+  router.delete(route('shop-settings.categories.destroy', id), {
+    preserveState: false,
+    preserveScroll: true,
+    onSuccess: () => router.reload({ only: ['categories'] }),
+  });
 };
 const deleteProduct = (id) => {
   if (!confirm('حذف هذا المنتج؟ يمكن استعادته لاحقاً من «عرض المحذوف فقط».')) return;
-  router.delete(route('shop-settings.products.destroy', id));
+  router.delete(route('shop-settings.products.destroy', id), {
+    data: { return_category: productCategoryFilter.value },
+    preserveState: false,
+    preserveScroll: true,
+  });
 };
 
 const restoreProduct = (id) => {
-  router.post(route('shop-settings.products.restore', { shopProduct: id }), {}, {
+  router.post(route('shop-settings.products.restore', { shopProduct: id }), {
+    return_category: productCategoryFilter.value,
+  }, {
+    preserveState: false,
     preserveScroll: true,
     onSuccess: () => {
       showTrashedProducts.value = false;

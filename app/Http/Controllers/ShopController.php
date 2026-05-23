@@ -82,6 +82,7 @@ class ShopController extends Controller
             'items' => 'required|array|min:1',
             'items.*.shop_product_id' => 'required|uuid',
             'items.*.quantity' => 'required|integer|min:1|max:999',
+            'items.*.with_addon' => 'sometimes|boolean',
             'coupon_code' => 'nullable|string|max:64',
         ]);
 
@@ -95,6 +96,7 @@ class ShopController extends Controller
             'items' => 'required|array|min:1',
             'items.*.shop_product_id' => 'required|uuid',
             'items.*.quantity' => 'required|integer|min:1|max:999',
+            'items.*.with_addon' => 'sometimes|boolean',
         ]);
 
         $calc = $pricing->calculate($request->items);
@@ -119,6 +121,7 @@ class ShopController extends Controller
             'items' => 'required|array|min:1',
             'items.*.shop_product_id' => 'required|uuid',
             'items.*.quantity' => 'required|integer|min:1|max:999',
+            'items.*.with_addon' => 'sometimes|boolean',
         ]);
 
         try {

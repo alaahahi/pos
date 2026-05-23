@@ -19,13 +19,18 @@ class ShopOrderItem extends Model
         'shop_product_id',
         'product_name',
         'category_name',
+        'with_addon',
+        'addon_name',
+        'addon_price',
         'unit_price',
         'quantity',
         'line_total',
     ];
 
     protected $casts = [
+        'with_addon' => 'boolean',
         'unit_price' => 'decimal:2',
+        'addon_price' => 'decimal:2',
         'line_total' => 'decimal:2',
         'quantity' => 'integer',
     ];
