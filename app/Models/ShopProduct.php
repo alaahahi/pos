@@ -94,12 +94,22 @@ class ShopProduct extends Model
 
     public function getImagesUrlsAttribute(): array
     {
-        $images = $this->images ?? [];
-        $urls = array_map(fn ($path) => $this->resolveMediaUrl($path), $images);
-        if ($this->image_url && !in_array($this->image_url, $urls, true)) {
-            array_unshift($urls, $this->image_url);
+        $paths = [];
+        if ($this->image) {
+            $paths[] = $this->image;
         }
-        return array_values(array_filter($urls));
+        foreach ($this->images ?? [] as $path) {
+            if ($path && !in_array($path, $paths, true)) {
+                $paths[] = $path;
+            }
+        }
+
+        $urls = array_values(array_filter(array_map(
+            fn ($path) => $this->resolveMediaUrl($path),
+            $paths
+        )));
+
+        return array_values(array_unique($urls));
     }
 
     protected function resolveMediaUrl(?string $path): ?string

@@ -142,6 +142,13 @@
         </div>
       </Transition>
     </Teleport>
+
+    <ShopAddonChoiceModal
+      :product="addonModalProduct"
+      :currency="shop.currency"
+      @confirm="onAddonConfirm"
+      @close="closeAddonModal"
+    />
   </ShopLayout>
 </template>
 
@@ -150,6 +157,7 @@ import { ref, watch, onMounted } from 'vue';
 import { router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import ShopLayout from '@/Components/Shop/ShopLayout.vue';
+import ShopAddonChoiceModal from '@/Components/Shop/ShopAddonChoiceModal.vue';
 import ShopCategoryStrip from '@/Components/Shop/ShopCategoryStrip.vue';
 import ShopButton from '@/Components/Shop/ShopButton.vue';
 import ShopProductCard from '@/Components/Shop/ShopProductCard.vue';
@@ -157,6 +165,7 @@ import ShopProductGridSkeleton from '@/Components/Shop/ShopProductGridSkeleton.v
 import ShopEmptyState from '@/Components/Shop/ShopEmptyState.vue';
 import ShopCartPanel from '@/Components/Shop/ShopCartPanel.vue';
 import { useShopCart } from '@/composables/useShopCart';
+import { useShopAddToCart } from '@/composables/useShopAddToCart';
 import { useShopCheckout } from '@/composables/useShopCheckout';
 
 const props = defineProps({
@@ -168,6 +177,11 @@ const props = defineProps({
 
 const toast = useToast();
 const { items: cartItems, addItem, setQuantity, removeItem, clearCart, cartCount, apiItems } = useShopCart();
+const { addonModalProduct, requestAddToCart, confirmAddonChoice, closeAddonModal } = useShopAddToCart(
+  addItem,
+  toast,
+  { onAdded: () => recalculate() }
+);
 const {
   pricing,
   pricingLoading,
@@ -212,9 +226,11 @@ const applyFilters = () => {
 const goProduct = (id) => router.visit(route('shop.products.show', id));
 
 const onAddToCart = (product) => {
-  addItem(product);
-  toast.success(`أُضيف ${product.name} إلى السلة`, { timeout: 2000 });
-  recalculate();
+  requestAddToCart(product);
+};
+
+const onAddonConfirm = (withAddon) => {
+  confirmAddonChoice(withAddon);
 };
 
 const handleSubmit = async () => {
