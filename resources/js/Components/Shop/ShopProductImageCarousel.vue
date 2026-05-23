@@ -4,7 +4,7 @@
       <div class="relative aspect-square w-full bg-slate-100">
         <img
           v-if="activeSrc"
-          :key="`${currentIndex}-${activeSrc}`"
+          :key="currentIndex"
           :src="activeSrc"
           :alt="alt"
           class="h-full w-full object-cover"
@@ -58,7 +58,7 @@
 
     <div
       v-if="hasMultiple"
-      class="flex gap-2 overflow-x-auto pb-1 scroll-smooth snap-x snap-mandatory"
+      class="flex gap-2 overflow-x-auto pb-1"
       role="list"
       aria-label="معاينة الصور"
     >
@@ -67,7 +67,7 @@
         :key="i"
         type="button"
         role="listitem"
-        class="shrink-0 snap-start overflow-hidden rounded-xl border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+        class="shrink-0 overflow-hidden rounded-xl border-2 transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
         :class="currentIndex === i - 1 ? 'border-shop-600 ring-2 ring-shop-500/30' : 'border-transparent opacity-70 hover:opacity-100'"
         @click="goTo(i - 1)"
       >
@@ -98,9 +98,8 @@ const bases = computed(() => (props.storageBases || []).filter(Boolean));
 const slideCount = computed(() => Math.max(props.paths?.length || 0, props.urls?.length || 0, 0));
 
 const displayUrls = ref([]);
-/** @type {import('vue').Ref<Record<number, number>>} */
 const baseAttemptBySlide = ref({});
-
+const currentIndex = ref(0);
 const buildUrlForPath = (path, baseIndex = 0) => {
   if (!path) return null;
   if (String(path).startsWith('http://') || String(path).startsWith('https://')) {
@@ -129,20 +128,22 @@ const syncDisplayUrls = () => {
 };
 
 watch(
-  () => [props.urls, props.paths, props.storageBases],
+  () => [props.urls?.length, props.paths?.length, props.storageBases?.length],
   syncDisplayUrls,
-  { immediate: true, deep: true }
+  { immediate: true }
+);
+
+watch(
+  () => props.urls,
+  () => syncDisplayUrls()
+);
+
+watch(
+  () => props.paths,
+  () => syncDisplayUrls()
 );
 
 const hasMultiple = computed(() => slideCount.value > 1);
-const currentIndex = ref(0);
-
-watch(slideCount, () => {
-  if (currentIndex.value >= slideCount.value) {
-    currentIndex.value = 0;
-  }
-});
-
 const activeSrc = computed(() => displayUrls.value[currentIndex.value] || props.placeholder);
 
 const goTo = (index) => {
@@ -182,7 +183,6 @@ const onSlideError = (e) => {
   const img = e?.target;
   if (!img) return;
   if (tryNextBaseForSlide(currentIndex.value, img)) return;
-  displayUrls.value[currentIndex.value] = props.placeholder;
   img.src = props.placeholder;
 };
 
@@ -192,4 +192,5 @@ const onThumbError = (e, index) => {
   if (tryNextBaseForSlide(index, img)) return;
   img.src = props.placeholder;
 };
+
 </script>
