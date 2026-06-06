@@ -28,7 +28,7 @@ class ShopSetting extends Model
 
     public static function current(): self
     {
-        return static::firstOrCreate(
+        $settings = static::firstOrCreate(
             ['id' => 1],
             [
                 'is_enabled' => true,
@@ -38,5 +38,12 @@ class ShopSetting extends Model
                 'default_currency' => env('DEFAULT_CURRENCY', 'USD'),
             ]
         );
+
+        if (!in_array($settings->default_currency, ['USD', 'IQD'], true)) {
+            $settings->default_currency = 'USD';
+            $settings->saveQuietly();
+        }
+
+        return $settings;
     }
 }

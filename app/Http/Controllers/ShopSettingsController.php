@@ -99,6 +99,10 @@ class ShopSettingsController extends Controller
             $data['exchange_rate'] = null;
         }
 
+        if (!empty($data['default_currency']) && !in_array($data['default_currency'], ['USD', 'IQD'], true)) {
+            $data['default_currency'] = 'USD';
+        }
+
         $settings->update($data);
 
         return back()->with('success', 'تم حفظ الإعدادات');

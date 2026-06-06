@@ -680,13 +680,88 @@ const switchTab = (id) => {
   });
 };
 
-const generalForm = useForm({
-  is_enabled: props.settings?.is_enabled ?? true,
-  company_name: props.settings?.company_name || '',
-  whatsapp: props.settings?.whatsapp || '',
-  phone_country_code: props.settings?.phone_country_code || '964',
-  default_currency: props.settings?.default_currency || 'USD',
+const { src: categoryImageSrc, onError: onCategoryImageError } = useShopStorageUrl(props.storageBases);
+const { src: productImageSrc, onError: onProductImageError } = useShopStorageUrl(props.storageBases);
+const { src: logoStorageSrc } = useShopStorageUrl(props.storageBases);
+
+const buildGeneralFormState = (settings) => {
+  const currency = settings?.default_currency || 'USD';
+  return {
+    is_enabled: settings?.is_enabled ?? true,
+    company_name: settings?.company_name || '',
+    whatsapp: settings?.whatsapp || '',
+    phone_country_code: settings?.phone_country_code || '964',
+    default_currency: currencyOptions.includes(currency) ? currency : 'USD',
+    exchange_rate: settings?.exchange_rate ?? null,
+    primary_color: settings?.primary_color || '#4f46e5',
+    tagline: settings?.tagline || '',
+    seo_title: settings?.seo_title || '',
+    seo_description: settings?.seo_description || '',
+    seo_keywords: settings?.seo_keywords || '',
+    logo: null,
+  };
+};
+
+const logoInput = ref(null);
+const logoFilePreview = ref(null);
+
+const generalForm = useForm(buildGeneralFormState(props.settings));
+
+const syncGeneralForm = () => {
+  if (generalForm.processing) return;
+  generalForm.defaults(buildGeneralFormState(props.settings));
+  generalForm.reset();
+};
+
+watch(() => props.settings, syncGeneralForm, { deep: true });
+
+onMounted(() => {
+  syncGeneralForm();
 });
+
+const logoPreviewUrl = computed(() => {
+  if (logoFilePreview.value) return logoFilePreview.value;
+  if (props.settings?.logo) return logoStorageSrc({ image: props.settings.logo });
+  return null;
+});
+
+const onLogoFile = (e) => {
+  const file = e.target.files?.[0];
+  if (logoFilePreview.value) {
+    URL.revokeObjectURL(logoFilePreview.value);
+    logoFilePreview.value = null;
+  }
+  if (file) {
+    generalForm.logo = file;
+    logoFilePreview.value = URL.createObjectURL(file);
+  } else {
+    generalForm.logo = null;
+  }
+};
+
+const submitGeneral = () => {
+  const hasLogo = !!generalForm.logo;
+  generalForm.transform((data) => ({
+    ...data,
+    is_enabled: data.is_enabled ? 1 : 0,
+    logo: generalForm.logo,
+    exchange_rate: data.exchange_rate === '' || data.exchange_rate == null ? '' : data.exchange_rate,
+  }));
+
+  generalForm.post(route('shop-settings.general.update'), {
+    forceFormData: hasLogo,
+    preserveScroll: true,
+    onSuccess: () => {
+      generalForm.logo = null;
+      if (logoFilePreview.value) {
+        URL.revokeObjectURL(logoFilePreview.value);
+        logoFilePreview.value = null;
+      }
+      if (logoInput.value) logoInput.value.value = '';
+      router.reload({ only: ['settings'] });
+    },
+  });
+};
 
 const categoryImageInput = ref(null);
 const productImageInput = ref(null);
@@ -931,9 +1006,6 @@ const reloadOrders = () => router.get(route('shop-settings.index'), { tab: 'orde
 const updateStatus = (id, status) => router.patch(route('shop-settings.orders.status', id), { status });
 const exportUrl = computed(() => route('shop-settings.orders.export', orderFilters.value));
 const formatDate = (d) => d ? new Date(d).toLocaleString('ar') : '';
-
-const { src: categoryImageSrc, onError: onCategoryImageError } = useShopStorageUrl(props.storageBases);
-const { src: productImageSrc, onError: onProductImageError } = useShopStorageUrl(props.storageBases);
 </script>
 
 <style scoped>
