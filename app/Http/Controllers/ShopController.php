@@ -144,9 +144,16 @@ class ShopController extends Controller
 
     protected function shopMeta(ShopSetting $settings): array
     {
-        $logoFallback = env('COMPANY_LOGO');
+        $logoFallback = env('COMPANY_LOGO', 'dashboard-assets/img/logo.png');
         if ($logoFallback && !str_starts_with($logoFallback, 'http')) {
-            $logoFallback = asset(ltrim($logoFallback, '/'));
+            $logoPath = ltrim($logoFallback, '/');
+            if (str_ends_with(strtolower($logoPath), '.webp')) {
+                $pngPath = preg_replace('/\.webp$/i', '.png', $logoPath);
+                if ($pngPath && file_exists(public_path($pngPath))) {
+                    $logoPath = $pngPath;
+                }
+            }
+            $logoFallback = asset($logoPath);
         }
 
         return [

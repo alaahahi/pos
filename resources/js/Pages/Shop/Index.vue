@@ -7,6 +7,11 @@
     <meta head-key="og:description" property="og:description" :content="pageDescription" />
     <meta v-if="ogImage" head-key="og:image" property="og:image" :content="ogImage" />
     <meta head-key="og:type" property="og:type" content="website" />
+    <meta head-key="og:url" property="og:url" :content="shareUrl" />
+    <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
+    <meta head-key="twitter:title" name="twitter:title" :content="pageTitle" />
+    <meta head-key="twitter:description" name="twitter:description" :content="pageDescription" />
+    <meta v-if="ogImage" head-key="twitter:image" name="twitter:image" :content="ogImage" />
     <meta head-key="og:site_name" property="og:site_name" :content="shop.company_name" />
   </Head>
 
@@ -205,10 +210,15 @@ const ogImage = computed(() => {
   if (props.shop?.logo) {
     const bases = props.shop.storageBases || [];
     if (bases.length) {
-      return `${bases[0].replace(/\/$/, '')}/${String(props.shop.logo).replace(/^\//, '')}`;
+      return `${bases[0].replace(/\/$/, '')}/${String(props.shop.logo).replace(/^\//, '')}`.replace(/ /g, '%20');
     }
   }
   return props.shop?.logo_fallback || null;
+});
+
+const shareUrl = computed(() => {
+  if (typeof window !== 'undefined') return window.location.href;
+  return route('shop.index');
 });
 
 const toast = useToast();

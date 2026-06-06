@@ -6,6 +6,11 @@
     <meta head-key="og:description" property="og:description" :content="pageDescription" />
     <meta v-if="ogImage" head-key="og:image" property="og:image" :content="ogImage" />
     <meta head-key="og:type" property="og:type" content="product" />
+    <meta head-key="og:url" property="og:url" :content="shareUrl" />
+    <meta head-key="twitter:card" name="twitter:card" content="summary_large_image" />
+    <meta head-key="twitter:title" name="twitter:title" :content="pageTitle" />
+    <meta head-key="twitter:description" name="twitter:description" :content="pageDescription" />
+    <meta v-if="ogImage" head-key="twitter:image" name="twitter:image" :content="ogImage" />
     <meta head-key="og:site_name" property="og:site_name" :content="shop.company_name" />
   </Head>
 
@@ -172,6 +177,11 @@ const pageDescription = computed(() => {
 });
 
 const ogImage = computed(() => galleryUrls.value[0] || props.shop?.logo_fallback || null);
+
+const shareUrl = computed(() => {
+  if (typeof window !== 'undefined') return window.location.href;
+  return props.product?.id ? route('shop.products.show', props.product.id) : route('shop.index');
+});
 
 const galleryPaths = computed(() => {
   const paths = [];
