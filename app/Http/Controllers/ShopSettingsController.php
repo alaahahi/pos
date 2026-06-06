@@ -74,7 +74,7 @@ class ShopSettingsController extends Controller
             'company_name' => 'nullable|string|max:255',
             'whatsapp' => 'nullable|string|max:32',
             'phone_country_code' => 'nullable|string|max:8',
-            'default_currency' => 'nullable|string|max:8',
+            'default_currency' => 'nullable|string|in:USD,IQD',
         ]);
 
         ShopSetting::current()->update($data);
@@ -222,12 +222,15 @@ class ShopSettingsController extends Controller
         return response()->streamDownload(function () use ($orders) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
-            fputcsv($out, ['رقم الطلب', 'الهاتف', 'الحالة', 'المجموع', 'العملة', 'التاريخ', 'ملاحظات']);
+            fputcsv($out, ['رقم الطلب', 'الهاتف', 'الحالة', 'إجمالي USD', 'إجمالي IQD', 'المجموع الرئيسي', 'العملة الرئيسية', 'التاريخ', 'ملاحظات']);
             foreach ($orders as $order) {
+                $totals = is_array($order->totals_by_currency) ? $order->totals_by_currency : [];
                 fputcsv($out, [
                     $order->order_number,
                     $order->customer_phone,
                     $order->status,
+                    $totals['USD']['total'] ?? '',
+                    $totals['IQD']['total'] ?? '',
                     $order->total_amount,
                     $order->currency,
                     $order->created_at->format('Y-m-d H:i'),
@@ -267,7 +270,7 @@ class ShopSettingsController extends Controller
             'is_active' => 'boolean',
             'bundle_quantity' => 'nullable|integer|min:2',
             'bundle_price' => 'nullable|numeric|min:0',
-            'bundle_currency' => 'nullable|string|max:8',
+            'bundle_currency' => 'nullable|string|in:USD,IQD',
             'image' => 'nullable|image|max:4096',
         ]);
         $data['slug'] = $this->uniqueCategorySlug(
@@ -306,7 +309,7 @@ class ShopSettingsController extends Controller
             'description' => 'nullable|string',
             'rental_duration' => 'nullable|string|max:255',
             'price' => 'required|numeric|min:0',
-            'currency' => 'nullable|string|max:8',
+            'currency' => 'nullable|string|in:USD,IQD',
             'video_url' => 'nullable|string|max:500',
             'youtube_links' => 'nullable|array',
             'youtube_links.*' => 'nullable|string|max:500',

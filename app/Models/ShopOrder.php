@@ -25,6 +25,7 @@ class ShopOrder extends Model
         'coupon_code',
         'total_amount',
         'currency',
+        'totals_by_currency',
         'status',
         'whatsapp_sent_at',
         'ip_address',
@@ -36,6 +37,7 @@ class ShopOrder extends Model
         'promotion_discount' => 'decimal:2',
         'coupon_discount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'totals_by_currency' => 'array',
         'whatsapp_sent_at' => 'datetime',
     ];
 

@@ -34,8 +34,11 @@
                 <input v-model="generalForm.phone_country_code" type="text" class="form-control" />
               </div>
               <div class="col-md-4">
-                <label class="form-label">العملة</label>
-                <input v-model="generalForm.default_currency" type="text" class="form-control" />
+                <label class="form-label">العملة الافتراضية</label>
+                <select v-model="generalForm.default_currency" class="form-select">
+                  <option v-for="c in currencyOptions" :key="c" :value="c">{{ c }}</option>
+                </select>
+                <small class="text-muted">تُقترح كعملة افتراضية للمنتجات الجديدة</small>
               </div>
               <div class="col-md-4 d-flex align-items-end">
                 <div class="form-check">
@@ -97,11 +100,17 @@
                 <label class="form-label">حزمة: الكمية</label>
                 <input v-model.number="catForm.bundle_quantity" type="number" min="2" class="form-control" placeholder="5" />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-2">
                 <label class="form-label">سعر الحزمة</label>
                 <input v-model.number="catForm.bundle_price" type="number" step="0.01" class="form-control" />
               </div>
-              <div class="col-md-3 d-flex align-items-end">
+              <div class="col-md-2">
+                <label class="form-label">عملة الحزمة</label>
+                <select v-model="catForm.bundle_currency" class="form-select">
+                  <option v-for="c in currencyOptions" :key="c" :value="c">{{ c }}</option>
+                </select>
+              </div>
+              <div class="col-md-2 d-flex align-items-end">
                 <div class="form-check mb-2">
                   <input v-model="catForm.is_active" type="checkbox" class="form-check-input" id="cat-active" />
                   <label class="form-check-label" for="cat-active">مفعّلة في المتجر</label>
@@ -136,7 +145,9 @@
                   <span class="badge bg-secondary shrink-0">{{ c.products_count ?? 0 }} منتج</span>
                 </div>
                 <p v-if="c.description" class="small text-muted mb-1 line-clamp-2">{{ c.description }}</p>
-                <p v-if="c.bundle_quantity" class="small text-muted mb-2">{{ c.bundle_quantity }} بـ {{ c.bundle_price }}</p>
+                <p v-if="c.bundle_quantity" class="small text-muted mb-2">
+                  {{ c.bundle_quantity }} بـ {{ c.bundle_price }} {{ c.bundle_currency || 'USD' }}
+                </p>
                 <div class="d-flex gap-2">
                   <button type="button" class="btn btn-sm btn-outline-primary flex-grow-1" @click="startEditCategory(c)">
                     تعديل
@@ -227,6 +238,12 @@
               <div class="col-md-2">
                 <label class="form-label">السعر *</label>
                 <input v-model.number="prodForm.price" type="number" step="0.01" class="form-control" required />
+              </div>
+              <div class="col-md-2">
+                <label class="form-label">العملة *</label>
+                <select v-model="prodForm.currency" class="form-select" required>
+                  <option v-for="c in currencyOptions" :key="c" :value="c">{{ c }}</option>
+                </select>
               </div>
               <div class="col-md-3">
                 <label class="form-label">الوصف</label>
@@ -350,9 +367,11 @@
                 </td>
                 <td>{{ p.name }}</td>
                 <td>{{ p.category?.name || '-' }}</td>
-                <td>{{ p.price }}</td>
+                <td class="text-nowrap">{{ p.price }} {{ p.currency || 'USD' }}</td>
                 <td class="small">
-                  <span v-if="p.has_addon">{{ p.addon_name }} (+{{ p.addon_price }})</span>
+                  <span v-if="p.has_addon">
+                    {{ p.addon_name }} (+{{ p.addon_price }} {{ p.currency || 'USD' }})
+                  </span>
                   <span v-else class="text-muted">—</span>
                 </td>
                 <td v-if="showTrashedProducts" class="small text-muted">{{ formatDate(p.deleted_at) }}</td>
@@ -459,7 +478,18 @@
               <tr v-for="o in ordersList" :key="o.id">
                 <td>{{ o.order_number }}</td>
                 <td>{{ o.customer_phone }}</td>
-                <td>{{ o.total_amount }} {{ o.currency }}</td>
+                <td>
+                  <template v-if="orderTotalsList(o).length">
+                    <div
+                      v-for="t in orderTotalsList(o)"
+                      :key="t.currency"
+                      class="text-nowrap"
+                    >
+                      {{ t.total }} {{ t.currency }}
+                    </div>
+                  </template>
+                  <template v-else>{{ o.total_amount }} {{ o.currency }}</template>
+                </td>
                 <td>{{ o.status }}</td>
                 <td>{{ formatDate(o.created_at) }}</td>
                 <td>
@@ -523,8 +553,21 @@ const tab = ref(props.activeTab || 'general');
 const showTrashedProducts = ref(props.showTrashedProducts ?? false);
 const productCategoryFilter = ref(props.productFilters?.category ?? '');
 const orderFilters = ref({ ...props.orderFilters });
+const currencyOptions = ['USD', 'IQD'];
+const defaultCurrency = computed(() => {
+  const c = props.settings?.default_currency || 'USD';
+  return currencyOptions.includes(c) ? c : 'USD';
+});
 
 const ordersList = computed(() => props.orders?.data || []);
+
+const orderTotalsList = (order) => {
+  const totals = order?.totals_by_currency;
+  if (!totals || typeof totals !== 'object') return [];
+  return Object.entries(totals)
+    .map(([cur, t]) => ({ currency: cur, total: Number(t.total || 0) }))
+    .filter((t) => t.total > 0);
+};
 
 const categoryIds = computed(() => (props.categories || []).map((c) => c.id));
 
@@ -598,7 +641,7 @@ const editingProductId = ref(null);
 
 const catForm = useForm({
   name: '', description: '', sort_order: 0, is_active: true,
-  bundle_quantity: null, bundle_price: null, bundle_currency: null, image: null,
+  bundle_quantity: null, bundle_price: null, bundle_currency: defaultCurrency.value, image: null,
 });
 const onCategoryImage = (e) => {
   const file = e.target.files?.[0];
@@ -611,6 +654,7 @@ const resetCategoryForm = () => {
   catForm.reset();
   catForm.is_active = true;
   catForm.sort_order = 0;
+  catForm.bundle_currency = defaultCurrency.value;
   if (categoryImageInput.value) categoryImageInput.value.value = '';
 };
 
@@ -623,7 +667,7 @@ const startEditCategory = (category) => {
   catForm.is_active = category.is_active !== false;
   catForm.bundle_quantity = category.bundle_quantity ?? null;
   catForm.bundle_price = category.bundle_price != null ? Number(category.bundle_price) : null;
-  catForm.bundle_currency = category.bundle_currency || null;
+  catForm.bundle_currency = category.bundle_currency || defaultCurrency.value;
   catForm.image = null;
   window.scrollTo({ top: 0, behavior: 'smooth' });
 };
@@ -655,7 +699,7 @@ const prodForm = useForm({
   description: '',
   rental_duration: '',
   price: 0,
-  currency: 'USD',
+  currency: defaultCurrency.value,
   is_active: true,
   image: null,
   addon_name: '',
@@ -683,7 +727,7 @@ const resetProductForm = () => {
   productGalleryFiles.value = [];
   prodForm.reset();
   prodForm.is_active = true;
-  prodForm.currency = 'USD';
+  prodForm.currency = defaultCurrency.value;
   prodForm.addon_price = null;
   if (productImageInput.value) productImageInput.value.value = '';
   if (productGalleryInput.value) productGalleryInput.value.value = '';
@@ -702,7 +746,7 @@ const startEditProduct = (product) => {
   prodForm.description = product.description || '';
   prodForm.rental_duration = product.rental_duration || '';
   prodForm.price = Number(product.price);
-  prodForm.currency = product.currency || 'USD';
+  prodForm.currency = product.currency || defaultCurrency.value;
   prodForm.is_active = product.is_active !== false;
   prodForm.addon_name = product.addon_name || '';
   prodForm.addon_price = product.addon_price != null ? Number(product.addon_price) : null;

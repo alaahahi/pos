@@ -19,7 +19,11 @@
       <p v-if="item.with_addon && item.addon_name" class="text-xs text-shop-600">
         + {{ item.addon_name }}
       </p>
-      <p class="text-xs text-slate-500">{{ formatPrice(item.price) }} × {{ item.quantity }}</p>
+      <p class="text-xs text-slate-500">
+        {{ formatPrice(item.price) }}
+        <span class="text-[10px] font-medium text-slate-400">{{ item.currency || 'USD' }}</span>
+        × {{ item.quantity }}
+      </p>
       <div class="mt-2 flex items-center justify-between gap-2">
         <ShopQuantityStepper
           :quantity="item.quantity"

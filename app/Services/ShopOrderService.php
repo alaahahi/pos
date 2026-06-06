@@ -39,6 +39,9 @@ class ShopOrderService
         }
 
         return DB::transaction(function () use ($data, $phoneResult, $pricing, $settings, $ip) {
+            $primaryCurrency = $pricing['currency'] ?: ($settings->default_currency ?: 'USD');
+            $totalsByCurrency = $pricing['totals_by_currency'] ?? [];
+
             $order = ShopOrder::create([
                 'order_number' => $this->nextOrderNumber(),
                 'customer_phone' => $phoneResult['normalized'],
@@ -49,7 +52,8 @@ class ShopOrderService
                 'coupon_discount' => $pricing['coupon_discount'],
                 'coupon_code' => $pricing['coupon_code'],
                 'total_amount' => $pricing['total'],
-                'currency' => $settings->default_currency,
+                'currency' => $primaryCurrency,
+                'totals_by_currency' => $totalsByCurrency ?: null,
                 'status' => 'pending',
                 'ip_address' => $ip,
             ]);
@@ -63,6 +67,7 @@ class ShopOrderService
                     'with_addon' => $line['with_addon'] ?? false,
                     'addon_name' => $line['addon_name'] ?? null,
                     'addon_price' => $line['addon_price'] ?? null,
+                    'currency' => $line['currency'] ?? $primaryCurrency,
                     'unit_price' => $line['unit_price'],
                     'quantity' => $line['quantity'],
                     'line_total' => $line['line_total'],

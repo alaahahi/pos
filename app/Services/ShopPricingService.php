@@ -14,36 +14,84 @@ class ShopPricingService
     public function calculate(array $items, ?string $couponCode = null): array
     {
         $lines = $this->buildLines($items);
-        $subtotal = round($lines->sum('line_total'), 2);
-        $bundleDiscount = round($this->calculateBundleDiscount($lines), 2);
-        $subtotalAfterBundles = round(max(0, $subtotal - $bundleDiscount), 2);
+        $defaultCurrency = ShopSetting::current()->default_currency ?: 'USD';
 
-        $promotion = $this->resolvePromotion($subtotalAfterBundles);
-        $promotionDiscount = $promotion['amount'];
+        $totalsByCurrency = [];
+        $couponContext = null;
+        $promotionContext = null;
 
-        $baseForCoupon = round(max(0, $subtotalAfterBundles - $promotionDiscount), 2);
-        $couponResult = $this->resolveCoupon($couponCode, $baseForCoupon);
-        $couponDiscount = $couponResult['amount'];
+        $byCurrency = $lines->groupBy('currency');
+        foreach ($byCurrency as $currency => $currencyLines) {
+            $cur = (string) $currency ?: $defaultCurrency;
 
-        $total = round(max(0, $baseForCoupon - $couponDiscount), 2);
+            $subtotal = round($currencyLines->sum('line_total'), 2);
+            $bundleDiscount = round($this->calculateBundleDiscount($currencyLines, $cur), 2);
+            $subtotalAfterBundles = round(max(0, $subtotal - $bundleDiscount), 2);
+
+            $promotion = $this->resolvePromotion($subtotalAfterBundles);
+            $promotionDiscount = $promotion['amount'];
+
+            $baseForCoupon = round(max(0, $subtotalAfterBundles - $promotionDiscount), 2);
+            $couponResult = $this->resolveCoupon($couponCode, $baseForCoupon);
+            $couponDiscount = $couponResult['amount'];
+
+            $total = round(max(0, $baseForCoupon - $couponDiscount), 2);
+
+            $totalsByCurrency[$cur] = [
+                'subtotal' => $subtotal,
+                'bundle_discount' => $bundleDiscount,
+                'subtotal_after_bundles' => $subtotalAfterBundles,
+                'promotion_discount' => $promotionDiscount,
+                'coupon_discount' => $couponDiscount,
+                'total' => $total,
+                'currency' => $cur,
+            ];
+
+            if ($promotion['promotion'] && $promotionContext === null) {
+                $promotionContext = $promotion['promotion'];
+            }
+            if ($couponResult['coupon'] && $couponContext === null) {
+                $couponContext = $couponResult;
+            } elseif ($couponResult['message'] && $couponContext === null) {
+                $couponContext = $couponResult;
+            }
+        }
+
+        $totalsByCurrency = array_filter(
+            $totalsByCurrency,
+            fn ($t) => ($t['total'] ?? 0) > 0 || ($t['subtotal'] ?? 0) > 0
+        );
+
+        $primary = $this->pickPrimaryCurrency($totalsByCurrency, $defaultCurrency);
+        $primaryTotals = $totalsByCurrency[$primary] ?? [
+            'subtotal' => 0,
+            'bundle_discount' => 0,
+            'subtotal_after_bundles' => 0,
+            'promotion_discount' => 0,
+            'coupon_discount' => 0,
+            'total' => 0,
+        ];
 
         return [
             'lines' => $lines->values()->all(),
-            'subtotal' => $subtotal,
-            'bundle_discount' => $bundleDiscount,
-            'subtotal_after_bundles' => $subtotalAfterBundles,
-            'promotion_discount' => $promotionDiscount,
-            'promotion' => $promotion['promotion'],
-            'coupon_discount' => $couponDiscount,
-            'coupon' => $couponResult['coupon'],
-            'coupon_code' => $couponResult['code'],
-            'total' => $total,
-            'currency' => ShopSetting::current()->default_currency ?? 'USD',
+            'totals_by_currency' => $totalsByCurrency,
+            'currency' => $primary,
+            'subtotal' => $primaryTotals['subtotal'],
+            'bundle_discount' => $primaryTotals['bundle_discount'],
+            'subtotal_after_bundles' => $primaryTotals['subtotal_after_bundles'],
+            'promotion_discount' => $primaryTotals['promotion_discount'],
+            'promotion' => $promotionContext,
+            'coupon_discount' => $primaryTotals['coupon_discount'],
+            'coupon' => $couponContext['coupon'] ?? null,
+            'coupon_code' => $couponContext['code'] ?? null,
+            'coupon_message' => $couponContext['message'] ?? null,
+            'total' => $primaryTotals['total'],
         ];
     }
 
     protected function buildLines(array $items): Collection
     {
+        $defaultCurrency = ShopSetting::current()->default_currency ?: 'USD';
         $lines = collect();
         foreach ($items as $item) {
             $product = ShopProduct::with('category')->active()->categorized()->find($item['shop_product_id'] ?? null);
@@ -64,6 +112,7 @@ class ShopPricingService
                 'with_addon' => $withAddon,
                 'addon_name' => $withAddon ? $product->addon_name : null,
                 'addon_price' => $withAddon ? (float) $product->addon_price : null,
+                'currency' => $product->currency ?: $defaultCurrency,
                 'unit_price' => $unitPrice,
                 'quantity' => $qty,
                 'line_total' => round($unitPrice * $qty, 2),
@@ -72,10 +121,10 @@ class ShopPricingService
         return $lines;
     }
 
-    protected function calculateBundleDiscount(Collection $lines): float
+    protected function calculateBundleDiscount(Collection $currencyLines, string $currency): float
     {
         $discount = 0;
-        $byCategory = $lines->groupBy('shop_category_id');
+        $byCategory = $currencyLines->groupBy('shop_category_id');
 
         foreach ($byCategory as $categoryId => $categoryLines) {
             if (!$categoryId) {
@@ -83,6 +132,11 @@ class ShopPricingService
             }
             $category = ShopCategory::find($categoryId);
             if (!$category || !$category->bundle_quantity || !$category->bundle_price) {
+                continue;
+            }
+
+            $bundleCurrency = $category->bundle_currency ?: $currency;
+            if ($bundleCurrency !== $currency) {
                 continue;
             }
 
@@ -161,5 +215,25 @@ class ShopPricingService
             return $amount;
         }
         return min($value, $base);
+    }
+
+    protected function pickPrimaryCurrency(array $totalsByCurrency, string $defaultCurrency): string
+    {
+        if (empty($totalsByCurrency)) {
+            return $defaultCurrency;
+        }
+        if (isset($totalsByCurrency[$defaultCurrency])) {
+            return $defaultCurrency;
+        }
+        $top = null;
+        $max = -1;
+        foreach ($totalsByCurrency as $cur => $t) {
+            $value = (float) ($t['total'] ?? 0);
+            if ($value > $max) {
+                $max = $value;
+                $top = $cur;
+            }
+        }
+        return $top ?: $defaultCurrency;
     }
 }

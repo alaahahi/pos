@@ -13,6 +13,7 @@ function loadCart() {
       ...item,
       cart_key: item.cart_key || shopCartKey(item.shop_product_id, !!item.with_addon),
       with_addon: !!item.with_addon,
+      currency: item.currency || 'USD',
     }));
   } catch {
     return [];
@@ -43,6 +44,7 @@ export function useShopCart() {
         name: product.name,
         price: unitPrice,
         base_price: parseFloat(product.price),
+        currency: product.currency || 'USD',
         with_addon: useAddon,
         addon_name: useAddon ? product.addon_name : null,
         addon_price: useAddon ? parseFloat(product.addon_price) : null,

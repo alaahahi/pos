@@ -22,6 +22,7 @@ class ShopOrderItem extends Model
         'with_addon',
         'addon_name',
         'addon_price',
+        'currency',
         'unit_price',
         'quantity',
         'line_total',
