@@ -19,90 +19,32 @@
       <!-- General -->
       <div v-show="tab === 'general'" class="card">
         <div class="card-body">
-          <form @submit.prevent="submitGeneral">
+          <form @submit.prevent="generalForm.put(route('shop-settings.general.update'))">
             <div class="row g-3">
               <div class="col-md-6">
                 <label class="form-label">اسم المتجر</label>
                 <input v-model="generalForm.company_name" type="text" class="form-control" />
               </div>
               <div class="col-md-6">
-                <label class="form-label">الشعار (اللوغو)</label>
-                <input
-                  ref="logoInput"
-                  type="file"
-                  class="form-control"
-                  accept="image/jpeg,image/png,image/jpg,image/webp"
-                  @change="onLogoFile"
-                />
-                <div v-if="logoPreviewUrl" class="mt-2">
-                  <img :src="logoPreviewUrl" alt="الشعار" class="rounded" style="width:64px;height:64px;object-fit:contain" />
-                </div>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">الشعار التسويقي (Slogan)</label>
-                <input
-                  v-model="generalForm.tagline"
-                  type="text"
-                  class="form-control"
-                  placeholder="تخطيط - تنسيق احتفالات - حفلات استقبال المولود - أعياد ميلاد - كشف جنس المولود"
-                />
-              </div>
-              <div class="col-md-3">
-                <label class="form-label">اللون الأساسي</label>
-                <input v-model="generalForm.primary_color" type="color" class="form-control form-control-color w-100" />
-              </div>
-              <div class="col-md-3">
                 <label class="form-label">واتساب (أرقام فقط)</label>
                 <input v-model="generalForm.whatsapp" type="text" class="form-control" />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label class="form-label">كود الدولة</label>
                 <input v-model="generalForm.phone_country_code" type="text" class="form-control" />
               </div>
-              <div class="col-md-3">
+              <div class="col-md-4">
                 <label class="form-label">العملة الافتراضية</label>
                 <select v-model="generalForm.default_currency" class="form-select">
                   <option v-for="c in currencyOptions" :key="c" :value="c">{{ c }}</option>
                 </select>
-              </div>
-              <div class="col-md-4">
-                <label class="form-label">سعر صرف الدينار (IQD لكل 1 USD)</label>
-                <input
-                  v-model.number="generalForm.exchange_rate"
-                  type="number"
-                  step="1"
-                  min="1"
-                  class="form-control"
-                  placeholder="مثال: 1500"
-                />
-                <small class="text-muted">يُستخدم لدمج الدينار والدولار عند تطبيق الخصم التلقائي</small>
+                <small class="text-muted">تُقترح كعملة افتراضية للمنتجات الجديدة</small>
               </div>
               <div class="col-md-4 d-flex align-items-end">
                 <div class="form-check">
                   <input v-model="generalForm.is_enabled" type="checkbox" class="form-check-input" id="enabled" />
                   <label class="form-check-label" for="enabled">المتجر مفعّل</label>
                 </div>
-              </div>
-              <div class="col-12">
-                <hr class="my-1" />
-                <h6 class="mb-2">إعدادات SEO</h6>
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">عنوان SEO</label>
-                <input v-model="generalForm.seo_title" type="text" class="form-control" />
-              </div>
-              <div class="col-md-6">
-                <label class="form-label">كلمات مفتاحية</label>
-                <input
-                  v-model="generalForm.seo_keywords"
-                  type="text"
-                  class="form-control"
-                  placeholder="planning, baby showers, birthday, gender reveals"
-                />
-              </div>
-              <div class="col-12">
-                <label class="form-label">وصف SEO</label>
-                <textarea v-model="generalForm.seo_description" class="form-control" rows="2" />
               </div>
             </div>
             <button type="submit" class="btn btn-primary mt-3" :disabled="generalForm.processing">حفظ</button>
@@ -680,13 +622,48 @@ const switchTab = (id) => {
   });
 };
 
+const logoInput = ref(null);
+
 const generalForm = useForm({
   is_enabled: props.settings?.is_enabled ?? true,
   company_name: props.settings?.company_name || '',
+  logo: null,
+  tagline: props.settings?.tagline || '',
+  primary_color: props.settings?.primary_color || '#4f46e5',
   whatsapp: props.settings?.whatsapp || '',
   phone_country_code: props.settings?.phone_country_code || '964',
   default_currency: props.settings?.default_currency || 'USD',
+  exchange_rate: props.settings?.exchange_rate || '',
+  seo_title: props.settings?.seo_title || '',
+  seo_description: props.settings?.seo_description || '',
+  seo_keywords: props.settings?.seo_keywords || '',
 });
+
+const logoPreviewUrl = computed(() => {
+  if (generalForm.logo instanceof File) {
+    return URL.createObjectURL(generalForm.logo);
+  }
+  if (props.settings?.logo) {
+    return categoryImageSrc({ image: props.settings.logo });
+  }
+  return null;
+});
+
+const onLogoFile = (e) => {
+  const file = e.target.files?.[0];
+  generalForm.logo = file || null;
+};
+
+const submitGeneral = () => {
+  generalForm.post(route('shop-settings.general.update'), {
+    forceFormData: true,
+    preserveScroll: true,
+    onSuccess: () => {
+      generalForm.logo = null;
+      if (logoInput.value) logoInput.value.value = '';
+    },
+  });
+};
 
 const categoryImageInput = ref(null);
 const productImageInput = ref(null);
