@@ -14,7 +14,7 @@
       @input="$emit('update:modelValue', $event.target.value)"
     />
     <p v-if="error" :id="`${id}-error`" class="mt-1 text-xs text-red-600" role="alert">{{ error }}</p>
-    <p v-else-if="hint" class="mt-1 text-xs text-slate-500">{{ hint }}</p>
+    <p v-else-if="hint" class="mt-1 text-xs shop-text-muted">{{ hint }}</p>
   </div>
 </template>
 

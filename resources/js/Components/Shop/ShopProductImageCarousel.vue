@@ -1,7 +1,7 @@
 <template>
   <div class="space-y-3">
     <div class="shop-card relative overflow-hidden">
-      <div class="relative aspect-square w-full bg-slate-100">
+      <div class="relative aspect-square w-full bg-slate-100 dark:bg-slate-800">
         <img
           v-if="activeSrc"
           :key="currentIndex"
@@ -14,7 +14,7 @@
         <template v-if="hasMultiple">
           <button
             type="button"
-            class="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+            class="absolute right-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
             aria-label="الصورة السابقة"
             @click="goPrev"
           >
@@ -22,7 +22,7 @@
           </button>
           <button
             type="button"
-            class="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+            class="absolute left-2 top-1/2 z-10 flex h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full bg-white/90 text-slate-800 shadow-md transition hover:bg-white focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:bg-slate-800/90 dark:text-slate-100 dark:hover:bg-slate-700"
             aria-label="الصورة التالية"
             @click="goNext"
           >

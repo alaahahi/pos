@@ -1,35 +1,35 @@
 <template>
   <div class="space-y-3 text-sm" aria-live="polite">
     <div v-if="loading" class="space-y-2 py-2">
-      <div v-for="i in 3" :key="i" class="h-4 animate-pulse rounded-lg bg-slate-100" />
+      <div v-for="i in 3" :key="i" class="h-4 animate-pulse rounded-lg bg-slate-100 dark:bg-slate-800" />
     </div>
     <template v-else-if="pricing">
       <div
         v-for="bucket in buckets"
         :key="bucket.currency"
         class="space-y-1.5"
-        :class="{ 'border-t border-slate-100 pt-3': bucket !== buckets[0] }"
+        :class="{ 'border-t shop-divider pt-3': bucket !== buckets[0] }"
       >
-        <div v-if="buckets.length > 1" class="text-xs font-semibold text-slate-500">
+        <div v-if="buckets.length > 1" class="text-xs font-semibold shop-text-muted">
           {{ bucket.currency }}
         </div>
-        <div class="flex justify-between text-slate-600">
+        <div class="flex justify-between shop-text-secondary">
           <span>المجموع الفرعي</span>
           <span>{{ formatAmount(bucket.subtotal) }} {{ bucket.currency }}</span>
         </div>
-        <div v-if="bucket.bundle_discount > 0" class="flex justify-between text-emerald-600">
+        <div v-if="bucket.bundle_discount > 0" class="flex justify-between text-emerald-600 dark:text-emerald-400">
           <span>خصم الحزم</span>
           <span>-{{ formatAmount(bucket.bundle_discount) }} {{ bucket.currency }}</span>
         </div>
-        <div v-if="bucket.promotion_discount > 0" class="flex justify-between text-emerald-600">
+        <div v-if="bucket.promotion_discount > 0" class="flex justify-between text-emerald-600 dark:text-emerald-400">
           <span>خصم تلقائي</span>
           <span>-{{ formatAmount(bucket.promotion_discount) }} {{ bucket.currency }}</span>
         </div>
-        <div v-if="bucket.coupon_discount > 0" class="flex justify-between text-emerald-600">
+        <div v-if="bucket.coupon_discount > 0" class="flex justify-between text-emerald-600 dark:text-emerald-400">
           <span>كوبون</span>
           <span>-{{ formatAmount(bucket.coupon_discount) }} {{ bucket.currency }}</span>
         </div>
-        <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-bold text-slate-900">
+        <div class="flex justify-between border-t border-slate-200 pt-2 text-base font-bold shop-text-primary dark:border-slate-700">
           <span>الإجمالي</span>
           <span class="text-shop-600">{{ formatAmount(bucket.total) }} {{ bucket.currency }}</span>
         </div>

@@ -1,46 +1,54 @@
 <template>
   <div
-    class="flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900"
+    class="shop-root flex min-h-screen flex-col bg-slate-50 font-sans text-slate-900 dark:bg-slate-950 dark:text-slate-100"
     dir="rtl"
     lang="ar"
     :style="brandVars"
   >
-    <header class="sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md">
-      <div class="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3 sm:px-6">
-        <div class="flex min-w-0 items-center gap-3">
-          <img
-            v-if="logoUrl"
-            :src="logoUrl"
-            :alt="shop.company_name"
-            class="h-10 w-10 shrink-0 rounded-xl object-contain sm:h-12 sm:w-12"
-            @error="onLogoError"
-          />
-          <div class="min-w-0">
-            <h1 class="truncate text-lg font-bold tracking-tight text-slate-900 sm:text-xl">
-              {{ shop.company_name }}
-            </h1>
-            <p v-if="shop.tagline" class="hidden truncate text-xs text-slate-500 sm:block">
-              {{ shop.tagline }}
-            </p>
-            <p v-else class="hidden text-xs text-slate-500 sm:block">تسوّق وأكمل طلبك عبر واتساب</p>
-          </div>
+    <header class="shop-header">
+      <div class="mx-auto flex max-w-7xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
+        <div class="flex min-w-0 flex-1 items-center gap-3">
+          <slot name="header-leading">
+            <img
+              v-if="logoUrl"
+              :src="logoUrl"
+              :alt="shop.company_name"
+              class="h-10 w-10 shrink-0 rounded-xl object-contain sm:h-12 sm:w-12"
+              @error="onLogoError"
+            />
+            <div class="min-w-0">
+              <h1 class="truncate text-lg font-bold tracking-tight shop-text-primary sm:text-xl">
+                {{ shop.company_name }}
+              </h1>
+              <p v-if="shop.tagline" class="hidden truncate text-xs shop-text-muted sm:block">
+                {{ shop.tagline }}
+              </p>
+              <p v-else class="hidden text-xs shop-text-muted sm:block">تسوّق وأكمل طلبك عبر واتساب</p>
+            </div>
+          </slot>
         </div>
-        <button
-          type="button"
-          class="shop-brand-btn relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 lg:hidden"
-          aria-label="فتح السلة"
-          @click="$emit('open-mobile-cart')"
-        >
-          <i class="bi bi-cart3 text-lg" aria-hidden="true" />
-          <span>السلة</span>
-          <span
-            v-if="cartCount"
-            class="absolute -left-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-xs font-bold shadow"
-            :style="{ color: shop.primary_color || '#4f46e5' }"
-          >
-            {{ cartCount }}
-          </span>
-        </button>
+
+        <div class="flex shrink-0 items-center gap-2">
+          <ShopThemeToggle />
+          <slot name="header-trailing">
+            <button
+              type="button"
+              class="shop-brand-btn relative flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950 lg:hidden"
+              aria-label="فتح السلة"
+              @click="$emit('open-mobile-cart')"
+            >
+              <i class="bi bi-cart3 text-lg" aria-hidden="true" />
+              <span>السلة</span>
+              <span
+                v-if="cartCount"
+                class="absolute -left-1.5 -top-1.5 flex h-5 min-w-[1.25rem] items-center justify-center rounded-full bg-white px-1 text-xs font-bold shadow dark:bg-slate-100"
+                :style="{ color: shop.primary_color || '#4f46e5' }"
+              >
+                {{ cartCount }}
+              </span>
+            </button>
+          </slot>
+        </div>
       </div>
     </header>
 
@@ -53,15 +61,28 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import ShopFooter from '@/Components/Shop/ShopFooter.vue';
+import ShopThemeToggle from '@/Components/Shop/ShopThemeToggle.vue';
 import { useShopStorageUrl } from '@/composables/useShopStorageUrl';
+import { useShopTheme } from '@/composables/useShopTheme';
 
 const props = defineProps({
   shop: { type: Object, required: true },
   cartCount: { type: Number, default: 0 },
 });
 defineEmits(['open-mobile-cart']);
+
+const { registerShopPage, unregisterShopPage, initShopTheme } = useShopTheme();
+
+onMounted(() => {
+  initShopTheme();
+  registerShopPage();
+});
+
+onUnmounted(() => {
+  unregisterShopPage();
+});
 
 const logoFailed = ref(false);
 const { src: storageSrc } = useShopStorageUrl(props.shop?.storageBases || []);

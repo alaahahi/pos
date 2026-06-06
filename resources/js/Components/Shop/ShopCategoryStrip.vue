@@ -1,6 +1,6 @@
 <template>
   <div class="space-y-3">
-    <h2 class="text-sm font-semibold text-slate-700">التصنيفات</h2>
+    <h2 class="text-sm font-semibold shop-text-secondary">التصنيفات</h2>
     <div
       class="-mx-1 flex gap-3 overflow-x-auto pb-2 scroll-smooth snap-x snap-mandatory"
       role="tablist"
@@ -12,13 +12,13 @@
         type="button"
         role="tab"
         :aria-selected="selectedId === cat.id"
-        class="group flex w-[7.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border-2 text-right transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 focus-visible:ring-offset-2"
+        class="group flex w-[7.5rem] shrink-0 snap-start flex-col overflow-hidden rounded-2xl border-2 text-right transition duration-200 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
         :class="selectedId === cat.id
-          ? 'border-shop-600 bg-shop-50 shadow-shop-md ring-2 ring-shop-500/20'
-          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-shop'"
+          ? 'border-shop-600 bg-shop-50 shadow-shop-md ring-2 ring-shop-500/20 dark:border-shop-500 dark:bg-shop-900/40 dark:ring-shop-500/30'
+          : 'border-slate-200 bg-white hover:border-slate-300 hover:shadow-shop dark:border-slate-700 dark:bg-slate-900 dark:hover:border-slate-600 dark:hover:bg-slate-800'"
         @click="$emit('select', cat.id)"
       >
-        <div class="relative aspect-[4/3] overflow-hidden bg-slate-100">
+        <div class="relative aspect-[4/3] overflow-hidden bg-slate-100 dark:bg-slate-800">
           <img
             v-if="categoryImageSrc(cat)"
             :src="categoryImageSrc(cat)"
@@ -29,17 +29,20 @@
           />
           <div
             v-else
-            class="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200"
+            class="flex h-full w-full items-center justify-center bg-gradient-to-br from-slate-100 to-slate-200 dark:from-slate-800 dark:to-slate-700"
           >
-            <i class="bi bi-tag text-3xl text-slate-400" aria-hidden="true" />
+            <i class="bi bi-tag text-3xl text-slate-400 dark:text-slate-500" aria-hidden="true" />
           </div>
-          <div v-if="selectedId === cat.id" class="absolute inset-0 bg-shop-600/10" aria-hidden="true" />
+          <div v-if="selectedId === cat.id" class="absolute inset-0 bg-shop-600/10 dark:bg-shop-400/10" aria-hidden="true" />
         </div>
         <div class="p-2.5">
-          <p class="truncate text-sm font-semibold" :class="selectedId === cat.id ? 'text-shop-700' : 'text-slate-800'">
+          <p
+            class="truncate text-sm font-semibold"
+            :class="selectedId === cat.id ? 'text-shop-700 dark:text-shop-300' : 'shop-text-primary'"
+          >
             {{ cat.name }}
           </p>
-          <p class="text-xs text-slate-500">{{ cat.active_products_count ?? 0 }} منتج</p>
+          <p class="text-xs shop-text-muted">{{ cat.active_products_count ?? 0 }} منتج</p>
         </div>
       </button>
     </div>
@@ -52,7 +55,7 @@
     >
       <p
         v-if="activeCategory.description"
-        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right text-sm leading-relaxed text-slate-700"
+        class="w-full rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-right text-sm leading-relaxed shop-text-secondary dark:border-slate-700 dark:bg-slate-800/60"
       >
         {{ activeCategory.description }}
       </p>

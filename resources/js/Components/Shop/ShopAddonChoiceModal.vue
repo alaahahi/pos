@@ -9,56 +9,56 @@
         :aria-labelledby="titleId"
         @click.self="$emit('close')"
       >
-        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm" aria-hidden="true" />
+        <div class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm dark:bg-black/70" aria-hidden="true" />
 
         <div
-          class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl animate-shop-slide-up"
+          class="relative z-10 w-full max-w-md overflow-hidden rounded-2xl bg-white shadow-xl animate-shop-slide-up dark:border dark:border-slate-700 dark:bg-slate-900 dark:shadow-2xl dark:shadow-black/40"
           dir="rtl"
           lang="ar"
         >
-          <header class="border-b border-slate-100 px-5 py-4">
-            <h2 :id="titleId" class="text-lg font-bold text-slate-900">إضافة إلى السلة</h2>
-            <p class="mt-1 text-sm text-slate-600">{{ product.name }}</p>
+          <header class="border-b shop-divider px-5 py-4">
+            <h2 :id="titleId" class="text-lg font-bold shop-text-primary">إضافة إلى السلة</h2>
+            <p class="mt-1 text-sm shop-text-secondary">{{ product.name }}</p>
           </header>
 
           <div class="space-y-3 p-5">
             <button
               type="button"
-              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 p-4 text-right transition hover:border-shop-400 hover:bg-shop-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 p-4 text-right transition hover:border-shop-400 hover:bg-shop-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:border-slate-700 dark:hover:border-shop-500 dark:hover:bg-shop-900/30"
               @click="$emit('confirm', false)"
             >
               <div>
-                <p class="font-semibold text-slate-900">بدون خدمة إضافية</p>
-                <p class="mt-0.5 text-sm text-slate-500">سعر المنتج فقط</p>
+                <p class="font-semibold shop-text-primary">بدون خدمة إضافية</p>
+                <p class="mt-0.5 text-sm shop-text-muted">سعر المنتج فقط</p>
               </div>
-              <span class="shrink-0 text-lg font-bold text-shop-600">
+              <span class="shrink-0 text-lg font-bold text-shop-600 dark:text-shop-400">
                 {{ formatPrice(product.price) }}
-                <span class="text-xs font-normal text-slate-500">{{ currencyLabel }}</span>
+                <span class="text-xs font-normal shop-text-muted">{{ currencyLabel }}</span>
               </span>
             </button>
 
             <button
               type="button"
-              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-shop-500 bg-shop-50 p-4 text-right transition hover:bg-shop-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-shop-500 bg-shop-50 p-4 text-right transition hover:bg-shop-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:border-shop-500 dark:bg-shop-900/40 dark:hover:bg-shop-900/60"
               @click="$emit('confirm', true)"
             >
               <div class="min-w-0">
-                <p class="font-semibold text-slate-900">مع {{ product.addon_name }}</p>
-                <p class="mt-0.5 text-sm text-slate-500">
+                <p class="font-semibold shop-text-primary">مع {{ product.addon_name }}</p>
+                <p class="mt-0.5 text-sm shop-text-muted">
                   +{{ formatPrice(product.addon_price) }} {{ currencyLabel }}
                 </p>
               </div>
-              <span class="shrink-0 text-lg font-bold text-shop-600">
+              <span class="shrink-0 text-lg font-bold text-shop-600 dark:text-shop-400">
                 {{ formatPrice(priceWithAddon) }}
-                <span class="text-xs font-normal text-slate-500">{{ currencyLabel }}</span>
+                <span class="text-xs font-normal shop-text-muted">{{ currencyLabel }}</span>
               </span>
             </button>
           </div>
 
-          <footer class="border-t border-slate-100 px-5 py-3">
+          <footer class="border-t shop-divider px-5 py-3">
             <button
               type="button"
-              class="w-full rounded-xl py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+              class="w-full rounded-xl py-2.5 text-sm font-medium shop-text-secondary transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:hover:bg-slate-800"
               @click="$emit('close')"
             >
               إلغاء

@@ -14,36 +14,32 @@
     <meta head-key="og:site_name" property="og:site_name" :content="shop.company_name" />
   </Head>
 
-  <div
-    class="flex min-h-screen flex-col bg-slate-50 font-sans"
-    dir="rtl"
-    lang="ar"
-    :style="brandVars"
-  >
-    <header class="border-b border-slate-200 bg-white">
-      <div class="mx-auto flex max-w-5xl items-center justify-between gap-3 px-4 py-3 sm:px-6">
-        <button
-          type="button"
-          class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium text-slate-600 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2"
-          :style="{ '--tw-ring-color': shop.primary_color || '#4f46e5' }"
-          @click="router.visit(route('shop.index'))"
-        >
-          <i class="bi bi-arrow-right" aria-hidden="true" />
-          العودة للمتجر
-        </button>
-        <div v-if="logoUrl" class="flex items-center gap-2">
-          <img
-            :src="logoUrl"
-            :alt="shop.company_name"
-            class="h-8 w-8 rounded-lg object-contain"
-            @error="onLogoError"
-          />
-          <span class="hidden text-sm font-semibold text-slate-800 sm:inline">{{ shop.company_name }}</span>
-        </div>
-      </div>
-    </header>
+  <ShopLayout :shop="shop" :cart-count="0">
+    <template #header-leading>
+      <button
+        type="button"
+        class="flex items-center gap-2 rounded-xl px-3 py-2 text-sm font-medium shop-text-secondary transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 dark:hover:bg-slate-800"
+        :style="{ '--tw-ring-color': shop.primary_color || '#4f46e5' }"
+        @click="router.visit(route('shop.index'))"
+      >
+        <i class="bi bi-arrow-right" aria-hidden="true" />
+        العودة للمتجر
+      </button>
+    </template>
 
-    <main class="mx-auto w-full max-w-5xl flex-1 px-4 py-6 sm:px-6 sm:py-8">
+    <template #header-trailing>
+      <div v-if="logoUrl" class="hidden items-center gap-2 sm:flex">
+        <img
+          :src="logoUrl"
+          :alt="shop.company_name"
+          class="h-8 w-8 rounded-lg object-contain"
+          @error="onLogoError"
+        />
+        <span class="text-sm font-semibold shop-text-primary">{{ shop.company_name }}</span>
+      </div>
+    </template>
+
+    <div class="mx-auto max-w-5xl">
       <div class="grid gap-8 lg:grid-cols-2 lg:gap-12">
         <div class="space-y-3">
           <ShopProductImageCarousel
@@ -72,29 +68,29 @@
           <p v-if="product.category" class="mb-2 text-sm font-medium shop-brand-text">
             {{ product.category.name }}
           </p>
-          <h1 class="text-2xl font-bold tracking-tight text-slate-900 sm:text-3xl">
+          <h1 class="text-2xl font-bold tracking-tight shop-text-primary sm:text-3xl">
             {{ product.name }}
           </h1>
           <p class="mt-4 text-3xl font-bold shop-brand-text">
             {{ formatPrice(product.price) }}
-            <span class="text-base font-normal text-slate-500">{{ product.currency || shop.currency }}</span>
+            <span class="text-base font-normal shop-text-muted">{{ product.currency || shop.currency }}</span>
           </p>
-          <p v-if="product.has_addon" class="mt-2 text-sm text-slate-600">
-            <span class="text-slate-500">خدمة اختيارية:</span>
+          <p v-if="product.has_addon" class="mt-2 text-sm shop-text-secondary">
+            <span class="shop-text-muted">خدمة اختيارية:</span>
             {{ product.addon_name }}
             <span class="shop-brand-text">(+{{ formatPrice(product.addon_price) }} {{ product.currency || shop.currency }})</span>
           </p>
           <p
             v-if="product.rental_duration"
-            class="mt-2 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm text-slate-700"
+            class="mt-2 inline-flex items-center gap-2 rounded-lg bg-slate-100 px-3 py-1.5 text-sm shop-text-secondary dark:bg-slate-800"
           >
             <i class="bi bi-clock shop-brand-text" aria-hidden="true" />
-            <span><span class="text-slate-500">مدة الإيجار:</span> {{ product.rental_duration }}</span>
+            <span><span class="shop-text-muted">مدة الإيجار:</span> {{ product.rental_duration }}</span>
           </p>
 
           <div
             v-if="product.description"
-            class="prose prose-slate mt-6 max-w-none text-sm leading-relaxed text-slate-600"
+            class="shop-prose mt-6"
             v-html="descriptionHtml"
           />
           <div class="mt-8 flex flex-col gap-3 sm:flex-row">
@@ -108,9 +104,7 @@
           </div>
         </div>
       </div>
-    </main>
-
-    <ShopFooter :shop="shop" />
+    </div>
 
     <ShopAddonChoiceModal
       :product="addonModalProduct"
@@ -118,15 +112,15 @@
       @confirm="onAddonConfirm"
       @close="closeAddonModal"
     />
-  </div>
+  </ShopLayout>
 </template>
 
 <script setup>
 import { computed, ref } from 'vue';
 import { Head, router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
+import ShopLayout from '@/Components/Shop/ShopLayout.vue';
 import ShopButton from '@/Components/Shop/ShopButton.vue';
-import ShopFooter from '@/Components/Shop/ShopFooter.vue';
 import ShopProductImageCarousel from '@/Components/Shop/ShopProductImageCarousel.vue';
 import ShopAddonChoiceModal from '@/Components/Shop/ShopAddonChoiceModal.vue';
 import { useShopCart } from '@/composables/useShopCart';
@@ -158,11 +152,6 @@ const logoUrl = computed(() => {
 const onLogoError = () => {
   if (!logoFailed.value && props.shop?.logo_fallback) logoFailed.value = true;
 };
-
-const brandVars = computed(() => ({
-  '--shop-primary': props.shop?.primary_color || '#4f46e5',
-  '--shop-primary-dark': shadeColor(props.shop?.primary_color || '#4f46e5', -12),
-}));
 
 const pageTitle = computed(() => {
   const name = props.product?.name || 'منتج';
@@ -214,14 +203,4 @@ const youtubeEmbed = (url) => {
   const m = url.match(/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&]+)/);
   return m ? `https://www.youtube.com/embed/${m[1]}` : url;
 };
-
-function shadeColor(hex, percent) {
-  const normalized = String(hex || '#4f46e5').replace('#', '');
-  if (normalized.length !== 6) return hex || '#4f46e5';
-  const num = parseInt(normalized, 16);
-  const r = Math.min(255, Math.max(0, (num >> 16) + percent));
-  const g = Math.min(255, Math.max(0, ((num >> 8) & 0x00ff) + percent));
-  const b = Math.min(255, Math.max(0, (num & 0x0000ff) + percent));
-  return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1)}`;
-}
 </script>

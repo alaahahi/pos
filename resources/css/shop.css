@@ -1,27 +1,84 @@
 @layer components {
+  .shop-root {
+    @apply transition-colors duration-300 ease-out;
+    color-scheme: light;
+  }
+
+  html.dark .shop-root {
+    color-scheme: dark;
+  }
+
   .shop-card {
-    @apply rounded-xl border border-slate-200/80 bg-white shadow-shop transition-shadow duration-200;
+    @apply rounded-xl border border-slate-200/80 bg-white shadow-shop transition-[box-shadow,border-color,background-color] duration-300;
+    @apply dark:border-slate-700/70 dark:bg-slate-900 dark:shadow-none;
   }
+
   .shop-card-hover {
-    @apply shop-card hover:shadow-shop-md hover:border-slate-300/80;
+    @apply shop-card hover:border-slate-300/80 hover:shadow-shop-md;
+    @apply dark:hover:border-slate-600 dark:hover:bg-slate-800/90 dark:hover:shadow-none;
   }
+
   .shop-input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition-colors duration-200 placeholder:text-slate-400 focus:outline-none focus:ring-2;
+    @apply dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100 dark:placeholder:text-slate-500 dark:shadow-none;
     --tw-ring-color: color-mix(in srgb, var(--shop-primary, #4f46e5) 20%, transparent);
   }
+
   .shop-input:focus {
     border-color: var(--shop-primary, #4f46e5);
   }
+
   .shop-label {
-    @apply mb-1.5 block text-sm font-medium text-slate-700;
+    @apply mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300;
   }
+
   .shop-brand-text {
     color: var(--shop-primary, #4f46e5);
   }
+
+  html.dark .shop-brand-text {
+    color: color-mix(in srgb, var(--shop-primary, #818cf8) 88%, white);
+  }
+
   .shop-brand-bg {
     background-color: var(--shop-primary, #4f46e5);
   }
+
   .shop-brand-bg:hover {
     background-color: var(--shop-primary-dark, #4338ca);
+  }
+
+  .shop-surface-muted {
+    @apply bg-slate-50 dark:bg-slate-900/50;
+  }
+
+  .shop-divider {
+    @apply border-slate-100 dark:border-slate-800;
+  }
+
+  .shop-text-primary {
+    @apply text-slate-900 dark:text-slate-100;
+  }
+
+  .shop-text-secondary {
+    @apply text-slate-600 dark:text-slate-400;
+  }
+
+  .shop-text-muted {
+    @apply text-slate-500 dark:text-slate-400;
+  }
+
+  .shop-header {
+    @apply sticky top-0 z-40 border-b border-slate-200/80 bg-white/90 backdrop-blur-md;
+    @apply dark:border-slate-800/80 dark:bg-slate-950/90;
+  }
+
+  .shop-footer {
+    @apply mt-auto border-t border-slate-200 bg-white;
+    @apply dark:border-slate-800 dark:bg-slate-950;
+  }
+
+  .shop-prose {
+    @apply max-w-none text-sm leading-relaxed shop-text-secondary;
   }
 }

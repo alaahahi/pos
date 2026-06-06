@@ -22,7 +22,7 @@
         <!-- Search & filters -->
         <div class="shop-card space-y-4 p-4">
           <div class="relative">
-            <i class="bi bi-search absolute right-3 top-1/2 -translate-y-1/2 text-slate-400" aria-hidden="true" />
+            <i class="bi bi-search absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 dark:text-slate-500" aria-hidden="true" />
             <input
               v-model="search"
               type="search"
@@ -80,7 +80,7 @@
               v-if="link.url"
               type="button"
               class="min-w-[2.25rem] rounded-lg px-3 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
-              :class="link.active ? 'bg-shop-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50'"
+              :class="link.active ? 'bg-shop-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'"
               :disabled="!link.url"
               v-html="link.label"
               @click="router.get(link.url, {}, { preserveState: true })"
@@ -127,7 +127,7 @@
           aria-labelledby="cart-heading"
         >
           <div
-            class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm"
+            class="absolute inset-0 bg-slate-900/50 backdrop-blur-sm dark:bg-black/70"
             aria-hidden="true"
             @click="mobileCartOpen = false"
           />

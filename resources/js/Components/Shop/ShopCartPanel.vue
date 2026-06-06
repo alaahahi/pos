@@ -3,12 +3,12 @@
     class="shop-card flex max-h-[calc(100vh-7rem)] flex-col overflow-hidden"
     aria-labelledby="cart-heading"
   >
-    <header class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
-      <h2 id="cart-heading" class="text-base font-semibold text-slate-900">
+    <header class="flex items-center justify-between border-b shop-divider px-4 py-3">
+      <h2 id="cart-heading" class="text-base font-semibold shop-text-primary">
         السلة
         <span
           v-if="itemCount"
-          class="mr-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-shop-100 px-1.5 py-0.5 text-xs font-bold text-shop-700"
+          class="mr-2 inline-flex min-w-[1.25rem] items-center justify-center rounded-full bg-shop-100 px-1.5 py-0.5 text-xs font-bold text-shop-700 dark:bg-shop-900/60 dark:text-shop-300"
         >
           {{ itemCount }}
         </span>
@@ -16,7 +16,7 @@
       <button
         v-if="showClose"
         type="button"
-        class="flex h-9 w-9 items-center justify-center rounded-xl text-slate-500 transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
+        class="flex h-9 w-9 items-center justify-center rounded-xl shop-text-muted transition hover:bg-slate-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:hover:bg-slate-800"
         aria-label="إغلاق السلة"
         @click="$emit('close')"
       >
@@ -44,7 +44,7 @@
       </ul>
     </div>
 
-    <footer v-if="items.length" class="border-t border-slate-100 bg-slate-50/80 p-4 space-y-3">
+    <footer v-if="items.length" class="border-t shop-divider shop-surface-muted p-4 space-y-3">
       <ShopCartSummary :pricing="pricing" :currency="currency" :loading="pricingLoading" />
 
       <div class="flex gap-2">
