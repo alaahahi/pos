@@ -96,6 +96,67 @@ html.dark .shop-root .shop-qty-btn:hover {
   color: rgb(165 180 252) !important;
 }
 
+html.dark .shop-addon-overlay > .absolute {
+  background-color: rgb(0 0 0 / 0.75) !important;
+}
+
+html.dark .shop-addon-modal {
+  background-color: rgb(15 23 42) !important;
+  border-color: rgb(71 85 105) !important;
+  box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.55) !important;
+}
+
+html.dark .shop-addon-modal__header,
+html.dark .shop-addon-modal__footer {
+  border-color: rgb(51 65 85) !important;
+}
+
+html.dark .shop-addon-modal__title {
+  color: rgb(248 250 252) !important;
+}
+
+html.dark .shop-addon-modal__subtitle {
+  color: rgb(148 163 184) !important;
+}
+
+html.dark .shop-addon-modal__cancel {
+  color: rgb(203 213 225) !important;
+}
+
+html.dark .shop-addon-modal__cancel:hover {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(248 250 252) !important;
+}
+
+html.dark .shop-addon-option {
+  background-color: rgb(15 23 42) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+html.dark .shop-addon-option:hover {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(99 102 241) !important;
+}
+
+html.dark .shop-addon-option.is-selected {
+  background-color: rgb(49 46 129 / 0.35) !important;
+  border-color: rgb(99 102 241) !important;
+}
+
+html.dark .shop-addon-option__title {
+  color: rgb(241 245 249) !important;
+}
+
+html.dark .shop-addon-option__hint,
+html.dark .shop-addon-option__currency {
+  color: rgb(148 163 184) !important;
+}
+
+html.dark .shop-addon-option__price {
+  color: rgb(129 140 248) !important;
+}
+
+/* Legacy selectors inside shop-root (if reused elsewhere) */
 html.dark .shop-root .shop-addon-option {
   background-color: rgb(15 23 42) !important;
   border-color: rgb(71 85 105) !important;
