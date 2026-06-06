@@ -1,4 +1,15 @@
 <template>
+  <Head>
+    <title>{{ pageTitle }}</title>
+    <meta head-key="description" name="description" :content="pageDescription" />
+    <meta v-if="pageKeywords" head-key="keywords" name="keywords" :content="pageKeywords" />
+    <meta head-key="og:title" property="og:title" :content="pageTitle" />
+    <meta head-key="og:description" property="og:description" :content="pageDescription" />
+    <meta v-if="ogImage" head-key="og:image" property="og:image" :content="ogImage" />
+    <meta head-key="og:type" property="og:type" content="website" />
+    <meta head-key="og:site_name" property="og:site_name" :content="shop.company_name" />
+  </Head>
+
   <ShopLayout :shop="shop" :cart-count="cartCount" @open-mobile-cart="mobileCartOpen = true">
     <div class="lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
       <!-- Catalog -->
@@ -153,8 +164,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted, computed } from 'vue';
-import { Head, router } from '@inertiajs/vue3';
+import { ref, watch, onMounted } from 'vue';
+import { router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import ShopLayout from '@/Components/Shop/ShopLayout.vue';
 import ShopAddonChoiceModal from '@/Components/Shop/ShopAddonChoiceModal.vue';
