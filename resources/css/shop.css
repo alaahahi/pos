@@ -81,4 +81,54 @@
   .shop-prose {
     @apply max-w-none text-sm leading-relaxed shop-text-secondary;
   }
+
+  /* Reset Bootstrap / forms plugin on shop action buttons */
+  .shop-root button.shop-btn {
+    @apply appearance-none bg-clip-padding;
+    background-image: none;
+  }
+
+  .shop-btn-primary {
+    @apply shop-brand-bg text-white shadow-sm hover:shadow-shop;
+  }
+
+  .shop-btn-secondary {
+    @apply border border-slate-200 bg-white text-slate-800 hover:bg-slate-50 active:bg-slate-100;
+  }
+
+  .shop-btn-ghost {
+    @apply bg-transparent text-slate-600 hover:bg-slate-100 active:bg-slate-200;
+  }
+
+  .shop-btn-danger {
+    @apply bg-transparent text-red-600 hover:bg-red-50 active:bg-red-100;
+  }
+
+  .shop-btn-success {
+    @apply bg-emerald-600 text-white hover:bg-emerald-700 active:bg-emerald-800;
+  }
+
+  .shop-theme-toggle {
+    @apply border border-slate-200/80 bg-white text-slate-600 hover:bg-slate-50 hover:text-slate-900;
+  }
+
+  .shop-category-tab {
+    @apply border-slate-200 bg-white hover:border-slate-300;
+  }
+
+  .shop-category-tab.is-active {
+    @apply border-shop-600 bg-shop-50 shadow-shop-md ring-2 ring-shop-500/20;
+  }
+
+  .shop-category-tab__title {
+    @apply text-slate-800;
+  }
+
+  .shop-category-tab.is-active .shop-category-tab__title {
+    @apply text-shop-700;
+  }
+
+  .shop-category-tab__count {
+    @apply text-slate-500;
+  }
 }

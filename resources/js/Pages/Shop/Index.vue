@@ -80,7 +80,7 @@
               v-if="link.url"
               type="button"
               class="min-w-[2.25rem] rounded-lg px-3 py-1.5 text-sm transition focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
-              :class="link.active ? 'bg-shop-600 text-white' : 'bg-white text-slate-600 border border-slate-200 hover:bg-slate-50 dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700 dark:hover:bg-slate-700'"
+              :class="link.active ? 'bg-shop-600 text-white border-shop-600' : 'shop-pagination-btn bg-white text-slate-700 border border-slate-200 hover:bg-slate-50'"
               :disabled="!link.url"
               v-html="link.label"
               @click="router.get(link.url, {}, { preserveState: true })"

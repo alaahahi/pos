@@ -24,12 +24,12 @@
           <div class="space-y-3 p-5">
             <button
               type="button"
-              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 p-4 text-right transition hover:border-shop-400 hover:bg-shop-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:border-slate-700 dark:hover:border-shop-500 dark:hover:bg-shop-900/30"
+              class="shop-addon-option flex w-full items-center justify-between gap-3 rounded-xl border-2 border-slate-200 bg-white p-4 text-right transition hover:border-shop-400 hover:bg-shop-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
               @click="$emit('confirm', false)"
             >
               <div>
-                <p class="font-semibold shop-text-primary">بدون خدمة إضافية</p>
-                <p class="mt-0.5 text-sm shop-text-muted">سعر المنتج فقط</p>
+                <p class="shop-addon-option__title font-semibold text-slate-900">بدون خدمة إضافية</p>
+                <p class="shop-addon-option__hint mt-0.5 text-sm text-slate-500">سعر المنتج فقط</p>
               </div>
               <span class="shrink-0 text-lg font-bold text-shop-600 dark:text-shop-400">
                 {{ formatPrice(product.price) }}
@@ -39,12 +39,12 @@
 
             <button
               type="button"
-              class="flex w-full items-center justify-between gap-3 rounded-xl border-2 border-shop-500 bg-shop-50 p-4 text-right transition hover:bg-shop-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 dark:border-shop-500 dark:bg-shop-900/40 dark:hover:bg-shop-900/60"
+              class="shop-addon-option is-selected flex w-full items-center justify-between gap-3 rounded-xl border-2 border-shop-500 bg-shop-50 p-4 text-right transition hover:bg-shop-100 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500"
               @click="$emit('confirm', true)"
             >
               <div class="min-w-0">
-                <p class="font-semibold shop-text-primary">مع {{ product.addon_name }}</p>
-                <p class="mt-0.5 text-sm shop-text-muted">
+                <p class="shop-addon-option__title font-semibold text-slate-900">مع {{ product.addon_name }}</p>
+                <p class="shop-addon-option__hint mt-0.5 text-sm text-slate-500">
                   +{{ formatPrice(product.addon_price) }} {{ currencyLabel }}
                 </p>
               </div>

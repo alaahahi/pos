@@ -11,6 +11,114 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Shop dark mode contrast — after Tailwind & Bootstrap overrides */
+html.dark .shop-root .shop-btn-secondary {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(241 245 249) !important;
+}
+
+html.dark .shop-root .shop-btn-secondary:hover {
+  background-color: rgb(51 65 85) !important;
+}
+
+html.dark .shop-root .shop-btn-secondary:active {
+  background-color: rgb(71 85 105) !important;
+}
+
+html.dark .shop-root .shop-btn-ghost {
+  color: rgb(203 213 225) !important;
+}
+
+html.dark .shop-root .shop-btn-ghost:hover {
+  background-color: rgb(30 41 59) !important;
+  color: rgb(248 250 252) !important;
+}
+
+html.dark .shop-root .shop-btn-danger {
+  color: rgb(248 113 113) !important;
+}
+
+html.dark .shop-root .shop-btn-danger:hover {
+  background-color: rgb(127 29 29 / 0.35) !important;
+}
+
+html.dark .shop-root .shop-theme-toggle {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(203 213 225) !important;
+}
+
+html.dark .shop-root .shop-theme-toggle:hover {
+  background-color: rgb(51 65 85) !important;
+  color: rgb(248 250 252) !important;
+}
+
+html.dark .shop-root .shop-category-tab:not(.is-active) {
+  background-color: rgb(15 23 42) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+html.dark .shop-root .shop-category-tab:not(.is-active):hover {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(100 116 139) !important;
+}
+
+html.dark .shop-root .shop-category-tab:not(.is-active) .shop-category-tab__title {
+  color: rgb(241 245 249) !important;
+}
+
+html.dark .shop-root .shop-category-tab:not(.is-active) .shop-category-tab__count {
+  color: rgb(148 163 184) !important;
+}
+
+html.dark .shop-root .shop-category-tab.is-active {
+  background-color: rgb(49 46 129 / 0.35) !important;
+  border-color: rgb(99 102 241) !important;
+}
+
+html.dark .shop-root .shop-category-tab.is-active .shop-category-tab__title {
+  color: rgb(165 180 252) !important;
+}
+
+html.dark .shop-root .shop-pagination-btn {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(71 85 105) !important;
+  color: rgb(226 232 240) !important;
+}
+
+html.dark .shop-root .shop-pagination-btn:hover {
+  background-color: rgb(51 65 85) !important;
+}
+
+html.dark .shop-root .shop-qty-btn:hover {
+  background-color: rgb(51 65 85) !important;
+  color: rgb(165 180 252) !important;
+}
+
+html.dark .shop-root .shop-addon-option {
+  background-color: rgb(15 23 42) !important;
+  border-color: rgb(71 85 105) !important;
+}
+
+html.dark .shop-root .shop-addon-option:hover {
+  background-color: rgb(30 41 59) !important;
+  border-color: rgb(99 102 241) !important;
+}
+
+html.dark .shop-root .shop-addon-option.is-selected {
+  background-color: rgb(49 46 129 / 0.35) !important;
+  border-color: rgb(99 102 241) !important;
+}
+
+html.dark .shop-root .shop-addon-option__title {
+  color: rgb(241 245 249) !important;
+}
+
+html.dark .shop-root .shop-addon-option__hint {
+  color: rgb(148 163 184) !important;
+}
+
 /* Tailwind preflight removes input borders; restore Bootstrap form fields */
 .form-control:not([type="checkbox"]):not([type="radio"]),
 .form-select,

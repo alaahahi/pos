@@ -1,7 +1,7 @@
 <template>
   <button
     type="button"
-    class="shop-theme-toggle group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl border border-slate-200/80 bg-white text-slate-600 shadow-sm transition-all duration-300 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 focus-visible:ring-offset-2 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:border-slate-600 dark:hover:bg-slate-700 dark:hover:text-white dark:focus-visible:ring-offset-slate-950"
+    class="shop-theme-toggle group relative flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded-xl shadow-sm transition-all duration-300 focus:outline-none focus-visible:ring-2 focus-visible:ring-shop-500 focus-visible:ring-offset-2 dark:focus-visible:ring-offset-slate-950"
     :aria-label="isDark ? 'تفعيل الوضع النهاري' : 'تفعيل الوضع الليلي'"
     :aria-pressed="isDark"
     @click="toggleTheme"
