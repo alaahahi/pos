@@ -153,8 +153,8 @@
 </template>
 
 <script setup>
-import { ref, watch, onMounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, watch, onMounted, computed } from 'vue';
+import { Head, router } from '@inertiajs/vue3';
 import { useToast } from 'vue-toastification';
 import ShopLayout from '@/Components/Shop/ShopLayout.vue';
 import ShopAddonChoiceModal from '@/Components/Shop/ShopAddonChoiceModal.vue';
@@ -173,31 +173,6 @@ const props = defineProps({
   categories: Array,
   filters: Object,
   shop: Object,
-});
-
-const defaultTagline =
-  'تخطيط وتنسيق احتفالات صغيرة - حفلات استقبال المولود - أعياد ميلاد - كشف جنس المولود';
-
-const pageTitle = computed(() => {
-  if (props.shop?.seo_title) return props.shop.seo_title;
-  const name = props.shop?.company_name || 'المتجر';
-  return props.shop?.tagline ? `${name} | ${props.shop.tagline}` : name;
-});
-
-const pageDescription = computed(
-  () => props.shop?.seo_description || props.shop?.tagline || defaultTagline
-);
-
-const pageKeywords = computed(() => props.shop?.seo_keywords || null);
-
-const ogImage = computed(() => {
-  if (props.shop?.logo) {
-    const bases = props.shop.storageBases || [];
-    if (bases.length) {
-      return `${bases[0].replace(/\/$/, '')}/${String(props.shop.logo).replace(/^\//, '')}`;
-    }
-  }
-  return props.shop?.logo_fallback || null;
 });
 
 const toast = useToast();
