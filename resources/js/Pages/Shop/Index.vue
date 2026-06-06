@@ -1,4 +1,15 @@
 <template>
+  <Head>
+    <title>{{ pageTitle }}</title>
+    <meta head-key="description" name="description" :content="pageDescription" />
+    <meta v-if="pageKeywords" head-key="keywords" name="keywords" :content="pageKeywords" />
+    <meta head-key="og:title" property="og:title" :content="pageTitle" />
+    <meta head-key="og:description" property="og:description" :content="pageDescription" />
+    <meta v-if="ogImage" head-key="og:image" property="og:image" :content="ogImage" />
+    <meta head-key="og:type" property="og:type" content="website" />
+    <meta head-key="og:site_name" property="og:site_name" :content="shop.company_name" />
+  </Head>
+
   <ShopLayout :shop="shop" :cart-count="cartCount" @open-mobile-cart="mobileCartOpen = true">
     <div class="lg:grid lg:grid-cols-[1fr_380px] lg:items-start lg:gap-8">
       <!-- Catalog -->
@@ -173,31 +184,6 @@ const props = defineProps({
   categories: Array,
   filters: Object,
   shop: Object,
-});
-
-const defaultTagline =
-  'تخطيط وتنسيق احتفالات صغيرة - حفلات استقبال المولود - أعياد ميلاد - كشف جنس المولود';
-
-const pageTitle = computed(() => {
-  if (props.shop?.seo_title) return props.shop.seo_title;
-  const name = props.shop?.company_name || 'المتجر';
-  return props.shop?.tagline ? `${name} | ${props.shop.tagline}` : name;
-});
-
-const pageDescription = computed(
-  () => props.shop?.seo_description || props.shop?.tagline || defaultTagline
-);
-
-const pageKeywords = computed(() => props.shop?.seo_keywords || null);
-
-const ogImage = computed(() => {
-  if (props.shop?.logo) {
-    const bases = props.shop.storageBases || [];
-    if (bases.length) {
-      return `${bases[0].replace(/\/$/, '')}/${String(props.shop.logo).replace(/^\//, '')}`;
-    }
-  }
-  return props.shop?.logo_fallback || null;
 });
 
 const toast = useToast();
