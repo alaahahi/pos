@@ -36,7 +36,12 @@
       </div>
 
       <p v-if="buckets.length > 1" class="text-[11px] leading-relaxed text-slate-500">
-        الفاتورة مقسّمة حسب العملة. كل عملة لها إجمالي مستقل.
+        <template v-if="pricing?.exchange_rate">
+          الخصم التلقائي يُحسب بدمج الدينار والدولار بسعر الصرف ({{ formatAmount(pricing.exchange_rate) }} IQD/USD).
+        </template>
+        <template v-else>
+          الفاتورة مقسّمة حسب العملة. كل عملة لها إجمالي مستقل.
+        </template>
       </p>
     </template>
   </div>

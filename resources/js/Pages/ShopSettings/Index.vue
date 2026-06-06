@@ -394,14 +394,18 @@
 
       <!-- Promotions -->
       <div v-show="tab === 'promotions'">
+        <div class="alert alert-info py-2 small mb-3">
+          حد الفاتورة والخصم الثابت بالدولار (USD). عند وجود دينار ودولار معاً يُحوّل الدينار بسعر الصرف من الإعدادات العامة،
+          ويُطبَّق الخصم النسبي على كل عملة، والخصم الثابت من العملة الأكبر.
+        </div>
         <div class="card mb-3">
           <div class="card-body">
             <form @submit.prevent="submitPromotion" class="row g-2 align-items-end">
               <div class="col-md-3"><input v-model="promoForm.name" class="form-control" placeholder="اسم العرض" required /></div>
-              <div class="col-md-2"><input v-model.number="promoForm.min_cart_total" type="number" step="0.01" class="form-control" placeholder="حد الفاتورة" required /></div>
+              <div class="col-md-2"><input v-model.number="promoForm.min_cart_total" type="number" step="0.01" class="form-control" placeholder="حد الفاتورة USD" required /></div>
               <div class="col-md-2">
                 <select v-model="promoForm.discount_type" class="form-select">
-                  <option value="fixed">مبلغ ثابت</option>
+                  <option value="fixed">مبلغ ثابت (USD)</option>
                   <option value="percent">نسبة %</option>
                 </select>
               </div>
@@ -412,12 +416,12 @@
         </div>
         <div class="card">
           <table class="table mb-0">
-            <thead><tr><th>الاسم</th><th>حد الفاتورة</th><th>الخصم</th><th></th></tr></thead>
+            <thead><tr><th>الاسم</th><th>حد الفاتورة (USD)</th><th>الخصم</th><th></th></tr></thead>
             <tbody>
               <tr v-for="pr in promotions" :key="pr.id">
                 <td>{{ pr.name }}</td>
-                <td>{{ pr.min_cart_total }}</td>
-                <td>{{ pr.discount_value }} {{ pr.discount_type === 'percent' ? '%' : '$' }}</td>
+                <td>{{ pr.min_cart_total }} USD</td>
+                <td>{{ pr.discount_value }} {{ pr.discount_type === 'percent' ? '%' : 'USD' }}</td>
                 <td><button type="button" class="btn btn-sm btn-outline-danger" @click="deletePromotion(pr.id)">حذف</button></td>
               </tr>
             </tbody>

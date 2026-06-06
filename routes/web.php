@@ -219,7 +219,7 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
 
   // Shop admin (separate from POS / accounting)
   Route::get('shop-settings', [App\Http\Controllers\ShopSettingsController::class, 'index'])->name('shop-settings.index');
-  Route::put('shop-settings/general', [App\Http\Controllers\ShopSettingsController::class, 'updateGeneral'])->name('shop-settings.general.update');
+  Route::post('shop-settings/general', [App\Http\Controllers\ShopSettingsController::class, 'updateGeneral'])->name('shop-settings.general.update');
   Route::post('shop-settings/categories', [App\Http\Controllers\ShopSettingsController::class, 'storeCategory'])->name('shop-settings.categories.store');
   Route::post('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'updateCategory'])->name('shop-settings.categories.update');
   Route::delete('shop-settings/categories/{shopCategory}', [App\Http\Controllers\ShopSettingsController::class, 'destroyCategory'])->name('shop-settings.categories.destroy');

@@ -33,7 +33,7 @@ const base =
 
 const variants = {
   primary:
-    'bg-shop-600 text-white hover:bg-shop-700 active:bg-shop-800 shadow-sm hover:shadow-shop focus-visible:ring-shop-500',
+    'shop-brand-bg text-white shadow-sm hover:shadow-shop focus-visible:ring-2 focus-visible:ring-offset-2',
   secondary:
     'bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 active:bg-slate-100 focus-visible:ring-slate-400',
   ghost: 'text-slate-600 hover:bg-slate-100 active:bg-slate-200 focus-visible:ring-slate-400',

@@ -69,15 +69,37 @@ class ShopSettingsController extends Controller
 
     public function updateGeneral(Request $request)
     {
+        $settings = ShopSetting::current();
+
         $data = $request->validate([
             'is_enabled' => 'boolean',
             'company_name' => 'nullable|string|max:255',
             'whatsapp' => 'nullable|string|max:32',
             'phone_country_code' => 'nullable|string|max:8',
             'default_currency' => 'nullable|string|in:USD,IQD',
+            'exchange_rate' => 'nullable|numeric|min:1',
+            'primary_color' => ['nullable', 'string', 'regex:/^#[0-9A-Fa-f]{6}$/'],
+            'tagline' => 'nullable|string|max:500',
+            'seo_title' => 'nullable|string|max:255',
+            'seo_description' => 'nullable|string|max:1000',
+            'seo_keywords' => 'nullable|string|max:500',
+            'logo' => 'nullable|image|max:4096',
         ]);
 
-        ShopSetting::current()->update($data);
+        if ($request->hasFile('logo')) {
+            if ($settings->logo) {
+                Storage::disk('public')->delete($settings->logo);
+            }
+            $data['logo'] = $request->file('logo')->store('shop/branding', 'public');
+        } else {
+            unset($data['logo']);
+        }
+
+        if (array_key_exists('exchange_rate', $data) && ($data['exchange_rate'] === '' || $data['exchange_rate'] === null)) {
+            $data['exchange_rate'] = null;
+        }
+
+        $settings->update($data);
 
         return back()->with('success', 'تم حفظ الإعدادات');
     }

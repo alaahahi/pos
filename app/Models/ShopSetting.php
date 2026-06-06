@@ -9,13 +9,21 @@ class ShopSetting extends Model
     protected $fillable = [
         'is_enabled',
         'company_name',
+        'logo',
+        'primary_color',
+        'tagline',
+        'seo_title',
+        'seo_description',
+        'seo_keywords',
         'whatsapp',
         'phone_country_code',
         'default_currency',
+        'exchange_rate',
     ];
 
     protected $casts = [
         'is_enabled' => 'boolean',
+        'exchange_rate' => 'float',
     ];
 
     public static function current(): self

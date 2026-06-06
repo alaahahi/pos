@@ -144,10 +144,24 @@ class ShopController extends Controller
 
     protected function shopMeta(ShopSetting $settings): array
     {
+        $logoFallback = env('COMPANY_LOGO');
+        if ($logoFallback && !str_starts_with($logoFallback, 'http')) {
+            $logoFallback = asset(ltrim($logoFallback, '/'));
+        }
+
         return [
             'company_name' => $settings->company_name ?? env('COMPANY_NAME', 'المتجر'),
+            'logo' => $settings->logo,
+            'logo_fallback' => $logoFallback ?: null,
+            'primary_color' => $settings->primary_color ?: '#4f46e5',
+            'tagline' => $settings->tagline,
+            'seo_title' => $settings->seo_title,
+            'seo_description' => $settings->seo_description,
+            'seo_keywords' => $settings->seo_keywords,
             'whatsapp' => $settings->whatsapp,
+            'phone_country_code' => $settings->phone_country_code ?: '964',
             'currency' => $settings->default_currency,
+            'exchange_rate' => $settings->exchange_rate,
             'storageBases' => [
                 rtrim(asset('storage'), '/'),
                 rtrim(asset('public/storage'), '/'),

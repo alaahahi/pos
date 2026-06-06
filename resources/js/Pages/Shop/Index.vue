@@ -175,6 +175,31 @@ const props = defineProps({
   shop: Object,
 });
 
+const defaultTagline =
+  'تخطيط وتنسيق احتفالات صغيرة - حفلات استقبال المولود - أعياد ميلاد - كشف جنس المولود';
+
+const pageTitle = computed(() => {
+  if (props.shop?.seo_title) return props.shop.seo_title;
+  const name = props.shop?.company_name || 'المتجر';
+  return props.shop?.tagline ? `${name} | ${props.shop.tagline}` : name;
+});
+
+const pageDescription = computed(
+  () => props.shop?.seo_description || props.shop?.tagline || defaultTagline
+);
+
+const pageKeywords = computed(() => props.shop?.seo_keywords || null);
+
+const ogImage = computed(() => {
+  if (props.shop?.logo) {
+    const bases = props.shop.storageBases || [];
+    if (bases.length) {
+      return `${bases[0].replace(/\/$/, '')}/${String(props.shop.logo).replace(/^\//, '')}`;
+    }
+  }
+  return props.shop?.logo_fallback || null;
+});
+
 const toast = useToast();
 const { items: cartItems, addItem, setQuantity, removeItem, clearCart, cartCount, apiItems } = useShopCart();
 const { addonModalProduct, requestAddToCart, confirmAddonChoice, closeAddonModal } = useShopAddToCart(

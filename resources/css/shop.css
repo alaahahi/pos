@@ -6,9 +6,22 @@
     @apply shop-card hover:shadow-shop-md hover:border-slate-300/80;
   }
   .shop-input {
-    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:border-shop-500 focus:outline-none focus:ring-2 focus:ring-shop-500/20;
+    @apply w-full rounded-xl border border-slate-200 bg-white px-4 py-2.5 text-sm text-slate-900 shadow-sm transition-colors placeholder:text-slate-400 focus:outline-none focus:ring-2;
+    --tw-ring-color: color-mix(in srgb, var(--shop-primary, #4f46e5) 20%, transparent);
+  }
+  .shop-input:focus {
+    border-color: var(--shop-primary, #4f46e5);
   }
   .shop-label {
     @apply mb-1.5 block text-sm font-medium text-slate-700;
+  }
+  .shop-brand-text {
+    color: var(--shop-primary, #4f46e5);
+  }
+  .shop-brand-bg {
+    background-color: var(--shop-primary, #4f46e5);
+  }
+  .shop-brand-bg:hover {
+    background-color: var(--shop-primary-dark, #4338ca);
   }
 }
