@@ -7,6 +7,8 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Spatie\Permission\Traits\HasRoles;
 
 class Supplier extends Model
@@ -62,6 +64,31 @@ class Supplier extends Model
         'created_at'         => 'date:Y-m-d',
         'updated_at'         => 'date:Y-m-d',
     ];
+
+    protected static function booted(): void
+    {
+        // Legacy DBs may still have a separate `uuid` column from a partial migration
+        static::creating(function (Supplier $supplier) {
+            static::ensureUuidColumnFilled($supplier);
+        });
+    }
+
+    protected static function ensureUuidColumnFilled(Supplier $supplier): void
+    {
+        static $hasUuidColumn = null;
+
+        if ($hasUuidColumn === null) {
+            $hasUuidColumn = Schema::hasColumn((new static)->getTable(), 'uuid');
+        }
+
+        if (! $hasUuidColumn) {
+            return;
+        }
+
+        if (empty($supplier->uuid)) {
+            $supplier->uuid = $supplier->id ?: (string) Str::uuid();
+        }
+    }
 
     /**
      * Get the avatar URL attribute.
