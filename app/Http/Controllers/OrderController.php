@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Customer;
 use App\Models\Product;
 use App\Models\Order;
+use App\Models\Vehicle;
 use App\Models\UserType;
 use App\Models\SystemConfig;
 use App\Models\User;
@@ -194,6 +195,7 @@ class OrderController extends Controller
              'items.*.product_id' => 'required|exists:products,id',
              'items.*.quantity' => 'required|integer|min:1',
              'items.*.price' => 'required|numeric|min:0',
+             'items.*.vehicle_id' => 'nullable|exists:vehicles,id',
              'discount_amount' => 'nullable|numeric|min:0',
              'discount_rate' => 'nullable|numeric|min:0|max:100',
          ]);
@@ -241,16 +243,46 @@ class OrderController extends Controller
                  ]);
              }
      
-             // إرفاق المنتجات مع الكميات
-             $products = [];
+             // إرفاق المنتجات مع الكميات (مع دعم بيع السيارات بالشانصي)
+             $regularItems = [];
+             $vehicleItems = [];
+
              foreach ($validated['items'] as $productData) {
-                 $products[$productData['product_id']] = [
-                     'quantity' => $productData['quantity'],
-                     'price' => $productData['price'],
-                 ];
+                 if (!empty($productData['vehicle_id'])) {
+                     $vehicleItems[] = $productData;
+                 } else {
+                     $productId = $productData['product_id'];
+                     if (isset($regularItems[$productId])) {
+                         $regularItems[$productId]['quantity'] += $productData['quantity'];
+                     } else {
+                         $regularItems[$productId] = [
+                             'quantity' => $productData['quantity'],
+                             'price' => $productData['price'],
+                         ];
+                     }
+                 }
              }
-             $order->products()->sync($products);
-     
+
+             if (!empty($regularItems)) {
+                 $order->products()->attach($regularItems);
+             }
+
+             foreach ($vehicleItems as $productData) {
+                 $vehicle = Vehicle::available()->findOrFail($productData['vehicle_id']);
+
+                 if ($vehicle->product_id != $productData['product_id']) {
+                     throw new \Exception("الشانصي لا يتطابق مع المنتج المحدد");
+                 }
+
+                 $order->products()->attach($productData['product_id'], [
+                     'quantity' => 1,
+                     'price' => $productData['price'],
+                     'vehicle_id' => $vehicle->id,
+                 ]);
+
+                 $vehicle->markAsSold($order->id);
+             }
+
              // تنزيل الكمية من المخزن
              foreach ($validated['items'] as $productData) {
                  $product = Product::find($productData['product_id']);
@@ -576,6 +608,12 @@ class OrderController extends Controller
                 );
             }
 
+            // إعادة السيارات المباعة إلى المخزون
+            Vehicle::where('order_id', $order->id)->update([
+                'status' => 'available',
+                'order_id' => null,
+            ]);
+
             // حذف الفاتورة (soft delete)
             $order->delete();
 
@@ -680,11 +718,10 @@ public function getTodaySales()
 
 public function print($id)
 {
-    // Retrieve the order with its related customer and products
     $order = Order::with(['customer', 'products'])->findOrFail($id);
+    $vehicles = Vehicle::where('order_id', $order->id)->get()->keyBy('id');
 
-    // Return the tax invoice view with the order data
-    return view('orders.tax-invoice', compact('order'));
+    return view('orders.tax-invoice', compact('order', 'vehicles'));
 }
 
 /**

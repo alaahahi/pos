@@ -7,6 +7,7 @@ use App\Http\Controllers\AccountingController;
 use App\Http\Controllers\ProductController;
 use App\Http\Controllers\BoxesController;
 use App\Http\Controllers\OrderController;
+use App\Http\Controllers\VehicleController;
 use App\Http\Controllers\ShopController;
 use App\Http\Controllers\Api\ActiveUsersController;
 
@@ -58,6 +59,8 @@ Route::get('boxes/transactions',[BoxesController::class, 'transactions'])->name(
 Route::post('TransactionsUpload',[AccountingController::class, 'TransactionsUpload'])->name('TransactionsUpload');
 Route::get('TransactionsImageDel',[AccountingController::class, 'TransactionsImageDel'])->name('TransactionsImageDel');
 Route::post('createOrder',[OrderController::class, 'createOrder'])->name('createOrder');
+Route::get('vehicles/by-vin/{vin}', [VehicleController::class, 'findByVin'])->name('vehicles.by-vin');
+Route::get('vehicles/search', [VehicleController::class, 'search'])->name('vehicles.search');
 
 Route::prefix('shop')->middleware('throttle:60,1')->group(function () {
     Route::post('calculate', [ShopController::class, 'calculate']);

@@ -37,7 +37,14 @@
         'of' => $isArabic ? 'من' : 'of',
         'print_time' => $isArabic ? 'وقت الطباعة:' : 'Print Time:',
         'cash' => $isArabic ? 'نقدي' : 'CASH',
+        'vin' => $isArabic ? 'الشانصي:' : 'VIN:',
+        'color' => $isArabic ? 'اللون:' : 'Color:',
+        'model' => $isArabic ? 'الموديل:' : 'Model:',
+        'make' => $isArabic ? 'الشركة:' : 'Make:',
+        'year' => $isArabic ? 'السنة:' : 'Year:',
     ];
+
+    $vehicles = $vehicles ?? collect();
     
     function hexToRgb($hex) {
         $hex = str_replace('#', '', $hex);
@@ -299,6 +306,19 @@
         .items-table td.text-left {
             text-align: {{ $isArabic ? 'right' : 'left' }};
             font-weight: 500;
+        }
+
+        .vehicle-details {
+            font-size: 9px;
+            color: #555;
+            margin-top: 4px;
+            line-height: 1.5;
+            font-family: 'Courier New', monospace;
+        }
+
+        .vehicle-details span {
+            display: inline-block;
+            margin-{{ $isArabic ? 'left' : 'right' }}: 10px;
         }
         
         /* Summary Section - تحسين */
@@ -594,12 +614,34 @@
                         $quantity = $product->pivot->quantity ?? 1;
                         $unitPrice = $product->pivot->price ?? 0;
                         $itemTotal = $quantity * $unitPrice;
-                        
+                        $vehicle = !empty($product->pivot->vehicle_id)
+                            ? $vehicles->get($product->pivot->vehicle_id)
+                            : null;
+
                         $subtotal += $itemTotal;
                     @endphp
                     <tr>
                         <td>{{ $index + 1 }}</td>
-                        <td class="text-left">{{ $product->name }}</td>
+                        <td class="text-left">
+                            {{ $product->name }}
+                            @if($vehicle)
+                            <div class="vehicle-details">
+                                <span><strong>{{ $texts['vin'] }}</strong> {{ $vehicle->vin }}</span>
+                                @if($vehicle->vehicle_model)
+                                <span><strong>{{ $texts['model'] }}</strong> {{ $vehicle->vehicle_model }}</span>
+                                @endif
+                                @if($vehicle->color)
+                                <span><strong>{{ $texts['color'] }}</strong> {{ $vehicle->color }}</span>
+                                @endif
+                                @if($vehicle->make)
+                                <span><strong>{{ $texts['make'] }}</strong> {{ $vehicle->make }}</span>
+                                @endif
+                                @if($vehicle->year)
+                                <span><strong>{{ $texts['year'] }}</strong> {{ $vehicle->year }}</span>
+                                @endif
+                            </div>
+                            @endif
+                        </td>
                         <td>{{ number_format($quantity, 0) }}</td>
                         <td>{{ rtrim(rtrim(number_format($unitPrice, 2), '0'), '.') }}</td>
                         <td>{{ rtrim(rtrim(number_format($itemTotal, 2), '0'), '.') }}</td>

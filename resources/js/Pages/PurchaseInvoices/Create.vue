@@ -148,11 +148,13 @@
                         <th>سعر التكلفة</th>
                         <th>سعر البيع</th>
                         <th>المجموع</th>
+                        <th>تتبع شانصي</th>
                         <th>الإجراءات</th>
                       </tr>
                     </thead>
                     <tbody>
-                      <tr v-for="(item, index) in form.items" :key="index">
+                      <template v-for="(item, index) in form.items" :key="index">
+                      <tr>
                         <td>
                           <div class="d-flex align-items-center">
                             <img
@@ -173,7 +175,7 @@
                             type="number"
                             class="form-control form-control-sm"
                             v-model.number="item.quantity"
-                            @input="updateItemTotal(index)"
+                            @input="onQuantityChange(index)"
                             min="1"
                             style="width: 80px;"
                           />
@@ -203,6 +205,17 @@
                           <strong>{{ Math.round(item.total) }} {{ form.currency }}</strong>
                         </td>
                         <td>
+                          <div class="form-check form-switch">
+                            <input
+                              class="form-check-input"
+                              type="checkbox"
+                              :id="'trackVin' + index"
+                              v-model="item.track_by_vin"
+                              @change="onTrackVinToggle(index)"
+                            />
+                          </div>
+                        </td>
+                        <td>
                           <button
                             type="button"
                             class="btn btn-sm btn-outline-danger"
@@ -212,6 +225,70 @@
                           </button>
                         </td>
                       </tr>
+                      <!-- Vehicle details row (optional) -->
+                      <tr v-if="item.track_by_vin" class="vehicle-details-row">
+                        <td colspan="7">
+                          <div class="vehicle-section p-3 rounded">
+                            <h6 class="mb-3">
+                              <i class="bi bi-car-front me-2"></i>
+                              بيانات السيارات ({{ item.vehicles.length }} / {{ item.quantity }})
+                            </h6>
+                            <div
+                              v-for="(vehicle, vIndex) in item.vehicles"
+                              :key="vIndex"
+                              class="vehicle-row mb-3 p-2 border rounded"
+                            >
+                              <div class="row g-2 align-items-end">
+                                <div class="col-md-3">
+                                  <label class="form-label small">رقم الشانصي (VIN)</label>
+                                  <div class="input-group input-group-sm">
+                                    <input
+                                      type="text"
+                                      class="form-control text-uppercase"
+                                      v-model="vehicle.vin"
+                                      maxlength="17"
+                                      placeholder="17 حرف"
+                                    />
+                                    <button
+                                      type="button"
+                                      class="btn btn-outline-info"
+                                      @click="decodeVehicleVin(index, vIndex)"
+                                      :disabled="vehicle.decoding"
+                                      title="التحقق من الشانصي (اختياري)"
+                                    >
+                                      <span v-if="vehicle.decoding" class="spinner-border spinner-border-sm"></span>
+                                      <i v-else class="bi bi-search"></i>
+                                    </button>
+                                  </div>
+                                  <small v-if="vehicle.vin_valid === true" class="text-success">
+                                    <i class="bi bi-check-circle"></i> شانصي صالح
+                                  </small>
+                                  <small v-else-if="vehicle.vin_valid === false" class="text-warning">
+                                    {{ vehicle.vin_error || 'تحقق غير متأكد' }}
+                                  </small>
+                                </div>
+                                <div class="col-md-2">
+                                  <label class="form-label small">الموديل</label>
+                                  <input type="text" class="form-control form-control-sm" v-model="vehicle.vehicle_model" placeholder="مثال: RAV4" />
+                                </div>
+                                <div class="col-md-2">
+                                  <label class="form-label small">اللون</label>
+                                  <input type="text" class="form-control form-control-sm" v-model="vehicle.color" placeholder="مثال: أبيض" />
+                                </div>
+                                <div class="col-md-2">
+                                  <label class="form-label small">الشركة</label>
+                                  <input type="text" class="form-control form-control-sm" v-model="vehicle.make" placeholder="مثال: Toyota" />
+                                </div>
+                                <div class="col-md-1">
+                                  <label class="form-label small">السنة</label>
+                                  <input type="text" class="form-control form-control-sm" v-model="vehicle.year" placeholder="2024" />
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                      </tr>
+                      </template>
                     </tbody>
                     <tfoot class="table-light">
                       <tr>
@@ -381,6 +458,7 @@ import { useForm, Link } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import axios from 'axios';
 import { useToast } from 'vue-toastification';
+import { decodeVin } from '@/utils/vinDecoder';
 
 const props = defineProps({
   suppliers: Array,
@@ -427,6 +505,31 @@ const manualProduct = reactive({
   cost_price: 0,
   sales_price: 0,
 });
+
+const emptyVehicle = () => ({
+  vin: '',
+  color: '',
+  vehicle_model: '',
+  make: '',
+  year: '',
+  decoding: false,
+  vin_valid: null,
+  vin_error: null,
+});
+
+const syncVehicleRows = (item) => {
+  if (!item.track_by_vin) {
+    item.vehicles = [];
+    return;
+  }
+  if (!item.vehicles) item.vehicles = [];
+  while (item.vehicles.length < item.quantity) {
+    item.vehicles.push(emptyVehicle());
+  }
+  while (item.vehicles.length > item.quantity) {
+    item.vehicles.pop();
+  }
+};
 
 // Computed properties
 const totalAmount = computed(() => {
@@ -497,6 +600,8 @@ const addProduct = (product) => {
       cost_price: product.price_cost || 0,
       sales_price: product.price,
       total: product.price_cost || 0,
+      track_by_vin: false,
+      vehicles: [],
     });
   }
   
@@ -523,7 +628,7 @@ const addManualProduct = () => {
     form.items[existingIndex].quantity += manualProduct.quantity;
     form.items[existingIndex].cost_price = manualProduct.cost_price;
     form.items[existingIndex].sales_price = manualProduct.sales_price;
-    updateItemTotal(existingIndex);
+    onQuantityChange(existingIndex);
   } else {
     // Add new item
     form.items.push({
@@ -532,6 +637,8 @@ const addManualProduct = () => {
       cost_price: manualProduct.cost_price,
       sales_price: manualProduct.sales_price,
       total: manualProduct.quantity * manualProduct.cost_price,
+      track_by_vin: false,
+      vehicles: [],
     });
   }
 
@@ -548,6 +655,43 @@ const addManualProduct = () => {
 const updateItemTotal = (index) => {
   const item = form.items[index];
   item.total = item.quantity * item.cost_price;
+};
+
+const onQuantityChange = (index) => {
+  updateItemTotal(index);
+  syncVehicleRows(form.items[index]);
+};
+
+const onTrackVinToggle = (index) => {
+  syncVehicleRows(form.items[index]);
+};
+
+const decodeVehicleVin = async (itemIndex, vehicleIndex) => {
+  const vehicle = form.items[itemIndex].vehicles[vehicleIndex];
+  if (!vehicle.vin || vehicle.vin.length < 17) {
+    toast.warning('أدخل رقم شانصي كامل (17 حرف)');
+    return;
+  }
+
+  vehicle.decoding = true;
+  vehicle.vin_valid = null;
+  vehicle.vin_error = null;
+
+  const result = await decodeVin(vehicle.vin);
+  vehicle.decoding = false;
+
+  if (result.make) vehicle.make = result.make;
+  if (result.vehicle_model) vehicle.vehicle_model = result.vehicle_model;
+  if (result.year) vehicle.year = result.year;
+
+  vehicle.vin_valid = result.valid;
+  vehicle.vin_error = result.error;
+
+  if (result.valid) {
+    toast.success('تم التحقق من الشانصي بنجاح');
+  } else if (result.error) {
+    toast.info(result.error + ' — يمكنك المتابعة بدون تحقق');
+  }
 };
 
 const removeItem = (index) => {
@@ -597,6 +741,24 @@ const submitForm = () => {
 
   loading.value = true;
   
+  for (const item of form.items) {
+    if (item.track_by_vin) {
+      const filled = item.vehicles.filter(v => v.vin?.trim());
+      if (filled.length !== item.quantity) {
+        toast.error(`يجب إدخال ${item.quantity} رقم شانصي للمنتج: ${item.product.name}`);
+        loading.value = false;
+        return;
+      }
+      for (const v of filled) {
+        if (v.vin.trim().length !== 17) {
+          toast.error(`رقم الشانصي يجب أن يكون 17 حرفاً: ${v.vin}`);
+          loading.value = false;
+          return;
+        }
+      }
+    }
+  }
+
   // Transform items to match backend expectations
   const formData = {
     supplier_id: form.supplier_id,
@@ -604,12 +766,24 @@ const submitForm = () => {
     notes: form.notes,
     withdraw_from_cashbox: form.withdraw_from_cashbox,
     currency: form.currency,
-    items: form.items.map(item => ({
-      product_id: item.product.id,
-      quantity: item.quantity,
-      cost_price: item.cost_price,
-      sales_price: item.sales_price,
-    })),
+    items: form.items.map(item => {
+      const mapped = {
+        product_id: item.product.id,
+        quantity: item.quantity,
+        cost_price: item.cost_price,
+        sales_price: item.sales_price,
+      };
+      if (item.track_by_vin && item.vehicles?.length) {
+        mapped.vehicles = item.vehicles.map(v => ({
+          vin: v.vin.trim().toUpperCase(),
+          color: v.color || null,
+          vehicle_model: v.vehicle_model || null,
+          make: v.make || null,
+          year: v.year || null,
+        }));
+      }
+      return mapped;
+    }),
   };
   
   form.transform(() => formData).post(route('purchase-invoices.store'), {
@@ -665,5 +839,15 @@ onMounted(() => {
 
 .table tfoot th {
   border-bottom: none;
+}
+
+.vehicle-details-row td {
+  background: #f8f9fa;
+  border-top: none;
+}
+
+.vehicle-section {
+  background: #fff;
+  border: 1px dashed #dee2e6;
 }
 </style>

@@ -11,6 +11,7 @@ use App\Models\ProductPriceHistory;
 use App\Models\CashboxTransaction;
 use App\Models\User;
 use App\Models\UserType;
+use App\Models\Vehicle;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -101,6 +102,12 @@ class PurchaseInvoiceController extends Controller
             'items.*.quantity' => 'required|integer|min:1',
             'items.*.cost_price' => 'required|numeric|min:0',
             'items.*.sales_price' => 'required|numeric|min:0',
+            'items.*.vehicles' => 'nullable|array',
+            'items.*.vehicles.*.vin' => 'required_with:items.*.vehicles|string|size:17|distinct',
+            'items.*.vehicles.*.color' => 'nullable|string|max:100',
+            'items.*.vehicles.*.vehicle_model' => 'nullable|string|max:100',
+            'items.*.vehicles.*.make' => 'nullable|string|max:100',
+            'items.*.vehicles.*.year' => 'nullable|string|max:4',
             'withdraw_from_cashbox' => 'boolean',
             'currency' => 'required|in:IQD,$',
         ]);
@@ -155,6 +162,10 @@ class PurchaseInvoiceController extends Controller
                         'changed_by' => auth()->id(),
                         'purchase_invoice_id' => $purchaseInvoice->id,
                     ]);
+                }
+
+                if (!empty($item['vehicles'])) {
+                    $this->createVehiclesForItem($invoiceItem, $purchaseInvoice, $item['vehicles']);
                 }
             }
 
@@ -228,7 +239,7 @@ class PurchaseInvoiceController extends Controller
      */
     public function show(PurchaseInvoice $purchaseInvoice)
     {
-        $purchaseInvoice->load(['supplier', 'creator', 'items.product']);
+        $purchaseInvoice->load(['supplier', 'creator', 'items.product', 'items.vehicles', 'vehicles']);
         
         return Inertia::render('PurchaseInvoices/Show', [
             'invoice' => $purchaseInvoice,
@@ -357,6 +368,9 @@ class PurchaseInvoiceController extends Controller
                 }
             }
 
+            // Delete vehicles linked to this invoice
+            Vehicle::where('purchase_invoice_id', $purchaseInvoice->id)->delete();
+
             // Delete items
             $purchaseInvoice->items()->delete();
 
@@ -427,5 +441,28 @@ class PurchaseInvoiceController extends Controller
         ]);
 
         return $transaction;
+    }
+
+    private function createVehiclesForItem(PurchaseInvoiceItem $invoiceItem, PurchaseInvoice $purchaseInvoice, array $vehicles): void
+    {
+        foreach ($vehicles as $vehicleData) {
+            $vin = strtoupper(trim($vehicleData['vin']));
+
+            if (Vehicle::where('vin', $vin)->exists()) {
+                throw new \Exception("رقم الشانصي {$vin} مسجل مسبقاً");
+            }
+
+            Vehicle::create([
+                'vin' => $vin,
+                'color' => $vehicleData['color'] ?? null,
+                'vehicle_model' => $vehicleData['vehicle_model'] ?? null,
+                'make' => $vehicleData['make'] ?? null,
+                'year' => $vehicleData['year'] ?? null,
+                'product_id' => $invoiceItem->product_id,
+                'purchase_invoice_id' => $purchaseInvoice->id,
+                'purchase_invoice_item_id' => $invoiceItem->id,
+                'status' => 'available',
+            ]);
+        }
     }
 }

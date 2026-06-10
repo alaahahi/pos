@@ -59,6 +59,22 @@
             />
             <i class="bi bi-upc-scan barcode-icon"></i>
           </div>
+
+          <!-- VIN / Chassis Scanner (optional) -->
+          <div class="barcode-section vin-section">
+            <input
+              ref="vinInput"
+              v-model="vinSearch"
+              type="text"
+              class="form-control barcode-input text-uppercase"
+              placeholder="رقم الشانصي (VIN) — اختياري"
+              maxlength="17"
+              @keyup.enter="findByVin"
+            />
+            <button type="button" class="btn btn-sm btn-outline-info vin-search-btn" @click="findByVin">
+              <i class="bi bi-car-front"></i>
+            </button>
+          </div>
         </div>
 
         <!-- Product Filters -->
@@ -214,10 +230,16 @@
               <div class="cart-item-info">
                 <h6 class="item-name">{{ getProductName(item.product_id) }}</h6>
                 <p class="item-model">{{ getProductModel(item.product_id) }}</p>
+                <p v-if="item.vehicle_vin" class="item-vin text-info small mb-0">
+                  <i class="bi bi-car-front"></i>
+                  {{ item.vehicle_vin }}
+                  <span v-if="item.vehicle_color"> — {{ item.vehicle_color }}</span>
+                  <span v-if="item.vehicle_model"> — {{ item.vehicle_model }}</span>
+                </p>
                 </div>
 
               <div class="cart-item-controls">
-                <div class="quantity-controls">
+                <div class="quantity-controls" v-if="!item.vehicle_id">
                   <button 
                     @click="decreaseQuantity(index)" 
                     class="btn btn-sm btn-outline-secondary"
@@ -238,6 +260,9 @@
                   >
                     <i class="bi bi-plus"></i>
                   </button>
+                </div>
+                <div v-else class="vehicle-qty-badge">
+                  <span class="badge bg-info">سيارة × 1</span>
                 </div>
                 
                 <div class="price-controls">
@@ -523,6 +548,7 @@ let toast = useToast();
 // Refs
 let show_loader = ref(false);
 let barcode = ref("");
+let vinSearch = ref("");
 let searchQuery = ref("");
 let ShowModalConfirmOrderAndPay = ref(false);
 let loadingProducts = ref(false);
@@ -545,6 +571,7 @@ let dailySales = ref({
 // Template refs
 const searchInput = ref(null);
 const barcodeInput = ref(null);
+const vinInput = ref(null);
 
 const props = defineProps({
   products: Array,
@@ -605,7 +632,7 @@ const addProductToCart = (product) => {
     return;
   }
 
-  const existingItem = invoiceItems.find(item => item.product_id === product.id);
+  const existingItem = invoiceItems.find(item => item.product_id === product.id && !item.vehicle_id);
   
   if (existingItem) {
     if (existingItem.quantity < product.quantity) {
@@ -702,6 +729,7 @@ const formatPrice = (price, currency = 'IQD') => {
 
 const increaseQuantity = (index) => {
   const item = invoiceItems[index];
+  if (item.vehicle_id) return;
   let product = props.products.find(p => p.id === item.product_id);
   
   // البحث في الكاش إذا لم يوجد في المنتجات المحملة
@@ -727,6 +755,7 @@ const increaseQuantity = (index) => {
 
 const decreaseQuantity = (index) => {
   const item = invoiceItems[index];
+  if (item.vehicle_id) return;
   if (item.quantity > 1) {
     item.quantity -= 1;
   }
@@ -946,6 +975,7 @@ const saveInvoice = async (event) => {
       product_id: i.product_id,
       quantity: i.quantity,
       price: i.price,
+      ...(i.vehicle_id ? { vehicle_id: i.vehicle_id } : {}),
     })),
   };
 
@@ -982,6 +1012,48 @@ const saveInvoice = async (event) => {
   } finally {
     show_loader.value = false;
     ShowModalConfirmOrderAndPay.value = false;
+  }
+};
+
+const findByVin = async () => {
+  const vin = vinSearch.value.trim().toUpperCase();
+  if (!vin || vin.length < 11) {
+    toast.warning('أدخل رقم شانصي صالح', { timeout: 3000, position: 'bottom-right', rtl: true });
+    return;
+  }
+
+  if (invoiceItems.some(item => item.vehicle_vin === vin)) {
+    toast.warning('هذه السيارة مضافة مسبقاً في الفاتورة', { timeout: 3000, position: 'bottom-right', rtl: true });
+    return;
+  }
+
+  try {
+    const response = await axios.get(`/api/vehicles/by-vin/${vin}`);
+    const vehicle = response.data;
+
+    if (!vehicle.product) {
+      toast.error('المنتج المرتبط بالسيارة غير موجود', { timeout: 3000, position: 'bottom-right', rtl: true });
+      return;
+    }
+
+    invoiceItems.push({
+      product_id: vehicle.product_id,
+      quantity: 1,
+      price: vehicle.product.price,
+      vehicle_id: vehicle.id,
+      vehicle_vin: vehicle.vin,
+      vehicle_color: vehicle.color,
+      vehicle_model: vehicle.vehicle_model,
+    });
+
+    vinSearch.value = '';
+    toast.success(`تمت إضافة ${vehicle.product.name} — ${vehicle.vin}`, { timeout: 3000, position: 'bottom-right', rtl: true });
+    nextTick(() => vinInput.value?.focus());
+  } catch (error) {
+    const msg = error.response?.data?.error || 'السيارة غير موجودة أو مباعة';
+    toast.error(msg, { timeout: 4000, position: 'bottom-right', rtl: true });
+    vinSearch.value = '';
+    nextTick(() => vinInput.value?.focus());
   }
 };
 
@@ -1180,6 +1252,28 @@ onUnmounted(() => {
 
 .barcode-section {
   position: relative;
+}
+
+.vin-section {
+  margin-top: 0.5rem;
+  display: flex;
+  gap: 0.5rem;
+}
+
+.vin-section .barcode-input {
+  border-color: #17a2b8;
+  background-color: #f0f9fb;
+}
+
+.vin-search-btn {
+  border-radius: 25px;
+  padding: 0 1rem;
+  flex-shrink: 0;
+}
+
+.item-vin {
+  font-family: monospace;
+  letter-spacing: 0.5px;
 }
 
 .barcode-input {

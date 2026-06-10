@@ -49,6 +49,11 @@ class PurchaseInvoice extends Model
         return $this->hasMany(PurchaseInvoiceItem::class);
     }
 
+    public function vehicles(): HasMany
+    {
+        return $this->hasMany(Vehicle::class);
+    }
+
     /**
      * Get the product price histories for the purchase invoice.
      */

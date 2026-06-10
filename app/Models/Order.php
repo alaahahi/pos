@@ -49,7 +49,12 @@ class Order extends Model
     public function products()
     {
         return $this->belongsToMany(Product::class)
-                    ->withPivot('quantity', 'price') // إضافة الأعمدة الإضافية
+                    ->withPivot('quantity', 'price', 'vehicle_id')
                     ->withTimestamps();
+    }
+
+    public function vehicles()
+    {
+        return $this->hasMany(Vehicle::class);
     }
 }
