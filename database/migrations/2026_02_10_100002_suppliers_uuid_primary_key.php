@@ -82,6 +82,10 @@ return new class extends Migration
             }
 
             if ($driver === 'mysql') {
+                $idCol = DB::selectOne("SHOW COLUMNS FROM suppliers WHERE Field = 'id'");
+                if ($idCol && str_contains(strtolower($idCol->Extra ?? ''), 'auto_increment')) {
+                    DB::statement('ALTER TABLE suppliers MODIFY id '.($idCol->Type ?? 'BIGINT UNSIGNED').' NOT NULL');
+                }
                 DB::statement('ALTER TABLE suppliers DROP PRIMARY KEY');
                 Schema::table('suppliers', function (Blueprint $table) {
                     $table->dropColumn('id');
