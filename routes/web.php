@@ -131,6 +131,8 @@ Route::post('/decoration-monthly-accounting/payout-commissions', [DecorationCont
   Route::resource('purchase-invoices', App\Http\Controllers\PurchaseInvoiceController::class);
   Route::get('purchase-invoices/search/products', [App\Http\Controllers\PurchaseInvoiceController::class, 'searchProducts'])->name('purchase-invoices.search-products');
   Route::get('purchase-invoices/search/suppliers', [App\Http\Controllers\PurchaseInvoiceController::class, 'searchSuppliers'])->name('purchase-invoices.search-suppliers');
+
+  Route::get('vehicles', [App\Http\Controllers\VehicleController::class, 'index'])->name('vehicles.index');
   // Orders routes
   Route::resource('orders', OrderController::class);
   Route::post('orders/{order}/activate', [OrderController::class, 'activate'])->name('orders.activate');

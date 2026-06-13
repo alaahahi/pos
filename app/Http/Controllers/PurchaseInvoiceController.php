@@ -12,6 +12,7 @@ use App\Models\CashboxTransaction;
 use App\Models\User;
 use App\Models\UserType;
 use App\Models\Vehicle;
+use App\Services\LogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Inertia\Inertia;
@@ -76,7 +77,7 @@ class PurchaseInvoiceController extends Controller
             ->orderBy('name')
             ->get();
 
-        $products = Product::select('id', 'name', 'barcode', 'price', 'quantity', 'image')
+        $products = Product::select('id', 'name', 'barcode', 'price', 'price_cost', 'quantity', 'image')
             ->where('is_active', true)
             ->orderBy('name')
             ->get();
@@ -98,10 +99,11 @@ class PurchaseInvoiceController extends Controller
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.cost_price' => 'required|numeric|min:0',
-            'items.*.sales_price' => 'required|numeric|min:0',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.product_name' => 'required_without:items.*.product_id|nullable|string|max:255',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.cost_price' => 'nullable|numeric|min:0',
+            'items.*.sales_price' => 'nullable|numeric|min:0',
             'items.*.vehicles' => 'nullable|array',
             'items.*.vehicles.*.vin' => 'required_with:items.*.vehicles|string|size:17|distinct',
             'items.*.vehicles.*.color' => 'nullable|string|max:100',
@@ -115,10 +117,9 @@ class PurchaseInvoiceController extends Controller
         DB::beginTransaction();
 
         try {
-            // Create purchase invoice
             $purchaseInvoice = PurchaseInvoice::create([
                 'supplier_id' => $request->supplier_id,
-                'total_amount' => 0, // Will be calculated
+                'total_amount' => 0,
                 'invoice_date' => $request->invoice_date,
                 'notes' => $request->notes,
                 'invoice_number' => PurchaseInvoice::generateInvoiceNumber(),
@@ -127,64 +128,52 @@ class PurchaseInvoiceController extends Controller
 
             $totalAmount = 0;
 
-            // Create invoice items and update products
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                
-                // Store old price for history
+                $normalized = $this->normalizeItem($item);
+                $product = $this->resolveProduct($item, $normalized);
                 $oldPrice = $product->price;
-                
-                // Create invoice item
+
                 $invoiceItem = PurchaseInvoiceItem::create([
                     'purchase_invoice_id' => $purchaseInvoice->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'cost_price' => $item['cost_price'],
-                    'sales_price' => $item['sales_price'],
-                    'total' => $item['quantity'] * $item['cost_price'],
+                    'product_id' => $product->id,
+                    'quantity' => $normalized['quantity'],
+                    'cost_price' => $normalized['cost_price'],
+                    'sales_price' => $normalized['sales_price'],
+                    'total' => $normalized['quantity'] * $normalized['cost_price'],
                 ]);
 
                 $totalAmount += $invoiceItem->total;
 
-                // Update product quantity and price
-                $product->update([
-                    'quantity' => $product->quantity + $item['quantity'],
-                    'price' => $item['sales_price'],
-                ]);
-
-                // Create price history if price changed
-                if ($oldPrice != $item['sales_price']) {
-                    ProductPriceHistory::create([
-                        'product_id' => $product->id,
-                        'old_price' => $oldPrice,
-                        'new_price' => $item['sales_price'],
-                        'change_reason' => 'purchase',
-                        'changed_by' => auth()->id(),
-                        'purchase_invoice_id' => $purchaseInvoice->id,
-                    ]);
-                }
+                $this->applyPurchaseToProduct($product, $normalized, $oldPrice, $purchaseInvoice);
 
                 if (!empty($item['vehicles'])) {
                     $this->createVehiclesForItem($invoiceItem, $purchaseInvoice, $item['vehicles']);
                 }
             }
 
-            // Update invoice total
             $purchaseInvoice->update(['total_amount' => $totalAmount]);
 
-            // Handle cashbox withdrawal if requested
             if ($request->withdraw_from_cashbox) {
                 $this->createCashboxTransaction($purchaseInvoice, $totalAmount, $request->currency);
             }
 
             DB::commit();
 
+            LogService::createLog(
+                'PurchaseInvoice',
+                'Created',
+                $purchaseInvoice->id,
+                [],
+                $purchaseInvoice->load('items')->toArray(),
+                'success'
+            );
+
             return redirect()->route('purchase-invoices.index')
                 ->with('success', 'تم إنشاء فاتورة المشتريات بنجاح');
 
         } catch (\Exception $e) {
             DB::rollback();
-            
+
             return back()->withErrors([
                 'error' => 'حدث خطأ أثناء إنشاء فاتورة المشتريات: ' . $e->getMessage()
             ]);
@@ -207,7 +196,7 @@ class PurchaseInvoiceController extends Controller
                 $q->where('name', 'like', "%{$query}%")
                   ->orWhere('barcode', 'like', "%{$query}%");
             })
-            ->select('id', 'name', 'barcode', 'price', 'quantity', 'image')
+            ->select('id', 'name', 'barcode', 'price', 'price_cost', 'quantity', 'image')
             ->limit(10)
             ->get();
 
@@ -282,10 +271,11 @@ class PurchaseInvoiceController extends Controller
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
             'items' => 'required|array|min:1',
-            'items.*.product_id' => 'required|exists:products,id',
-            'items.*.quantity' => 'required|integer|min:1',
-            'items.*.cost_price' => 'required|numeric|min:0',
-            'items.*.sales_price' => 'required|numeric|min:0',
+            'items.*.product_id' => 'nullable|exists:products,id',
+            'items.*.product_name' => 'required_without:items.*.product_id|nullable|string|max:255',
+            'items.*.quantity' => 'nullable|integer|min:1',
+            'items.*.cost_price' => 'nullable|numeric|min:0',
+            'items.*.sales_price' => 'nullable|numeric|min:0',
         ]);
 
         DB::beginTransaction();
@@ -313,26 +303,32 @@ class PurchaseInvoiceController extends Controller
 
             // Create new items and update products
             foreach ($request->items as $item) {
-                $product = Product::findOrFail($item['product_id']);
-                
-                // Create invoice item
+                $normalized = $this->normalizeItem($item);
+                $product = $this->resolveProduct($item, $normalized);
+
                 PurchaseInvoiceItem::create([
                     'purchase_invoice_id' => $purchaseInvoice->id,
-                    'product_id' => $item['product_id'],
-                    'quantity' => $item['quantity'],
-                    'cost_price' => $item['cost_price'],
-                    'sales_price' => $item['sales_price'],
-                    'total' => $item['quantity'] * $item['cost_price'],
+                    'product_id' => $product->id,
+                    'quantity' => $normalized['quantity'],
+                    'cost_price' => $normalized['cost_price'],
+                    'sales_price' => $normalized['sales_price'],
+                    'total' => $normalized['quantity'] * $normalized['cost_price'],
                 ]);
 
-                // Update product
-                $product->increment('quantity', $item['quantity']);
-                $product->update([
-                    'price_cost' => $item['cost_price'],
-                    'price' => $item['sales_price'],
-                ]);
+                $product->increment('quantity', $normalized['quantity']);
 
-                $totalAmount += $item['quantity'] * $item['cost_price'];
+                $updates = [];
+                if ($normalized['cost_price'] > 0) {
+                    $updates['price_cost'] = $normalized['cost_price'];
+                }
+                if ($normalized['sales_price'] > 0) {
+                    $updates['price'] = $normalized['sales_price'];
+                }
+                if (!empty($updates)) {
+                    $product->update($updates);
+                }
+
+                $totalAmount += $normalized['quantity'] * $normalized['cost_price'];
             }
 
             // Update total amount
@@ -379,10 +375,22 @@ class PurchaseInvoiceController extends Controller
                 ->where('reference_id', $purchaseInvoice->id)
                 ->delete();
 
+            $invoiceData = $purchaseInvoice->toArray();
+            $invoiceId = $purchaseInvoice->id;
+
             // Delete invoice
             $purchaseInvoice->delete();
 
             DB::commit();
+
+            LogService::createLog(
+                'PurchaseInvoice',
+                'Deleted',
+                $invoiceId,
+                $invoiceData,
+                [],
+                'danger'
+            );
 
             return redirect()->route('purchase-invoices.index')
                 ->with('success', 'تم حذف فاتورة المشتريات بنجاح');
@@ -441,6 +449,69 @@ class PurchaseInvoiceController extends Controller
         ]);
 
         return $transaction;
+    }
+
+    private function normalizeItem(array $item): array
+    {
+        return [
+            'quantity' => max(1, (int) ($item['quantity'] ?? 1)),
+            'cost_price' => (float) ($item['cost_price'] ?? 0),
+            'sales_price' => (float) ($item['sales_price'] ?? 0),
+        ];
+    }
+
+    private function resolveProduct(array $item, array $normalized): Product
+    {
+        if (!empty($item['product_id'])) {
+            return Product::findOrFail($item['product_id']);
+        }
+
+        $name = trim($item['product_name'] ?? '');
+        if ($name === '') {
+            throw new \InvalidArgumentException('اسم المنتج مطلوب');
+        }
+
+        $product = Product::where('name', $name)->first();
+
+        if (!$product) {
+            $cost = $normalized['cost_price'];
+            $sales = $normalized['sales_price'];
+
+            $product = Product::create([
+                'name' => $name,
+                'quantity' => 0,
+                'price' => $sales > 0 ? $sales : $cost,
+                'price_cost' => $cost > 0 ? $cost : $sales,
+                'is_active' => true,
+            ]);
+        }
+
+        return $product;
+    }
+
+    private function applyPurchaseToProduct(Product $product, array $normalized, $oldPrice, PurchaseInvoice $purchaseInvoice): void
+    {
+        $updates = ['quantity' => $product->quantity + $normalized['quantity']];
+
+        if ($normalized['cost_price'] > 0) {
+            $updates['price_cost'] = $normalized['cost_price'];
+        }
+        if ($normalized['sales_price'] > 0) {
+            $updates['price'] = $normalized['sales_price'];
+        }
+
+        $product->update($updates);
+
+        if ($normalized['sales_price'] > 0 && $oldPrice != $normalized['sales_price']) {
+            ProductPriceHistory::create([
+                'product_id' => $product->id,
+                'old_price' => $oldPrice,
+                'new_price' => $normalized['sales_price'],
+                'change_reason' => 'purchase',
+                'changed_by' => auth()->id(),
+                'purchase_invoice_id' => $purchaseInvoice->id,
+            ]);
+        }
     }
 
     private function createVehiclesForItem(PurchaseInvoiceItem $invoiceItem, PurchaseInvoice $purchaseInvoice, array $vehicles): void

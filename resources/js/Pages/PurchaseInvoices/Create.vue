@@ -89,24 +89,80 @@
                   المنتجات
                 </h6>
                 
-                <!-- Product Search -->
+                <!-- Quick Add Product -->
+                <div class="quick-add-box mb-3 p-3 rounded">
+                  <div class="row g-2 align-items-end">
+                    <div class="col-md-4">
+                      <label class="form-label small mb-1">اسم المنتج <span class="text-danger">*</span></label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        v-model="quickProduct.name"
+                        placeholder="مثال: Toyota RAV4"
+                        @keyup.enter="addQuickProduct"
+                      />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1 text-muted">الكمية</label>
+                      <input
+                        type="number"
+                        class="form-control"
+                        v-model.number="quickProduct.quantity"
+                        min="1"
+                        placeholder="1"
+                      />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1 text-muted">سعر التكلفة</label>
+                      <input
+                        type="number"
+                        class="form-control"
+                        v-model.number="quickProduct.cost_price"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div class="col-md-2">
+                      <label class="form-label small mb-1 text-muted">سعر البيع</label>
+                      <input
+                        type="number"
+                        class="form-control"
+                        v-model.number="quickProduct.sales_price"
+                        min="0"
+                        placeholder="0"
+                      />
+                    </div>
+                    <div class="col-md-2">
+                      <button type="button" class="btn btn-primary w-100" @click="addQuickProduct">
+                        <i class="bi bi-plus-circle me-1"></i>
+                        إضافة
+                      </button>
+                    </div>
+                  </div>
+                  <small class="text-muted mt-2 d-block">
+                    <i class="bi bi-info-circle me-1"></i>
+                    الاسم فقط إجباري — إذا المنتج غير مسجل يُنشأ تلقائياً
+                  </small>
+                </div>
+
+                <!-- Search Existing Products (optional) -->
                 <div class="row mb-3">
-                  <div class="col-md-8">
-                    <div class="input-group">
+                  <div class="col-12">
+                    <div class="input-group input-group-sm">
+                      <span class="input-group-text"><i class="bi bi-search"></i></span>
                       <input
                         type="text"
                         class="form-control"
                         v-model="productSearch"
                         @input="searchProducts"
-                        placeholder="ابحث عن المنتج بالاسم أو الباركود..."
+                        placeholder="بحث عن منتج موجود (اختياري)..."
                         @keyup.enter="addProductFromSearch"
                       />
-                      <button type="button" class="btn btn-outline-primary" @click="addProductFromSearch">
-                        <i class="bi bi-search"></i>
+                      <button type="button" class="btn btn-outline-secondary" @click="addProductFromSearch">
+                        إضافة
                       </button>
                     </div>
                     
-                    <!-- Product Search Results -->
                     <div v-if="showProductDropdown && filteredProducts.length > 0" class="dropdown-menu show w-100">
                       <div
                         v-for="product in filteredProducts"
@@ -128,13 +184,6 @@
                         </div>
                       </div>
                     </div>
-                  </div>
-                  
-                  <div class="col-md-4">
-                    <button type="button" class="btn btn-primary w-100" @click="showProductModal = true">
-                      <i class="bi bi-plus-circle me-2"></i>
-                      إضافة منتج يدوياً
-                    </button>
                   </div>
                 </div>
 
@@ -165,8 +214,9 @@
                             />
                             <div>
                               <strong>{{ item.product.name }}</strong>
+                              <span v-if="item.is_new" class="badge bg-success ms-1">جديد</span>
                               <br>
-                              <small class="text-muted">{{ item.product.barcode || 'غير محدد' }}</small>
+                              <small class="text-muted">{{ item.product.barcode || (item.is_new ? 'سيُنشأ عند الحفظ' : 'غير محدد') }}</small>
                             </div>
                           </div>
                         </td>
@@ -304,7 +354,7 @@
                 <div v-else class="text-center py-5">
                   <i class="bi bi-box-seam display-1 text-muted"></i>
                   <h5 class="text-muted mt-3">لم يتم إضافة أي منتجات</h5>
-                  <p class="text-muted">ابحث عن المنتجات أو أضفها يدوياً لبدء إنشاء الفاتورة</p>
+                  <p class="text-muted">أدخل اسم المنتج في الحقل أعلاه واضغط إضافة</p>
                 </div>
               </div>
             </div>
@@ -395,59 +445,8 @@
       </div>
     </div>
 
-    <!-- Add Product Modal -->
-    <div v-if="showProductModal" class="modal fade show d-block" tabindex="-1">
-      <div class="modal-dialog">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h5 class="modal-title">إضافة منتج يدوياً</h5>
-            <button type="button" class="btn-close" @click="showProductModal = false"></button>
-          </div>
-          <div class="modal-body">
-            <form @submit.prevent="addManualProduct">
-              <div class="mb-3">
-                <label class="form-label">اختر المنتج</label>
-                <select class="form-select" v-model="manualProduct.product_id" required>
-                  <option value="">اختر منتج...</option>
-                  <option v-for="product in products" :key="product.id" :value="product.id">
-                    {{ product.name }} - {{ product.barcode || 'غير محدد' }}
-                  </option>
-                </select>
-              </div>
-              <div class="row">
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">الكمية</label>
-                    <input type="number" class="form-control" v-model.number="manualProduct.quantity" min="1" required />
-                  </div>
-                </div>
-                <div class="col-md-6">
-                  <div class="mb-3">
-                    <label class="form-label">سعر التكلفة</label>
-                    <input type="number" class="form-control" v-model.number="manualProduct.cost_price" step="1" min="0" required />
-                  </div>
-                </div>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">سعر البيع</label>
-                <input type="number" class="form-control" v-model.number="manualProduct.sales_price" step="1" min="0" required />
-              </div>
-            </form>
-          </div>
-          <div class="modal-footer">
-            <button type="button" class="btn btn-secondary" @click="showProductModal = false">
-              إلغاء
-            </button>
-            <button type="button" class="btn btn-primary" @click="addManualProduct">
-              إضافة المنتج
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
-
     <!-- Modal Backdrop -->
-    <div v-if="showAddSupplierModal || showProductModal" class="modal-backdrop fade show"></div>
+    <div v-if="showAddSupplierModal" class="modal-backdrop fade show"></div>
     </div><!-- إغلاق div dir="rtl" -->
   </AuthenticatedLayout>
 </template>
@@ -489,7 +488,6 @@ const selectedSupplier = ref(null);
 
 // Modal states
 const showAddSupplierModal = ref(false);
-const showProductModal = ref(false);
 const loading = ref(false);
 
 // New supplier form
@@ -498,12 +496,12 @@ const newSupplier = reactive({
   phone: '',
 });
 
-// Manual product form
-const manualProduct = reactive({
-  product_id: '',
-  quantity: 1,
-  cost_price: 0,
-  sales_price: 0,
+// Quick product add (name required, rest optional)
+const quickProduct = reactive({
+  name: '',
+  quantity: null,
+  cost_price: null,
+  sales_price: null,
 });
 
 const emptyVehicle = () => ({
@@ -584,77 +582,98 @@ const clearSupplier = () => {
   supplierSearch.value = '';
 };
 
-const addProduct = (product) => {
-  // Check if product already exists
-  const existingIndex = form.items.findIndex(item => item.product.id === product.id);
-  
-  if (existingIndex !== -1) {
-    // Update quantity
-    form.items[existingIndex].quantity += 1;
-    updateItemTotal(existingIndex);
-  } else {
-    // Add new product
-    form.items.push({
-      product: product,
-      quantity: 1,
-      cost_price: product.price_cost || 0,
-      sales_price: product.price,
-      total: product.price_cost || 0,
-      track_by_vin: false,
-      vehicles: [],
-    });
+const buildItem = (product, options = {}) => {
+  const qty = options.quantity ?? 1;
+  const cost = options.cost_price ?? product.price_cost ?? 0;
+  const sales = options.sales_price ?? product.price ?? 0;
+
+  return {
+    product,
+    is_new: options.is_new ?? false,
+    quantity: qty,
+    cost_price: cost,
+    sales_price: sales,
+    total: qty * cost,
+    track_by_vin: false,
+    vehicles: [],
+  };
+};
+
+const findItemIndex = (product) => {
+  if (product.id) {
+    return form.items.findIndex(item => item.product.id === product.id);
   }
-  
+  return form.items.findIndex(
+    item => item.is_new && item.product.name.toLowerCase() === product.name.toLowerCase()
+  );
+};
+
+const addProduct = (product, options = {}) => {
+  const existingIndex = findItemIndex(product);
+
+  if (existingIndex !== -1) {
+    form.items[existingIndex].quantity += (options.quantity ?? 1);
+    if (options.cost_price != null) form.items[existingIndex].cost_price = options.cost_price;
+    if (options.sales_price != null) form.items[existingIndex].sales_price = options.sales_price;
+    onQuantityChange(existingIndex);
+  } else {
+    form.items.push(buildItem(product, options));
+  }
+
   productSearch.value = '';
   showProductDropdown.value = false;
   toast.success('تم إضافة المنتج بنجاح');
 };
 
-const addProductFromSearch = () => {
-  if (filteredProducts.value.length > 0) {
-    addProduct(filteredProducts.value[0]);
+const addQuickProduct = () => {
+  const name = quickProduct.name.trim();
+  if (!name) {
+    toast.error('اسم المنتج مطلوب');
+    return;
   }
-};
 
-const addManualProduct = () => {
-  const product = props.products.find(p => p.id == manualProduct.product_id);
-  if (!product) return;
+  const options = {
+    quantity: quickProduct.quantity || 1,
+    cost_price: quickProduct.cost_price ?? 0,
+    sales_price: quickProduct.sales_price ?? 0,
+  };
 
-  // Check if product already exists
-  const existingIndex = form.items.findIndex(item => item.product.id === product.id);
-  
-  if (existingIndex !== -1) {
-    // Update existing item
-    form.items[existingIndex].quantity += manualProduct.quantity;
-    form.items[existingIndex].cost_price = manualProduct.cost_price;
-    form.items[existingIndex].sales_price = manualProduct.sales_price;
-    onQuantityChange(existingIndex);
+  const existing = props.products.find(p => p.name.toLowerCase() === name.toLowerCase());
+
+  if (existing) {
+    addProduct(existing, options);
   } else {
-    // Add new item
-    form.items.push({
-      product: product,
-      quantity: manualProduct.quantity,
-      cost_price: manualProduct.cost_price,
-      sales_price: manualProduct.sales_price,
-      total: manualProduct.quantity * manualProduct.cost_price,
-      track_by_vin: false,
-      vehicles: [],
+    addProduct({ id: null, name, barcode: null, image: null, price: 0, price_cost: 0 }, {
+      ...options,
+      is_new: true,
     });
   }
 
-  // Reset form
-  manualProduct.product_id = '';
-  manualProduct.quantity = 1;
-  manualProduct.cost_price = 0;
-  manualProduct.sales_price = 0;
-  
-  showProductModal.value = false;
-  toast.success('تم إضافة المنتج بنجاح');
+  quickProduct.name = '';
+  quickProduct.quantity = null;
+  quickProduct.cost_price = null;
+  quickProduct.sales_price = null;
+};
+
+const addProductFromSearch = () => {
+  if (filteredProducts.value.length > 0) {
+    addProduct(filteredProducts.value[0]);
+    return;
+  }
+
+  const name = productSearch.value.trim();
+  if (name.length >= 2) {
+    quickProduct.name = name;
+    addQuickProduct();
+  }
 };
 
 const updateItemTotal = (index) => {
   const item = form.items[index];
-  item.total = item.quantity * item.cost_price;
+  const qty = item.quantity || 1;
+  const cost = item.cost_price ?? 0;
+  item.quantity = qty;
+  item.total = qty * cost;
 };
 
 const onQuantityChange = (index) => {
@@ -768,10 +787,11 @@ const submitForm = () => {
     currency: form.currency,
     items: form.items.map(item => {
       const mapped = {
-        product_id: item.product.id,
-        quantity: item.quantity,
-        cost_price: item.cost_price,
-        sales_price: item.sales_price,
+        product_id: item.product.id || null,
+        product_name: item.product.id ? null : item.product.name,
+        quantity: item.quantity || 1,
+        cost_price: item.cost_price ?? 0,
+        sales_price: item.sales_price ?? 0,
       };
       if (item.track_by_vin && item.vehicles?.length) {
         mapped.vehicles = item.vehicles.map(v => ({
@@ -849,5 +869,10 @@ onMounted(() => {
 .vehicle-section {
   background: #fff;
   border: 1px dashed #dee2e6;
+}
+
+.quick-add-box {
+  background: #f0f7ff;
+  border: 1px solid #cfe2ff;
 }
 </style>

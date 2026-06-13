@@ -4,9 +4,53 @@ namespace App\Http\Controllers;
 
 use App\Models\Vehicle;
 use Illuminate\Http\Request;
+use Inertia\Inertia;
 
 class VehicleController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('permission:read product', ['only' => ['index']]);
+    }
+
+    public function index(Request $request)
+    {
+        $query = Vehicle::with([
+            'product:id,name,price',
+            'purchaseInvoice:id,invoice_number,invoice_date',
+            'order:id,date,final_amount,total_amount',
+        ])->latest();
+
+        if ($request->filled('status') && in_array($request->status, ['available', 'sold'], true)) {
+            $query->where('status', $request->status);
+        }
+
+        if ($request->filled('search')) {
+            $search = trim($request->search);
+            $query->where(function ($q) use ($search) {
+                $q->where('vin', 'like', "%{$search}%")
+                  ->orWhere('vehicle_model', 'like', "%{$search}%")
+                  ->orWhere('color', 'like', "%{$search}%")
+                  ->orWhere('make', 'like', "%{$search}%");
+            });
+        }
+
+        $vehicles = $query->paginate(20)->withQueryString();
+
+        $stats = [
+            'available' => Vehicle::where('status', 'available')->count(),
+            'sold' => Vehicle::where('status', 'sold')->count(),
+            'total' => Vehicle::count(),
+        ];
+
+        return Inertia::render('Vehicles/Index', [
+            'vehicles' => $vehicles,
+            'filters' => $request->only(['status', 'search']),
+            'stats' => $stats,
+            'translations' => __('messages'),
+        ]);
+    }
+
     public function findByVin(string $vin)
     {
         $vin = strtoupper(trim($vin));

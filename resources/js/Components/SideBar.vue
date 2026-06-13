@@ -30,6 +30,13 @@
                </Link>
     </li>
 
+    <li class="nav-item" v-if="hasPermission('read product')">
+    <Link  class="nav-link "  :href="route('vehicles.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/vehicles') }" >
+            <i class="bi bi-car-front"></i>
+            <span>مخزون السيارات</span>
+               </Link>
+    </li>
+
     <li class="nav-item" v-if="hasPermission('read category')">
     <Link  class="nav-link "  :href="route('categories.index')"  :class="{ 'collapsed':  !$page.url.startsWith('/categories') }" >
             <i class="bi bi-tags"></i>
