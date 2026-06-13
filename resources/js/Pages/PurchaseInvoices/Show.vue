@@ -46,6 +46,31 @@
               <strong>ملاحظات:</strong> {{ invoice.notes }}
             </div>
 
+            <div v-if="invoice.attachment_url" class="alert alert-info d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+              <div>
+                <strong><i class="bi bi-paperclip me-1"></i>مرفق الفاتورة</strong>
+              </div>
+              <div class="d-flex gap-2 no-print">
+                <a
+                  :href="invoice.attachment_url"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="btn btn-sm btn-outline-primary"
+                >
+                  <i class="bi bi-eye me-1"></i>
+                  عرض
+                </a>
+                <a
+                  :href="invoice.attachment_url"
+                  download
+                  class="btn btn-sm btn-outline-secondary"
+                >
+                  <i class="bi bi-download me-1"></i>
+                  تحميل
+                </a>
+              </div>
+            </div>
+
             <!-- Items -->
             <div class="table-responsive">
               <table class="table table-bordered">

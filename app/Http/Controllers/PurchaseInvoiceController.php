@@ -15,6 +15,7 @@ use App\Models\Vehicle;
 use App\Services\LogService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 
 class PurchaseInvoiceController extends Controller
@@ -62,9 +63,44 @@ class PurchaseInvoiceController extends Controller
         return Inertia::render('PurchaseInvoices/Index', [
             'purchaseInvoices' => $purchaseInvoices,
             'suppliers' => $suppliers,
+            'monthlyStats' => $this->getMonthlyStats(),
             'filters' => $request->only(['search', 'supplier_id', 'date_from', 'date_to']),
             'translations' => __('messages'),
         ]);
+    }
+
+    /**
+     * Aggregate purchase totals and averages for the current month, split by currency.
+     */
+    private function getMonthlyStats(): array
+    {
+        $monthStart = now()->startOfMonth()->toDateString();
+        $monthEnd = now()->endOfMonth()->toDateString();
+
+        $rows = PurchaseInvoice::query()
+            ->whereBetween('invoice_date', [$monthStart, $monthEnd])
+            ->selectRaw('currency, SUM(total_amount) as total, COUNT(*) as count')
+            ->groupBy('currency')
+            ->get();
+
+        $stats = [
+            'IQD' => ['total' => 0, 'count' => 0, 'average' => 0],
+            '$' => ['total' => 0, 'count' => 0, 'average' => 0],
+        ];
+
+        foreach ($rows as $row) {
+            $currency = $row->currency === '$' ? '$' : 'IQD';
+            $count = (int) $row->count;
+            $total = (float) $row->total;
+
+            $stats[$currency] = [
+                'total' => round($total, 2),
+                'count' => $count,
+                'average' => $count > 0 ? round($total / $count, 2) : 0,
+            ];
+        }
+
+        return $stats;
     }
 
     /**
@@ -98,6 +134,7 @@ class PurchaseInvoiceController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.product_name' => 'required_without:items.*.product_id|nullable|string|max:255',
@@ -117,11 +154,18 @@ class PurchaseInvoiceController extends Controller
         DB::beginTransaction();
 
         try {
+            $attachmentPath = null;
+            if ($request->hasFile('attachment')) {
+                $attachmentPath = $request->file('attachment')->store('purchase-invoices', 'public');
+            }
+
             $purchaseInvoice = PurchaseInvoice::create([
                 'supplier_id' => $request->supplier_id,
                 'total_amount' => 0,
+                'currency' => $request->currency,
                 'invoice_date' => $request->invoice_date,
                 'notes' => $request->notes,
+                'attachment' => $attachmentPath,
                 'invoice_number' => PurchaseInvoice::generateInvoiceNumber(),
                 'created_by' => auth()->id(),
             ]);
@@ -270,6 +314,7 @@ class PurchaseInvoiceController extends Controller
             'supplier_id' => 'nullable|exists:suppliers,id',
             'invoice_date' => 'required|date',
             'notes' => 'nullable|string',
+            'attachment' => 'nullable|file|mimes:pdf,jpg,jpeg,png,webp|max:10240',
             'items' => 'required|array|min:1',
             'items.*.product_id' => 'nullable|exists:products,id',
             'items.*.product_name' => 'required_without:items.*.product_id|nullable|string|max:255',
@@ -281,12 +326,20 @@ class PurchaseInvoiceController extends Controller
         DB::beginTransaction();
 
         try {
-            // Update invoice
-            $purchaseInvoice->update([
+            $updateData = [
                 'supplier_id' => $request->supplier_id,
                 'invoice_date' => $request->invoice_date,
                 'notes' => $request->notes,
-            ]);
+            ];
+
+            if ($request->hasFile('attachment')) {
+                if ($purchaseInvoice->attachment) {
+                    Storage::disk('public')->delete($purchaseInvoice->attachment);
+                }
+                $updateData['attachment'] = $request->file('attachment')->store('purchase-invoices', 'public');
+            }
+
+            $purchaseInvoice->update($updateData);
 
             // Revert old items quantities
             foreach ($purchaseInvoice->items as $oldItem) {
@@ -377,9 +430,14 @@ class PurchaseInvoiceController extends Controller
 
             $invoiceData = $purchaseInvoice->toArray();
             $invoiceId = $purchaseInvoice->id;
+            $attachmentPath = $purchaseInvoice->attachment;
 
             // Delete invoice
             $purchaseInvoice->delete();
+
+            if ($attachmentPath) {
+                Storage::disk('public')->delete($attachmentPath);
+            }
 
             DB::commit();
 

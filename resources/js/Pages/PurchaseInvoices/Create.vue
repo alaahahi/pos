@@ -369,6 +369,27 @@
                   rows="3"
                   placeholder="أي ملاحظات إضافية..."
                 ></textarea>
+
+                <div class="mt-3">
+                  <label class="form-label">مرفق الفاتورة</label>
+                  <input
+                    ref="attachmentInput"
+                    type="file"
+                    class="form-control"
+                    accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/*"
+                    @change="onAttachmentChange"
+                  />
+                  <small class="text-muted d-block mt-1">رفع ملف (PDF أو صورة) — اختياري، الحد الأقصى 10 م.ب</small>
+                  <div v-if="attachmentFileName" class="mt-2 d-flex align-items-center gap-2">
+                    <span class="badge bg-light text-dark">
+                      <i class="bi bi-paperclip me-1"></i>
+                      {{ attachmentFileName }}
+                    </span>
+                    <button type="button" class="btn btn-sm btn-outline-danger" @click="clearAttachment">
+                      <i class="bi bi-x"></i>
+                    </button>
+                  </div>
+                </div>
               </div>
               
               <div class="col-md-4">
@@ -489,6 +510,9 @@ const selectedSupplier = ref(null);
 // Modal states
 const showAddSupplierModal = ref(false);
 const loading = ref(false);
+const attachmentInput = ref(null);
+const attachmentFile = ref(null);
+const attachmentFileName = ref('');
 
 // New supplier form
 const newSupplier = reactive({
@@ -752,6 +776,20 @@ const handleImageError = (event) => {
   event.target.src = '/dashboard-assets/img/product-placeholder.svg';
 };
 
+const onAttachmentChange = (event) => {
+  const file = event.target.files?.[0] || null;
+  attachmentFile.value = file;
+  attachmentFileName.value = file ? file.name : '';
+};
+
+const clearAttachment = () => {
+  attachmentFile.value = null;
+  attachmentFileName.value = '';
+  if (attachmentInput.value) {
+    attachmentInput.value.value = '';
+  }
+};
+
 const submitForm = () => {
   if (form.items.length === 0) {
     toast.error('يجب إضافة منتج واحد على الأقل');
@@ -783,7 +821,7 @@ const submitForm = () => {
     supplier_id: form.supplier_id,
     invoice_date: form.invoice_date,
     notes: form.notes,
-    withdraw_from_cashbox: form.withdraw_from_cashbox,
+    withdraw_from_cashbox: form.withdraw_from_cashbox ? 1 : 0,
     currency: form.currency,
     items: form.items.map(item => {
       const mapped = {
@@ -806,9 +844,16 @@ const submitForm = () => {
     }),
   };
   
-  form.transform(() => formData).post(route('purchase-invoices.store'), {
+  const hasAttachment = !!attachmentFile.value;
+
+  form.transform(() => ({
+    ...formData,
+    attachment: attachmentFile.value,
+  })).post(route('purchase-invoices.store'), {
+    forceFormData: hasAttachment,
     onSuccess: () => {
       loading.value = false;
+      clearAttachment();
       toast.success('تم إنشاء فاتورة المشتريات بنجاح');
     },
     onError: (errors) => {

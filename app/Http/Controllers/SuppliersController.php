@@ -14,7 +14,7 @@ class SuppliersController extends Controller
 {
     public function __construct()
     {
-        $this->middleware('permission:read supplier', ['only' => ['index']]);
+        $this->middleware('permission:read supplier', ['only' => ['index', 'search']]);
         $this->middleware('permission:create supplier', ['only' => ['create']]);
         $this->middleware('permission:update supplier', ['only' => ['update', 'edit']]);
         $this->middleware('permission:delete supplier', ['only' => ['destroy']]);
@@ -25,37 +25,62 @@ class SuppliersController extends Controller
      */
     public function index(Request $request)
     {
-        // Define the filters
         $filters = [
-            'name' => $request->name,
+            'supplier_id' => $request->supplier_id,
             'phone' => $request->phone,
             'is_active' => $request->is_active,
         ];
 
-        // Start the Supplier query
         $suppliersQuery = Supplier::with('balance')->latest();
 
-        // Apply the filters if they exist
-        $suppliersQuery->when($filters['name'], function ($query, $name) {
-            return $query->where('name', 'LIKE', "%{$name}%");
+        $suppliersQuery->when($filters['supplier_id'], function ($query, $supplierId) {
+            return $query->where('id', $supplierId);
         });
 
         $suppliersQuery->when($filters['phone'], function ($query, $phone) {
             return $query->where('phone', 'LIKE', "%{$phone}%");
         });
 
-        if (isset($filters['is_active'])) {
+        if ($request->filled('is_active')) {
             $suppliersQuery->where('is_active', $filters['is_active']);
         }
 
-        // Paginate the filtered suppliers
         $suppliers = $suppliersQuery->paginate(10);
+
+        $selectedSupplier = null;
+        if ($request->filled('supplier_id')) {
+            $selectedSupplier = Supplier::select('id', 'name', 'phone')
+                ->find($request->supplier_id);
+        }
 
         return Inertia('Supplier/index', [
             'translations' => __('messages'),
             'filters' => $filters,
+            'selectedSupplier' => $selectedSupplier,
             'suppliers' => $suppliers,
         ]);
+    }
+
+    /**
+     * Search suppliers by name or phone (for searchable select filters).
+     */
+    public function search(Request $request)
+    {
+        $query = $request->get('q', '');
+
+        $suppliersQuery = Supplier::select('id', 'name', 'phone')
+            ->orderBy('name');
+
+        if ($query !== '') {
+            $suppliersQuery->where(function ($q) use ($query) {
+                $q->where('name', 'like', "%{$query}%")
+                  ->orWhere('phone', 'like', "%{$query}%");
+            });
+        }
+
+        $suppliers = $suppliersQuery->limit(20)->get();
+
+        return response()->json($suppliers);
     }
 
     /**

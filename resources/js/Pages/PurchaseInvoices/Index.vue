@@ -31,9 +31,15 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
                   <i class="bi bi-currency-dollar"></i>
                 </div>
-                <div class="ps-3">
-                  <h6>{{ getMonthlyTotal() }}</h6>
-                  <span class="text-primary small pt-1 fw-bold">دينار</span>
+                <div class="ps-3 stat-values">
+                  <div class="stat-line">
+                    <h6>{{ formatStatAmount(monthlyStats?.IQD?.total) }}</h6>
+                    <span class="text-primary small pt-1 fw-bold">دينار</span>
+                  </div>
+                  <div class="stat-line">
+                    <h6>{{ formatStatAmount(monthlyStats?.['$']?.total) }}</h6>
+                    <span class="text-info small pt-1 fw-bold">دولار</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -65,9 +71,15 @@
                 <div class="card-icon rounded-circle d-flex align-items-center justify-content-center">
                   <i class="bi bi-graph-up"></i>
                 </div>
-                <div class="ps-3">
-                  <h6>{{ getAverageInvoice() }}</h6>
-                  <span class="text-info small pt-1 fw-bold">دينار</span>
+                <div class="ps-3 stat-values">
+                  <div class="stat-line">
+                    <h6>{{ formatStatAmount(monthlyStats?.IQD?.average) }}</h6>
+                    <span class="text-primary small pt-1 fw-bold">دينار</span>
+                  </div>
+                  <div class="stat-line">
+                    <h6>{{ formatStatAmount(monthlyStats?.['$']?.average) }}</h6>
+                    <span class="text-info small pt-1 fw-bold">دولار</span>
+                  </div>
                 </div>
               </div>
             </div>
@@ -102,7 +114,6 @@
                   placeholder="ابحث برقم الفاتورة أو المورد..."
                   @input="debouncedSearch"
                 />
-                <i class="bi bi-search search-icon"></i>
               </div>
             </div>
             <div class="col-md-2">
@@ -139,6 +150,7 @@
                   <th>المبلغ الإجمالي</th>
                   <th>أنشأ بواسطة</th>
                   <th>تاريخ الإنشاء</th>
+                  <th class="text-center">مرفق الفاتورة</th>
                   <th class="text-center">الإجراءات</th>
                 </tr>
               </thead>
@@ -175,6 +187,19 @@
                   </td>
                   <td>
                     <span class="date-text">{{ formatDateTime(invoice.created_at) }}</span>
+                  </td>
+                  <td class="text-center">
+                    <a
+                      v-if="invoice.attachment_url"
+                      :href="invoice.attachment_url"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="btn btn-sm btn-outline-secondary"
+                      :title="isPdfAttachment(invoice.attachment) ? 'عرض PDF' : 'عرض المرفق'"
+                    >
+                      <i :class="isPdfAttachment(invoice.attachment) ? 'bi bi-file-earmark-pdf' : 'bi bi-image'"></i>
+                    </a>
+                    <span v-else class="text-muted">—</span>
                   </td>
                   <td>
                     <div class="action-buttons">
@@ -230,7 +255,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, computed, onMounted } from 'vue';
+import { ref, reactive } from 'vue';
 import { useForm, Link, router } from '@inertiajs/vue3';
 import AuthenticatedLayout from '@/Layouts/AuthenticatedLayout.vue';
 import Pagination from '@/Components/Pagination.vue';
@@ -240,6 +265,7 @@ import { useToast } from 'vue-toastification';
 const props = defineProps({
   purchaseInvoices: Object,
   suppliers: Array,
+  monthlyStats: Object,
   filters: Object,
   translations: Object,
 });
@@ -284,42 +310,19 @@ const formatDateTime = (date) => {
   return new Date(date).toLocaleString('en-US');
 };
 
-const getMonthlyTotal = () => {
-  if (!props.purchaseInvoices?.data) return '0';
-  
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  
-  const monthlyInvoices = props.purchaseInvoices.data.filter(invoice => {
-    const invoiceDate = new Date(invoice.invoice_date);
-    return invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear;
-  });
-  
-  const total = monthlyInvoices.reduce((sum, invoice) => sum + parseFloat(invoice.total_amount), 0);
-  return Math.round(total).toLocaleString();
+const isPdfAttachment = (path) => {
+  if (!path) return false;
+  return path.toLowerCase().endsWith('.pdf');
+};
+
+const formatStatAmount = (amount) => {
+  const value = Math.round(parseFloat(amount) || 0);
+  return value.toLocaleString();
 };
 
 const getActiveSuppliersCount = () => {
   if (!props.suppliers) return 0;
   return props.suppliers.length;
-};
-
-const getAverageInvoice = () => {
-  if (!props.purchaseInvoices?.data?.length) return '0';
-  
-  const currentMonth = new Date().getMonth();
-  const currentYear = new Date().getFullYear();
-  
-  const monthlyInvoices = props.purchaseInvoices.data.filter(invoice => {
-    const invoiceDate = new Date(invoice.invoice_date);
-    return invoiceDate.getMonth() === currentMonth && invoiceDate.getFullYear() === currentYear;
-  });
-  
-  if (!monthlyInvoices.length) return '0';
-  
-  const total = monthlyInvoices.reduce((sum, invoice) => sum + parseFloat(invoice.total_amount), 0);
-  const average = total / monthlyInvoices.length;
-  return Math.round(average).toLocaleString();
 };
 
 const deleteInvoice = (invoice) => {
@@ -368,18 +371,32 @@ const deleteInvoice = (invoice) => {
   border-left-color: #8b5cf6;
 }
 
-/* Search Box */
-.search-box {
-  position: relative;
+.stat-values {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
 }
 
-.search-box .search-icon {
-  position: absolute;
-  right: 15px;
-  top: 50%;
-  transform: translateY(-50%);
-  color: #6b7280;
+.stat-line {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+}
+
+.stat-line h6 {
+  margin: 0;
   font-size: 1.1rem;
+  line-height: 1.2;
+}
+
+.stat-line:not(:last-child) {
+  padding-bottom: 0.15rem;
+  border-bottom: 1px dashed rgba(0, 0, 0, 0.08);
+}
+
+/* Search Box */
+.search-box input {
+  padding-right: 0.75rem;
 }
 
 /* Table Styling */

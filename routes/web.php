@@ -68,6 +68,7 @@ Route::middleware(['auth', 'active.session', 'license'])->group(function () {
   Route::post('customers/{customer}/orders/{order}/pay', [CustomersController::class, 'payInvoice'])->name('customers.orders.pay');
   Route::get('customers/{customer}/verify-balance', [CustomersController::class, 'verifyBalance'])->name('customers.verify-balance'); 
 
+  Route::get('suppliers/search', [SuppliersController::class, 'search'])->name('suppliers.search');
   Route::resource('suppliers', SuppliersController::class);
   Route::post('suppliers/{supplier}/activate', [SuppliersController::class, 'activate'])->name('suppliers.activate');
   Route::post('suppliers/{supplier}', [SuppliersController::class, 'update'])->name('suppliers.update');

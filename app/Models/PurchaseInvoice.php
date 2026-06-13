@@ -14,8 +14,10 @@ class PurchaseInvoice extends Model
     protected $fillable = [
         'supplier_id',
         'total_amount',
+        'currency',
         'invoice_date',
         'notes',
+        'attachment',
         'invoice_number',
         'created_by',
     ];
@@ -24,6 +26,22 @@ class PurchaseInvoice extends Model
         'invoice_date' => 'date',
         'total_amount' => 'decimal:2',
     ];
+
+    protected $appends = [
+        'attachment_url',
+    ];
+
+    /**
+     * Get the public URL for the invoice attachment.
+     */
+    public function getAttachmentUrlAttribute(): ?string
+    {
+        if (empty($this->attributes['attachment'])) {
+            return null;
+        }
+
+        return asset("storage/{$this->attributes['attachment']}");
+    }
 
     /**
      * Get the supplier that owns the purchase invoice.

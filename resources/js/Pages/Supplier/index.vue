@@ -11,13 +11,33 @@
         <div class="card-body">
           <form @submit.prevent="Filter">
             <div class="row filter_form">
-              <div class="col-md-2">
-                <input
-                  type="text"
-                  class="form-control search_box"
-                  v-model="filterForm.name"
+              <div class="col-md-3">
+                <vue-select
+                  v-model="filterForm.supplier_id"
+                  :options="supplierOptions"
+                  label="name"
+                  :reduce="supplier => supplier.id"
+                  :filterable="false"
+                  :clearable="true"
                   :placeholder="translations.name"
-                />
+                  class="supplier-filter-select"
+                  @search="onSupplierSearch"
+                  @open="loadInitialSuppliers"
+                >
+                  <template #option="{ name, phone }">
+                    <div class="d-flex justify-content-between">
+                      <span>{{ name }}</span>
+                      <small v-if="phone" class="text-muted">{{ phone }}</small>
+                    </div>
+                  </template>
+                  <template #selected-option="{ name, phone }">
+                    <span>{{ name }}</span>
+                    <small v-if="phone" class="text-muted ms-1">({{ phone }})</small>
+                  </template>
+                  <template #no-options>
+                    {{ supplierSearchLoading ? 'جاري البحث...' : 'اكتب للبحث عن مورد' }}
+                  </template>
+                </vue-select>
               </div>
               <div class="col-md-2">
                 <input
@@ -28,13 +48,15 @@
                 />
               </div>
               <div class="col-md-2">
-                <select class="form-select" v-model="filterForm.is_active">
-                  <option value="" selected disabled>
-                    {{ translations.status }}
-                  </option>
-                  <option :value="1">{{ translations.active }}</option>
-                  <option :value="0">{{ translations.not_active }}</option>
-                </select>
+                <vue-select
+                  v-model="filterForm.is_active"
+                  :options="statusOptions"
+                  label="label"
+                  :reduce="option => option.value"
+                  :clearable="true"
+                  :placeholder="translations.status"
+                  class="status-filter-select"
+                />
               </div>
               <div class="col-md-2">
                 <button type="submit" class="btn btn-primary">
@@ -155,21 +177,69 @@ import Pagination from '@/Components/Pagination.vue';
 import { Link, usePage } from '@inertiajs/vue3';
 import Swal from 'sweetalert2';
 import { router } from '@inertiajs/vue3';
-import { reactive } from 'vue';
+import { reactive, ref, computed } from 'vue';
+import VueSelect from 'vue-select';
+import 'vue-select/dist/vue-select.css';
+import axios from 'axios';
+import { debounce } from 'lodash';
 
-const props = defineProps({ suppliers: Object, translations: Array });
+const props = defineProps({
+  suppliers: Object,
+  translations: Array,
+  filters: Object,
+  selectedSupplier: Object,
+});
+
 const page = usePage();
 
 const filterForm = reactive({
-  name: '',
-  phone: '',
-  is_active: '',
+  supplier_id: props.filters?.supplier_id ? Number(props.filters.supplier_id) : null,
+  phone: props.filters?.phone || '',
+  is_active: props.filters?.is_active !== undefined && props.filters?.is_active !== ''
+    ? Number(props.filters.is_active)
+    : null,
 });
+
+const supplierOptions = ref(props.selectedSupplier ? [props.selectedSupplier] : []);
+const supplierSearchLoading = ref(false);
+
+const statusOptions = computed(() => [
+  { label: props.translations.active, value: 1 },
+  { label: props.translations.not_active, value: 0 },
+]);
+
+const fetchSuppliers = async (search = '') => {
+  supplierSearchLoading.value = true;
+  try {
+    const response = await axios.get(route('suppliers.search'), {
+      params: { q: search },
+    });
+    supplierOptions.value = response.data;
+  } catch (error) {
+    console.error('Error searching suppliers:', error);
+  } finally {
+    supplierSearchLoading.value = false;
+  }
+};
+
+const onSupplierSearch = debounce((search) => {
+  fetchSuppliers(search || '');
+}, 300);
+
+const loadInitialSuppliers = () => {
+  if (supplierOptions.value.length === 0) {
+    fetchSuppliers('');
+  }
+};
 
 const Filter = () => {
   router.get(
     route('suppliers.index'),
-    filterForm,
+    {
+      supplier_id: filterForm.supplier_id || '',
+      phone: filterForm.phone,
+      is_active: filterForm.is_active !== null && filterForm.is_active !== '' ? filterForm.is_active : '',
+    },
     { preserveState: true, preserveScroll: true }
   );
 };
@@ -227,14 +297,32 @@ const Delete = (id) => {
     }
   });
 };
-
-const exportUsers = () => {
-  const url = route('export.suppliers');
-  const link = document.createElement('a');
-  link.href = url;
-  link.setAttribute('download', 'suppliers.csv');
-  document.body.appendChild(link);
-  link.click();
-  document.body.removeChild(link);
-};
 </script>
+
+<style scoped>
+.supplier-filter-select,
+.status-filter-select {
+  min-width: 100%;
+}
+
+:deep(.v-select) {
+  direction: rtl;
+  text-align: right;
+}
+
+:deep(.vs__dropdown-toggle) {
+  min-height: 38px;
+  border-color: #dee2e6;
+  border-radius: 0.375rem;
+  background: #fff;
+}
+
+:deep(.vs__search) {
+  text-align: right;
+}
+
+:deep(.vs__dropdown-menu) {
+  text-align: right;
+  direction: rtl;
+}
+</style>
