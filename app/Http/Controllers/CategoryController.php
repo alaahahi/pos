@@ -58,7 +58,9 @@ class CategoryController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
+        $validated['slug'] = $this->uniqueCategorySlug($validated['name']);
+        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        $validated['is_active'] = $validated['is_active'] ?? true;
 
         Category::create($validated);
 
@@ -115,7 +117,9 @@ class CategoryController extends Controller
             'is_active' => 'boolean',
         ]);
 
-        $validated['slug'] = Str::slug($validated['name']);
+        $validated['slug'] = $this->uniqueCategorySlug($validated['name'], null, $category->id);
+        $validated['sort_order'] = $validated['sort_order'] ?? 0;
+        $validated['is_active'] = $validated['is_active'] ?? true;
 
         $category->update($validated);
 
@@ -132,6 +136,24 @@ class CategoryController extends Controller
 
         return redirect()->route('categories.index')
             ->with('success', __('messages.data_deleted_successfully'));
+    }
+
+    protected function uniqueCategorySlug(string $name, ?string $slug = null, ?string $exceptId = null): string
+    {
+        $base = $slug ?: Str::slug($name) ?: (string) Str::uuid();
+        $candidate = $base;
+        $suffix = 1;
+
+        while (
+            Category::withTrashed()
+                ->where('slug', $candidate)
+                ->when($exceptId, fn ($query) => $query->where('id', '!=', $exceptId))
+                ->exists()
+        ) {
+            $candidate = $base . '-' . $suffix++;
+        }
+
+        return $candidate;
     }
 }
 

@@ -135,6 +135,7 @@ class Product extends Model
         'is_featured' => 'boolean',
         'is_best_selling' => 'boolean',
         'sales_count' => 'integer',
+        'category_id' => 'string',
         'created_at' => 'date:Y-m-d',
     ];
 
