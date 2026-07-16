@@ -169,6 +169,7 @@ return [
         App\Providers\EventServiceProvider::class,
         App\Providers\RouteServiceProvider::class,
         App\Providers\BarcodeServiceProvider::class,
+        App\Monitor\Providers\MonitorServiceProvider::class,
         Spatie\Permission\PermissionServiceProvider::class,
     Maatwebsite\Excel\ExcelServiceProvider::class,
 
